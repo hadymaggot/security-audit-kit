@@ -1,0 +1,30 @@
+# Salin ke client_leak.yml. Non-destruktif (hanya GET).
+base_url: "${TARGET_BASE_URL}"
+
+# Sertakan auth agar respons terautentikasi ikut diuji cache-nya (opsional).
+auth:
+  header: "Authorization"
+  value: "${CLIENT_LEAK_TOKEN}"   # mis. "Bearer xxx"
+
+# A. Respons sensitif yang HARUS melarang cache (no-store/private).
+sensitive_paths:
+  - "/api/users/me"
+  - "/api/profile"
+  - "/dashboard"
+
+# B. Aset JS yang disisir. Kosongkan untuk mengandalkan auto-discover dari halaman.
+#    (Aman untuk app TANPA JS — bila tak ada bundle, cek ini otomatis kosong.)
+js_assets: []
+auto_discover_js: true            # parse <script src> dari base_url
+
+# Petunjuk endpoint internal/admin; bila string ini muncul di JS/HTML → ditandai.
+internal_endpoints:
+  - "/users"
+  - "/user-role"
+  - "/admin"
+
+# C. Jalur NON-JS (app server-rendered / API).
+scan_html: true                   # sisir komentar & rahasia inline di halaman HTML
+probe_sensitive_files: true       # probe berkas sensitif yang umum ter-ekspos (GET)
+# Timpa daftar bawaan bila perlu (default sudah mencakup .env, .git/, dump, backup, dll):
+sensitive_files: []

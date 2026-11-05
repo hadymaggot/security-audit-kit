@@ -1,0 +1,84 @@
+# Matriks kontrol akses — inti dari kit ini.
+# Salin ke authz_matrix.yml lalu sesuaikan. Jangan taruh kredensial di sini;
+# pakai ${ENV_VAR} yang dibaca dari environment.
+#
+# Ide: untuk tiap endpoint, nyatakan peran mana yang BOLEH (expect allow) dan mana
+# yang HARUS DITOLAK (expect deny). Runner login sebagai tiap peran lalu memastikan
+# kenyataan cocok dengan harapan. Celah kontrol akses = ketika yang "deny" malah lolos.
+
+base_url: "${TARGET_BASE_URL}"
+
+# Cara login tiap peran dan cara mengambil token/sesi.
+auth:
+  # Mode: "session_cookie" (simpan cookie dari respons login) atau
+  #       "bearer" (ambil token dari JSON respons, kirim sbagai Authorization: Bearer).
+  mode: bearer
+
+  login:
+    method: POST
+    path: "/api/auth/login"
+    # Field body dikirim sebagai JSON.
+    body:
+      email: "{username}"
+      password: "{password}"
+    # Untuk mode bearer: jsonpath sederhana (titik) ke token di respons.
+    token_field: "data.token"
+
+  # Peran yang diuji. Kredensial dari env var.
+  roles:
+    admin:
+      username: "${AUTHZ_ADMIN_USER}"
+      password: "${AUTHZ_ADMIN_PASS}"
+    user_biasa:
+      username: "${AUTHZ_USER_USER}"
+      password: "${AUTHZ_USER_PASS}"
+    # Peran semu "anon" tak login — untuk menguji route yang harus menolak tanpa auth.
+    anon: { anonymous: true }
+
+# Perlakuan status:
+#   allow = diharapkan 2xx/3xx
+#   deny  = diharapkan 401 atau 403 (BUKAN 404/500 — itu ditandai sebagai perlu ditinjau)
+endpoints:
+  - name: "Daftar pengguna (admin only)"
+    method: GET
+    path: "/api/users"
+    expect:
+      admin: allow
+      user_biasa: deny
+      anon: deny
+
+  - name: "Ubah peran pengguna (admin only)"
+    method: POST
+    path: "/api/users/1/role"
+    body: { role: "viewer" }
+    expect:
+      admin: allow
+      user_biasa: deny
+      anon: deny
+
+  # IDOR: user_biasa mengakses objek dengan id milik akun lain harus ditolak.
+  - name: "IDOR — detail akun lain"
+    method: GET
+    path: "/api/accounts/999"
+    expect:
+      user_biasa: deny
+
+  # Business-logic / lompat status: ditulis per-kasus sesuai alur aplikasi.
+  - name: "Lompat status tanpa peran berwenang"
+    method: POST
+    path: "/api/documents/1/status"
+    body: { status: "approved" }
+    expect:
+      user_biasa: deny
+
+# Uji opsional: klien menyuntik header otorisasi palsu, gateway harus menimpanya.
+# Berguna bila arsitektur mengandalkan reverse proxy menyetel X-Auth-* internal.
+forged_headers:
+  enabled: true
+  # Login sebagai peran rendah ini, lalu suntik header di bawah; endpoint harus tetap menolak.
+  as_role: user_biasa
+  inject:
+    X-Auth-Roles: "admin"
+    X-Auth-User-Id: "1"
+  endpoints:
+    - { method: GET, path: "/api/users" }

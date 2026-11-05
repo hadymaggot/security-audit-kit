@@ -1,0 +1,14 @@
+# Konfigurasi & kredensial nyata — jangan commit
+config/targets.yml
+tests/*/authz_matrix.yml
+tests/*/upload_safety.yml
+tests/*/auth_policy.yml
+tests/*/client_leak.yml
+# Hasil pindai
+reports/
+# Python
+__pycache__/
+*.pyc
+.venv/
+__pycache__/
+*.pyc

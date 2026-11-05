@@ -1,0 +1,17 @@
+# Salin ke auth_policy.yml. Non-destruktif — tidak brute-force.
+base_url: "${TARGET_BASE_URL}"
+
+# Uji penolakan sandi lemah saat registrasi (opsional — hapus blok bila tak ada endpoint).
+register:
+  path: "/api/auth/register"
+  template:
+    email: "probe{rand}@example.test"
+    name: "probe"
+  password_field: "password"
+
+# Captcha harus berganti tiap kali diterbitkan (opsional).
+captcha:
+  issue_path: "/api/captcha"
+  token_field: "data.id"
+
+weak_passwords: ["12345678", "password", "aaaaaaaa", "qwerty12", "11111111"]

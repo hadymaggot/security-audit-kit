@@ -1,0 +1,11 @@
+# Salin ke upload_safety.yml. Kredensial dari env var.
+base_url: "${TARGET_BASE_URL}"
+auth:
+  header: "Authorization"
+  value: "${UPLOAD_TOKEN}"        # mis. "Bearer xxx"
+endpoint:
+  method: POST
+  path: "/api/upload"
+  field: "file"                   # nama field multipart
+allow_only: [".pdf"]              # ekstensi sah menurut aplikasi
+max_bytes: 2097152                # 2 MB; berkas lebih besar harus ditolak

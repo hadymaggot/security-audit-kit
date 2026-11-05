@@ -1,0 +1,21 @@
+# Salin ke config/targets.yml lalu isi untuk aplikasi yang diuji.
+# config/targets.yml di-gitignore — jangan commit base URL internal / kredensial.
+
+# Nama bebas untuk laporan.
+name: "Contoh Aplikasi"
+
+# Base URL target. Gunakan dev/staging untuk scanner aktif.
+base_url: "https://dev.contoh.local"
+
+# Spesifikasi OpenAPI untuk ZAP API scan (opsional). Boleh URL atau path berkas.
+# Banyak framework meng-generate ini otomatis (Scramble, springdoc, drf-spectacular, dll).
+openapi: "https://dev.contoh.local/api/docs/openapi.json"
+
+# Host untuk uji TLS & header (tanpa skema).
+tls_host: "dev.contoh.local"
+
+# Path yang aman dipukul untuk uji header respons.
+header_probe_path: "/"
+
+# Direktori repo kode (untuk scanner statis: trivy, semgrep, gitleaks).
+code_path: "."

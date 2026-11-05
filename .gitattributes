@@ -1,0 +1,5 @@
+# Script shell WAJIB LF — kalau ter-checkout CRLF di Windows lalu di-bind-mount
+# ke container, shell di dalam container crash ("bad interpreter").
+*.sh text eol=lf
+*.py text eol=lf
+Makefile text eol=lf
