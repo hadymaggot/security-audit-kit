@@ -16,6 +16,7 @@ kasusnya.
 | Weak Password Policy | `auth-policy` | Isi `register` + `weak_passwords` |
 | Improper Captcha | `auth-policy` | Isi blok `captcha` |
 | CORS misconfiguration | `cors` | Isi `paths`; cek ACAO reflektif / wildcard+creds / origin null |
+| Open redirect | `open-redirect` | Isi `paths` + `params`; cek Location ke host luar |
 | Deprecated Cryptography | `tls` | `python audit.py tls` |
 | Missing Security Header | `headers` | `python audit.py headers` |
 | Cache response sensitif | `clientleak` | Isi `sensitive_paths`; cek `Cache-Control: no-store` |

@@ -19,6 +19,7 @@ solusinya, dan rujukan ke OWASP/BSSN.
 | `upload` | Nolak file upload berbahaya: PDF ber-JS, polyglot, double extension, kegedean |
 | `auth-policy` | Kekuatan password, captcha harus regenerate tiap gagal |
 | `cors` | CORS misconfiguration: reflected origin, wildcard+credentials, Origin `null` diterima |
+| `open-redirect` | Parameter pengalih (`next`/`url`/`redirect`/…) yang mengarah ke host luar |
 | `tls` / `headers` | Protokol/cipher TLS usang, security header yang kurang atau malah bocorin info |
 | `deps` | CVE dependency (Trivy) + SAST OWASP Top 10 (semgrep) + secret ke-commit (gitleaks) |
 | `report` | Gabung semua hasil jadi `reports/laporan.html` & `.md` |
