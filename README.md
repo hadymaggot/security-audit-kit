@@ -60,7 +60,13 @@ Makefile, audit.ps1 wrapper perintah pendek per-OS
 ```
 
 Lebih detail ada di [docs/metodologi.md](docs/metodologi.md) dan
-[docs/temuan-to-test-mapping.md](docs/temuan-to-test-mapping.md).
+[docs/temuan-to-test-mapping.md](docs/temuan-to-test-mapping.md). Contoh bentuk
+laporan akhir: [docs/contoh-laporan.md](docs/contoh-laporan.md).
+
+## Kontribusi
+
+Alur kontribusi, cara nambah check, dan konvensi commit ada di
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Lisensi
 
