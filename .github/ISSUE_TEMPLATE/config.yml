@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Pertanyaan umum
+    url: https://github.com/hadymaggot/security-audit-kit/discussions
+    about: Diskusi & tanya-jawab non-bug

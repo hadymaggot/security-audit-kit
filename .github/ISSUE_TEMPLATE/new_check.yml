@@ -1,0 +1,42 @@
+name: Usulan pemeriksaan baru
+description: Kelas temuan / check baru yang mau ditambahkan ke toolkit
+labels: ["new-check"]
+body:
+  - type: input
+    id: kelas
+    attributes:
+      label: Kelas temuan
+      placeholder: "mis. CORS misconfig, open redirect, SSRF"
+    validations:
+      required: true
+  - type: dropdown
+    id: modul
+    attributes:
+      label: Masuk ke modul mana
+      options:
+        - authz
+        - zap
+        - clientleak
+        - upload
+        - auth-policy
+        - scanners (tls/headers/deps)
+        - modul baru
+    validations:
+      required: true
+  - type: textarea
+    id: cara
+    attributes:
+      label: Cara mendeteksi (non-destruktif)
+      description: Request apa yang dikirim, dan kondisi apa yang menandakan temuan.
+    validations:
+      required: true
+  - type: textarea
+    id: owasp
+    attributes:
+      label: Rujukan standar
+      placeholder: "OWASP Top 10 / ASVS / BSSN Perban 4/2021, severity usulan"
+  - type: textarea
+    id: solusi
+    attributes:
+      label: Contoh remediasi
+      description: Buat diisi ke remediation.py kalau temuannya muncul.

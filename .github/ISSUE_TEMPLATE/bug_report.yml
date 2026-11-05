@@ -1,0 +1,48 @@
+name: Bug report
+description: Ada yang error atau nggak jalan sesuai harapan
+labels: ["bug"]
+body:
+  - type: dropdown
+    id: modul
+    attributes:
+      label: Modul
+      options:
+        - authz
+        - zap
+        - clientleak
+        - upload
+        - auth-policy
+        - tls/headers
+        - deps
+        - report
+        - audit.py / wrapper
+        - lainnya
+    validations:
+      required: true
+  - type: textarea
+    id: apa
+    attributes:
+      label: Apa yang terjadi
+      description: Perilaku sekarang vs yang diharapkan.
+    validations:
+      required: true
+  - type: textarea
+    id: langkah
+    attributes:
+      label: Langkah reproduksi
+      placeholder: |
+        1. config/targets.yml -> ...
+        2. python audit.py ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Output / log
+      render: shell
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      placeholder: "OS, versi Python, versi Docker"
