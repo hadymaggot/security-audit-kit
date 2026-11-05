@@ -13,7 +13,7 @@ on:
 jobs:
   static-scan:
     name: SAST + CVE dependensi
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
         with:
@@ -34,7 +34,7 @@ jobs:
 
   dast:
     name: DAST + regresi kontrol akses
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     if: github.event_name != 'pull_request'    # butuh target hidup
     env:
       TARGET_BASE_URL: ${{ secrets.TARGET_BASE_URL }}

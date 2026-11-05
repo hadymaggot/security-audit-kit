@@ -3,7 +3,10 @@ name: Release berkala
 # Cek berkala tiap awal bulan; bikin release HANYA kalau ada commit baru sejak tag
 # terakhir — biar nggak numpuk tag kosong. Versi SemVer, bump ditentukan dari tipe
 # Conventional Commits: feat -> minor, fix/lain -> patch, '!'/BREAKING -> major.
-# Pakai gh CLI (bawaan runner), bukan action marketplace.
+#
+# Jalan di self-hosted runner. Release dibuat via REST API (curl + token), bukan gh CLI,
+# biar nggak bergantung gh terpasang di runner.
+# Catatan: kalau repo ini di-fork & dijalankan di GitHub-hosted, ganti runs-on ke ubuntu-latest.
 
 on:
   schedule:
@@ -15,7 +18,7 @@ permissions:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
         with:
@@ -27,6 +30,7 @@ jobs:
         run: |
           set -euo pipefail
 
+          git fetch --tags --force --quiet || true
           last=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -1)
 
           if [ -z "$last" ]; then
@@ -53,5 +57,15 @@ jobs:
 
           git tag "$next"
           git push origin "$next"
-          gh release create "$next" --title "$next" --generate-notes
-          echo "Release $next dibuat."
+
+          # Bikin release + changelog otomatis via REST API (generate_release_notes).
+          code=$(curl -sS -o /tmp/rel.json -w '%{http_code}' -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases" \
+            -d "{\"tag_name\":\"${next}\",\"name\":\"${next}\",\"generate_release_notes\":true}")
+          if [ "$code" != "201" ]; then
+            echo "Gagal bikin release (HTTP $code):"; cat /tmp/rel.json; exit 1
+          fi
+          echo "Release ${next} dibuat."
