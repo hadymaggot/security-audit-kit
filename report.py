@@ -128,13 +128,6 @@ def collect(d: Path):
     return findings
 
 
-def kind_fix(kind):
-    """Remediasi untuk CVE dependensi memakai entri khusus."""
-    if kind == "trivy-cve":
-        return R.lookup("vuln-dependency")
-    return R.lookup(kind)
-
-
 def summarize(findings):
     c = {k: 0 for k in SEV_ORDER}
     for f in findings:
@@ -174,7 +167,7 @@ def write_md(path, findings, counts, when, cves):
     if not gagal:
         L.append("_Tidak ada temuan gagal — semua kontrol yang diuji lolos._")
     for i, f in enumerate(gagal, 1):
-        kb = kind_fix(f["kind"])
+        kb = R.lookup(f["kind"])
         L += [
             f"### {i}. {f['judul']}  `{f['severity'].upper()}`", "",
             f"- **Modul:** {f['modul']}",
@@ -213,7 +206,7 @@ def write_html(path, findings, counts, when, cves):
 
     blocks = ""
     for i, f in enumerate(gagal, 1):
-        kb = kind_fix(f["kind"])
+        kb = R.lookup(f["kind"])
         recs = ""
         for rec in kb["rekomendasi"]:
             if "\n" in rec or "    " in rec:
