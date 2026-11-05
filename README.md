@@ -18,6 +18,7 @@ solusinya, dan rujukan ke OWASP/BSSN.
 | `clientleak` | Cache response sensitif, secret/endpoint yang nyangkut di bundle JS & HTML, source map, file kebuka (`.env`, `.git/`, dump, backup) — tetap jalan walau app-nya nggak pakai JS |
 | `upload` | Nolak file upload berbahaya: PDF ber-JS, polyglot, double extension, kegedean |
 | `auth-policy` | Kekuatan password, captcha harus regenerate tiap gagal |
+| `cors` | CORS misconfiguration: reflected origin, wildcard+credentials, Origin `null` diterima |
 | `tls` / `headers` | Protokol/cipher TLS usang, security header yang kurang atau malah bocorin info |
 | `deps` | CVE dependency (Trivy) + SAST OWASP Top 10 (semgrep) + secret ke-commit (gitleaks) |
 | `report` | Gabung semua hasil jadi `reports/laporan.html` & `.md` |

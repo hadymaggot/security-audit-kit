@@ -15,6 +15,7 @@ kasusnya.
 | Upload berbahaya (JS di PDF, polyglot) | `upload` | Udah kecover; sesuaikan `allow_only` & `max_bytes` |
 | Weak Password Policy | `auth-policy` | Isi `register` + `weak_passwords` |
 | Improper Captcha | `auth-policy` | Isi blok `captcha` |
+| CORS misconfiguration | `cors` | Isi `paths`; cek ACAO reflektif / wildcard+creds / origin null |
 | Deprecated Cryptography | `tls` | `python audit.py tls` |
 | Missing Security Header | `headers` | `python audit.py headers` |
 | Cache response sensitif | `clientleak` | Isi `sensitive_paths`; cek `Cache-Control: no-store` |
