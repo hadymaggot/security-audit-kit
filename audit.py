@@ -236,7 +236,7 @@ def main():
     ap = argparse.ArgumentParser(description="Security Audit Kit — lintas-platform")
     ap.add_argument("module", choices=["all", "zap", "tls", "headers", "deps",
                                        "authz", "upload", "auth-policy", "clientleak",
-                                       "cors", "report"])
+                                       "cors", "open-redirect", "report"])
     ap.add_argument("sub", nargs="?", default="baseline",
                     help="subperintah untuk 'zap': baseline|api|full")
     args = ap.parse_args()
@@ -275,6 +275,11 @@ def main():
                     ROOT / "tests" / "cors" / "cors.yml", "cors.json")
         mod_report()
         return rc
+    if args.module == "open-redirect":
+        rc = mod_py(ROOT / "tests" / "open-redirect" / "run_open_redirect.py",
+                    ROOT / "tests" / "open-redirect" / "open_redirect.yml", "open_redirect.json")
+        mod_report()
+        return rc
     if args.module == "report":
         return mod_report()
     if args.module == "all":
@@ -289,6 +294,7 @@ def main():
             (ROOT / "tests/auth-policy/run_auth_policy.py", ROOT / "tests/auth-policy/auth_policy.yml", "auth_policy.json"),
             (ROOT / "tests/client-leak/run_client_leak.py", ROOT / "tests/client-leak/client_leak.yml", "client_leak.json"),
             (ROOT / "tests/cors/run_cors.py", ROOT / "tests/cors/cors.yml", "cors.json"),
+            (ROOT / "tests/open-redirect/run_open_redirect.py", ROOT / "tests/open-redirect/open_redirect.yml", "open_redirect.json"),
         ):
             if cfg.exists():
                 rc |= mod_py(script, cfg, jn)

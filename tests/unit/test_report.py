@@ -27,6 +27,10 @@ def test_classify_cors():
     assert R.classify("cors", "CORS reflektif /api") == "cors-misconfig"
 
 
+def test_classify_open_redirect():
+    assert R.classify("open-redirect", "open redirect /login?next") == "open-redirect"
+
+
 def test_classify_authz_variants():
     assert R.classify("authz-matrix", "[forged] /api/users") == "forged-header"
     assert R.classify("authz-matrix", "IDOR - detail akun lain") == "idor"
@@ -103,3 +107,14 @@ def test_cors_no_cors_headers_ok():
     sess = _Sess({})  # tak ada header CORS
     res = cors.evaluate("/api", sess, "http://t/api", "https://evil.example")
     assert all(r["ok"] for r in res)
+
+
+# --- runner open-redirect: logika is_external tanpa jaringan ---
+
+def test_open_redirect_is_external():
+    orr = _load("run_open_redirect", ROOT / "tests" / "open-redirect" / "run_open_redirect.py")
+    assert orr.is_external("https://evil.example/x", "evil.example")
+    assert orr.is_external("//evil.example/x", "evil.example")       # protocol-relative
+    assert not orr.is_external("/dashboard", "evil.example")         # path internal
+    assert not orr.is_external("https://app.sah/x", "evil.example")  # host lain
+    assert not orr.is_external("", "evil.example")
