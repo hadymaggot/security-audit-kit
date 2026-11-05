@@ -60,6 +60,7 @@ def collect(d: Path):
                         ("auth_policy.json", "auth-policy"),
                         ("client_leak.json", "client-leak"),
                         ("cors.json", "cors"),
+                        ("open_redirect.json", "open-redirect"),
                         ("headers.json", "headers")):
         data = load(d / name)
         if not data:
