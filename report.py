@@ -59,6 +59,7 @@ def collect(d: Path):
                         ("upload.json", "upload-safety"),
                         ("auth_policy.json", "auth-policy"),
                         ("client_leak.json", "client-leak"),
+                        ("cors.json", "cors"),
                         ("headers.json", "headers")):
         data = load(d / name)
         if not data:

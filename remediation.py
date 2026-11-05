@@ -214,6 +214,43 @@ KB = {
                       "OWASP A01:2021 (akses file)",
                       "BSSN Perban No.4/2021 huruf g & m (proteksi data & konfigurasi)"],
     },
+    "cors-misconfig": {
+        "deskripsi": "Konfigurasi CORS terlalu longgar: server memantulkan Origin apa pun "
+                     "ke Access-Control-Allow-Origin, atau memadukan wildcard dengan "
+                     "Access-Control-Allow-Credentials, atau menerima Origin 'null'.",
+        "dampak": "Situs jahat yang dibuka korban bisa mengirim request berkredensial ke "
+                  "API dan membaca responsnya — pencurian data terautentikasi lintas-origin.",
+        "severity": "Medium",
+        "severity_dasar": "Likelihood sedang (butuh korban buka situs jahat sambil login) x "
+                          "Impact tinggi (baca data terautentikasi).",
+        "rekomendasi": [
+            "Jangan pantulkan Origin mentah. Pakai allowlist origin yang tepercaya saja.",
+            "Contoh (pola backend):",
+            "    if (allowlist.includes(origin)) resp.header('Access-Control-Allow-Origin', origin);",
+            "Kalau butuh Access-Control-Allow-Credentials: true, Origin WAJIB spesifik, "
+            "bukan '*' dan bukan hasil pantulan sembarangan.",
+            "Tolak Origin 'null'. Batasi method & header yang diizinkan seperlunya.",
+        ],
+        "referensi": ["OWASP A05:2021 Security Misconfiguration",
+                      "OWASP ASVS V14 Configuration",
+                      "BSSN Perban No.4/2021 huruf h (keamanan komunikasi)"],
+    },
+    "open-redirect": {
+        "deskripsi": "Parameter pengalih (redirect/next/url/return) dipakai menyusun "
+                     "Location tanpa validasi, sehingga bisa diarahkan ke domain luar.",
+        "dampak": "Dipakai untuk phishing (tautan terlihat sah tapi mengarah ke situs "
+                  "jahat) dan bypass proteksi berbasis domain.",
+        "severity": "Low",
+        "severity_dasar": "Likelihood sedang x Impact rendah–sedang (umumnya enabler "
+                          "phishing, bukan akses langsung).",
+        "rekomendasi": [
+            "Validasi tujuan redirect terhadap allowlist path/domain internal.",
+            "Hindari redirect ke URL absolut dari input pengguna; pakai path relatif saja.",
+            "Kalau tujuan eksternal memang perlu, tampilkan halaman antara (interstitial).",
+        ],
+        "referensi": ["OWASP A01:2021 (Unvalidated Redirects)",
+                      "OWASP Unvalidated Redirects & Forwards Cheat Sheet"],
+    },
     "vuln-dependency": {
         "deskripsi": "Komponen/dependensi versi usang dengan kerentanan yang telah "
                      "terdaftar (CVE).",
@@ -280,6 +317,10 @@ def classify(modul: str, judul: str) -> str:
         if j.startswith("file") or "terekspos" in j or "html" in j:
             return "info-exposure"
         return "js-leak"
+    if modul == "cors":
+        return "cors-misconfig"
+    if modul == "open-redirect":
+        return "open-redirect"
     if modul == "testssl":
         return "tls-weak"
     if modul == "zap":

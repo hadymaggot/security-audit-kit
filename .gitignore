@@ -4,6 +4,7 @@ tests/*/authz_matrix.yml
 tests/*/upload_safety.yml
 tests/*/auth_policy.yml
 tests/*/client_leak.yml
+tests/*/cors.yml
 # Hasil pindai
 reports/
 # Python
