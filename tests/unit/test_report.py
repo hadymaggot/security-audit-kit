@@ -31,6 +31,11 @@ def test_classify_open_redirect():
     assert R.classify("open-redirect", "open redirect /login?next") == "open-redirect"
 
 
+def test_classify_trivy_cve_uses_dependency_kb():
+    # Temuan CVE dari Trivy harus pakai remediasi dependensi, bukan fallback ZAP.
+    assert R.classify("trivy-cve", "CVE-2024-4068 — braces") == "vuln-dependency"
+
+
 def test_classify_authz_variants():
     assert R.classify("authz-matrix", "[forged] /api/users") == "forged-header"
     assert R.classify("authz-matrix", "IDOR - detail akun lain") == "idor"

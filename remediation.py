@@ -321,6 +321,8 @@ def classify(modul: str, judul: str) -> str:
         return "cors-misconfig"
     if modul == "open-redirect":
         return "open-redirect"
+    if modul == "trivy-cve":
+        return "vuln-dependency"
     if modul == "testssl":
         return "tls-weak"
     if modul == "zap":
