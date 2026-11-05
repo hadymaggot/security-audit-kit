@@ -26,6 +26,8 @@ import remediation as R
 SEV_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4, "lulus": 5}
 SEV_COLOR = {"critical": "#7c1313", "high": "#b4232a", "medium": "#c67b00",
              "low": "#2d7d46", "info": "#555", "lulus": "#2d7d46"}
+SEV_EMOJI = {"critical": "🔴", "high": "🟠", "medium": "🟡",
+             "low": "🟢", "info": "⚪", "lulus": "✅"}
 
 
 def load(path: Path):
@@ -158,9 +160,12 @@ def write_md(path, findings, counts, when, cves):
         "## 1. Metodologi", "", METODOLOGI, "",
         "## 2. Ringkasan Temuan", "",
         "| Severity | Jumlah |", "|---|---|",
-        f"| Critical | {counts['critical']} |", f"| High | {counts['high']} |",
-        f"| Medium | {counts['medium']} |", f"| Low | {counts['low']} |",
-        f"| Info | {counts['info']} |", f"| Lulus (kontrol OK) | {counts['lulus']} |",
+        f"| {SEV_EMOJI['critical']} Critical | {counts['critical']} |",
+        f"| {SEV_EMOJI['high']} High | {counts['high']} |",
+        f"| {SEV_EMOJI['medium']} Medium | {counts['medium']} |",
+        f"| {SEV_EMOJI['low']} Low | {counts['low']} |",
+        f"| {SEV_EMOJI['info']} Info | {counts['info']} |",
+        f"| {SEV_EMOJI['lulus']} Lulus (kontrol OK) | {counts['lulus']} |",
         "", f"Total CVE terdeteksi: **{len(cves)}**.", "",
         "## 3. Rincian Temuan & Rekomendasi", "",
     ]
@@ -169,7 +174,7 @@ def write_md(path, findings, counts, when, cves):
     for i, f in enumerate(gagal, 1):
         kb = R.lookup(f["kind"])
         L += [
-            f"### {i}. {f['judul']}  `{f['severity'].upper()}`", "",
+            f"### {i}. {SEV_EMOJI.get(f['severity'], '')} {f['judul']}  `{f['severity'].upper()}`", "",
             f"- **Modul:** {f['modul']}",
             f"- **Deskripsi:** {kb['deskripsi']}",
             f"- **Bukti:** {f['evidence']}",
@@ -188,7 +193,7 @@ def write_md(path, findings, counts, when, cves):
     if cves:
         L += ["## 4. Daftar CVE", "", "| CVE | Paket/Lokasi | Severity |", "|---|---|---|"]
         for c in cves:
-            L.append(f"| {c['id']} | {c['where']} | {c['sev'].upper()} |")
+            L.append(f"| {c['id']} | {c['where']} | {SEV_EMOJI.get(c['sev'], '')} {c['sev'].upper()} |")
         L.append("")
     L += ["## 5. Batasan & Pertanggungjawaban", "", BATASAN, ""]
     path.write_text("\n".join(L), encoding="utf-8")
@@ -198,7 +203,8 @@ def write_html(path, findings, counts, when, cves):
     gagal = sorted([f for f in findings if not f["lulus"]],
                    key=lambda x: SEV_ORDER.get(x["severity"], 9))
     cards = "".join(
-        f"<div class='card' style='border-color:{SEV_COLOR[s]}'><div class='n'>{counts[s]}</div>"
+        f"<div class='card{' zero' if not counts[s] else ''}' style='border-color:{SEV_COLOR[s]}'>"
+        f"<div class='n' style='color:{SEV_COLOR[s]}'>{counts[s]}</div>"
         f"<div class='l'>{s.upper()}</div></div>" for s in SEV_ORDER)
 
     def esc(x):
@@ -215,7 +221,7 @@ def write_html(path, findings, counts, when, cves):
                 recs += f"<li>{esc(rec)}</li>"
         cve = ", ".join(f["cve"]) if f["cve"] else "-"
         blocks += f"""
-        <div class="finding">
+        <div class="finding" style="border-left:5px solid {SEV_COLOR[f['severity']]}">
           <h3><span class="badge" style="background:{SEV_COLOR[f['severity']]}">{esc(f['severity'].upper())}</span>
               {i}. {esc(f['judul'])}</h3>
           <p><b>Modul:</b> {esc(f['modul'])} &nbsp;·&nbsp; <b>CVE/CWE:</b> {esc(cve)}</p>
@@ -232,7 +238,7 @@ def write_html(path, findings, counts, when, cves):
     cve_rows = "".join(
         f"<tr><td><a href='https://nvd.nist.gov/vuln/detail/{esc(c['id'])}' "
         f"target='_blank' rel='noopener'>{esc(c['id'])}</a></td><td>{esc(c['where'])}</td>"
-        f"<td style='color:{SEV_COLOR.get(c['sev'],'#555')}'>{esc(c['sev'].upper())}</td></tr>"
+        f"<td><span class='badge' style='background:{SEV_COLOR.get(c['sev'],'#555')}'>{esc(c['sev'].upper())}</span></td></tr>"
         for c in cves) or "<tr><td colspan='3'>Tidak ada CVE terdeteksi.</td></tr>"
 
     doc = f"""<!doctype html><html lang="id"><meta charset="utf-8">
@@ -247,6 +253,7 @@ def write_html(path, findings, counts, when, cves):
  .cards{{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}}
  .card{{flex:1;min-width:110px;background:#fff;border-left:5px solid;border-radius:8px;padding:12px 14px;box-shadow:0 1px 2px rgba(0,0,0,.06)}}
  .card .n{{font-size:26px;font-weight:700}} .card .l{{font-size:11px;letter-spacing:.05em;color:#555}}
+ .card.zero{{opacity:.45}}
  .finding{{background:#fff;border-radius:8px;padding:14px 16px;margin:14px 0;box-shadow:0 1px 2px rgba(0,0,0,.06)}}
  .finding h3{{margin:0 0 8px;font-size:16px}} .finding p{{margin:6px 0;font-size:14px}}
  .badge{{color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;margin-right:8px;vertical-align:middle}}
