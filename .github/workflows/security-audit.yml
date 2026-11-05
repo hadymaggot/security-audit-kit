@@ -1,0 +1,61 @@
+name: Security Audit
+
+# Contoh pipeline. Scanner statis (deps) aman jalan di PR; pengujian DAST (zap,
+# authz, upload, auth-policy) butuh target hidup → jalankan terjadwal ke dev/staging,
+# bukan ke produksi. Kredensial lewat GitHub Secrets, bukan di berkas.
+
+on:
+  pull_request:
+  schedule:
+    - cron: "0 1 * * 1"          # Senin pagi
+  workflow_dispatch:
+
+jobs:
+  static-scan:
+    name: SAST + CVE dependensi
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Scan dependensi & rahasia (trivy/semgrep/gitleaks via Docker)
+        run: python audit.py deps
+        # 'deps' informatif; tak menggagalkan build.
+      - name: Susun laporan
+        run: python audit.py report
+      - uses: actions/upload-artifact@v4
+        with:
+          name: laporan-keamanan
+          path: reports/
+
+  dast:
+    name: DAST + regresi kontrol akses
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'    # butuh target hidup
+    env:
+      TARGET_BASE_URL: ${{ secrets.TARGET_BASE_URL }}
+      AUTHZ_ADMIN_USER: ${{ secrets.AUTHZ_ADMIN_USER }}
+      AUTHZ_ADMIN_PASS: ${{ secrets.AUTHZ_ADMIN_PASS }}
+      AUTHZ_USER_USER: ${{ secrets.AUTHZ_USER_USER }}
+      AUTHZ_USER_PASS: ${{ secrets.AUTHZ_USER_PASS }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Siapkan config dari contoh
+        run: |
+          cp config/targets.example.yml config/targets.yml
+          cp tests/authz-matrix/authz_matrix.example.yml tests/authz-matrix/authz_matrix.yml
+      - name: Audit penuh (zap baseline + authz + upload + auth-policy + report)
+        run: python audit.py all
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: laporan-dast
+          path: reports/
