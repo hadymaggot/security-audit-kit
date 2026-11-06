@@ -38,7 +38,7 @@ def load(path: Path):
         return None
 
 
-CLIENT_LEAK_KIND = {"cache": "client-cache", "js": "js-leak",
+CLIENT_LEAK_KIND = {"cache": "client-cache", "browser-cache": "client-cache", "js": "js-leak",
                     "html": "info-exposure", "file": "info-exposure"}
 
 
