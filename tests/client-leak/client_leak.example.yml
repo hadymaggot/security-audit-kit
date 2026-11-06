@@ -12,6 +12,15 @@ sensitive_paths:
   - "/api/profile"
   - "/dashboard"
 
+# A2. (Opsional) Konfirmasi lewat browser sungguhan bahwa respons di sensitive_paths
+#     benar-benar tersimpan di cache browser (bukan cuma dibaca dari header).
+#     Butuh: pip install playwright && python -m playwright install chromium
+#     Bila tak terpasang, cek ini di-skip (bukan temuan).
+browser_cache:
+  enabled: false
+  start_path: "/"                 # halaman se-origin tempat probe dijalankan;
+                                  # ganti bila "/" dialihkan ke SSO/origin lain
+
 # B. Aset JS yang disisir. Kosongkan untuk mengandalkan auto-discover dari halaman.
 #    (Aman untuk app TANPA JS — bila tak ada bundle, cek ini otomatis kosong.)
 js_assets: []
