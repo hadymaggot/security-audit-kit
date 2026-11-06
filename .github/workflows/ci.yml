@@ -29,6 +29,6 @@ jobs:
         run: |
           docker run --rm -v "$PWD:/w" -w /w python:3.12-slim sh -lc '
             pip install --no-cache-dir -q -r requirements.txt -r requirements-dev.txt &&
-            python -m py_compile audit.py report.py remediation.py tests/*/run_*.py &&
+            python -m py_compile audit.py report.py remediation.py tests/_sanctum.py tests/*/run_*.py &&
             python -m pytest -q tests/unit
           '
