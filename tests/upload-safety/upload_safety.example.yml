@@ -1,8 +1,19 @@
 # Salin ke upload_safety.yml. Kredensial dari env var.
 base_url: "${TARGET_BASE_URL}"
 auth:
+  # Pilihan A — token statis (Bearer/JWT atau header kustom):
   header: "Authorization"
   value: "${UPLOAD_TOKEN}"        # mis. "Bearer xxx"
+  # Pilihan B — Laravel Sanctum (SPA, session cookie). Hapus header/value di atas,
+  # lalu aktifkan blok ini. Runner ambil cookie CSRF, login, dan bawa X-XSRF-TOKEN.
+  # sanctum:
+  #   enabled: true
+  #   csrf_path: "/sanctum/csrf-cookie"
+  #   origin: "${TARGET_BASE_URL}"   # wajib cocok SANCTUM_STATEFUL_DOMAINS
+  # login:
+  #   method: POST
+  #   path: "/api/login"
+  #   body: { email: "${UPLOAD_USER}", password: "${UPLOAD_PASS}" }
 endpoint:
   method: POST
   path: "/api/upload"

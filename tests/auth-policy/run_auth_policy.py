@@ -23,9 +23,13 @@ import os
 import re
 import secrets
 import sys
+from pathlib import Path
 
 import requests
 import yaml
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _sanctum  # noqa: E402  (helper auth Sanctum lintas-modul di tests/)
 
 ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 
@@ -58,6 +62,16 @@ def main():
     failures = 0
     results = []
 
+    # Sesi + auth Sanctum opsional (register sering butuh CSRF + Origin stateful).
+    sess = requests.Session()
+    sanctum = (cfg.get("sanctum") or {})
+    sanctum = sanctum if sanctum.get("enabled") else None
+    if sanctum:
+        _sanctum.prime_csrf(sess, base, sanctum)
+
+    def auth_h():
+        return _sanctum.auth_headers(sess, sanctum.get("origin")) if sanctum else {}
+
     # 1. Sandi lemah harus ditolak saat registrasi.
     reg = cfg.get("register")
     if reg:
@@ -67,7 +81,7 @@ def main():
             body = {k: v.replace("{rand}", secrets.token_hex(4)) for k, v in body.items()}
             body[reg.get("password_field", "password")] = pw
             try:
-                r = requests.post(base + reg["path"], json=body, timeout=20)
+                r = sess.post(base + reg["path"], json=body, headers=auth_h(), timeout=20)
                 rejected = r.status_code in (400, 422)
             except Exception as exc:  # noqa: BLE001
                 print(f"  galat '{pw}': {exc}")
@@ -87,7 +101,7 @@ def main():
         tokens = []
         for _ in range(3):
             try:
-                r = requests.get(base + cap["issue_path"], timeout=20)
+                r = sess.get(base + cap["issue_path"], headers=auth_h(), timeout=20)
                 tokens.append(dig(r.json(), cap.get("token_field", "token")))
             except Exception as exc:  # noqa: BLE001
                 print(f"  galat: {exc}")
