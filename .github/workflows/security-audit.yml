@@ -22,6 +22,8 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt
+      - name: Siapkan config dari contoh
+        run: cp config/targets.example.yml config/targets.yml
       - name: Scan dependensi & rahasia (trivy/semgrep/gitleaks via Docker)
         run: python audit.py deps
         # 'deps' informatif; tak menggagalkan build.
