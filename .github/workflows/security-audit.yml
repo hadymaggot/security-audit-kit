@@ -30,9 +30,12 @@ jobs:
       - name: Susun laporan
         run: python audit.py report
       - uses: actions/upload-artifact@v4
+        # Kuota storage artifact dihitung per akun; penuh ≠ build gagal.
+        continue-on-error: true
         with:
           name: laporan-keamanan
           path: reports/
+          retention-days: 14
 
   dast:
     name: DAST + regresi kontrol akses
@@ -58,6 +61,8 @@ jobs:
         run: python audit.py all
       - uses: actions/upload-artifact@v4
         if: always()
+        continue-on-error: true
         with:
           name: laporan-dast
           path: reports/
+          retention-days: 14
