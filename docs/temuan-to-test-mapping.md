@@ -20,6 +20,7 @@ kasusnya.
 | Deprecated Cryptography | `tls` | `python audit.py tls` |
 | Missing Security Header | `headers` | `python audit.py headers` |
 | Cache response sensitif | `clientleak` | Isi `sensitive_paths`; cek `Cache-Control: no-store` |
+| Cache response sensitif (bukti tersimpan di browser) | `clientleak` | `browser_cache.enabled: true` (butuh Playwright + Chromium) |
 | Secret/endpoint admin bocor di JS (awal temuan BSSN) | `clientleak` | `auto_discover_js` + `internal_endpoints` |
 | Secret/endpoint bocor di HTML (app tanpa JS) | `clientleak` | `scan_html: true` |
 | File sensitif kebuka (`.env`, `.git/`, dump, backup) | `clientleak` | `probe_sensitive_files: true` |

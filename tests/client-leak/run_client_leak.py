@@ -13,6 +13,9 @@ B. Kebocoran di JavaScript klien — unduh aset JS (dari konfigurasi atau hasil
      - source map (.map) yang dapat diakses publik.
    (Ini pola yang dipakai penguji BSSN: membaca JS untuk menemukan endpoint admin.)
 
+Opsional (browser_cache.enabled): konfirmasi lewat Chromium sungguhan (Playwright)
+bahwa respons sensitif memang tersimpan di cache browser, bukan cuma dari header.
+
 Konfigurasi di client_leak.yml. Pakai:
     python run_client_leak.py --config client_leak.yml [--json out.json]
 """
@@ -94,6 +97,86 @@ def check_cache(s, base, paths):
         note = "" if ok else f"Cache-Control: '{r.headers.get('Cache-Control','(kosong)')}'"
         out.append({"kind": "cache", "label": f"cache respons {p}", "status": r.status_code,
                     "ok": ok, "note": note})
+    return out
+
+
+# Dijalankan di dalam halaman: fetch biasa (mengisi cache), lalu fetch ulang dengan
+# cache 'only-if-cached' — hanya berhasil bila respons benar-benar tersimpan di
+# cache HTTP browser (disk/memori), terlepas dari kedaluwarsa.
+BROWSER_PROBE_JS = """async (u) => {
+  let status = -1, cc = "";
+  try {
+    const r = await fetch(u, {credentials: "include"});
+    status = r.status; cc = r.headers.get("cache-control") || "";
+    await r.arrayBuffer();
+  } catch (e) { return {status: -1, cc: "", cached: false, err: String(e)}; }
+  try {
+    await fetch(u, {cache: "only-if-cached", mode: "same-origin", credentials: "include"});
+    return {status, cc, cached: true, err: ""};
+  } catch (e) { return {status, cc, cached: false, err: ""}; }
+}"""
+
+
+def check_browser_cache(cfg, base, paths):
+    """Konfirmasi via browser sungguhan (Playwright/Chromium) bahwa respons sensitif
+    benar-benar tersimpan di cache browser — cek header saja belum membuktikannya.
+
+    Opsional: butuh `pip install playwright` + `python -m playwright install chromium`.
+    Bila tak terpasang/tak bisa jalan, hasilnya 'skip', bukan temuan.
+    """
+    def skip(note):
+        return [{"kind": "browser-cache", "label": "cache browser (Playwright)",
+                 "status": -1, "ok": True, "note": f"skip: {note}"}]
+
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        return skip("playwright tak terpasang (pip install playwright && "
+                    "python -m playwright install chromium)")
+
+    bc = cfg.get("browser_cache") or {}
+    a = cfg.get("auth") or {}
+    headers = {a["header"]: a["value"]} if a.get("header") and a.get("value") else {}
+    start = urljoin(base + "/", (bc.get("start_path") or "/").lstrip("/"))
+    origin = "{0.scheme}://{0.netloc}".format(urlparse(start))
+    out = []
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch()
+            try:
+                # Jangan pasang page.route(): di Playwright, routing menonaktifkan cache HTTP.
+                ctx = browser.new_context(
+                    extra_http_headers=headers or None,
+                    ignore_https_errors=os.environ.get("SAK_INSECURE_TLS") == "1")
+                page = ctx.new_page()
+                page.goto(start, timeout=30000)
+                landed = "{0.scheme}://{0.netloc}".format(urlparse(page.url))
+                if landed != origin:
+                    return skip(f"{start} dialihkan ke {page.url} — set "
+                                "browser_cache.start_path ke halaman se-origin")
+                for p in paths:
+                    url = urljoin(base + "/", p.lstrip("/"))
+                    if "{0.scheme}://{0.netloc}".format(urlparse(url)) != origin:
+                        out.append({"kind": "browser-cache", "label": f"cache browser {p}",
+                                    "status": -1, "ok": True,
+                                    "note": "skip: beda origin dengan start_path"})
+                        continue
+                    r = page.evaluate(BROWSER_PROBE_JS, url)
+                    if r["status"] == -1:
+                        out.append({"kind": "browser-cache", "label": f"cache browser {p}",
+                                    "status": -1, "ok": True, "note": f"skip: {r['err']}"})
+                        continue
+                    cc = r["cc"] or "(kosong)"
+                    out.append({"kind": "browser-cache", "label": f"cache browser {p}",
+                                "status": r["status"], "ok": not r["cached"],
+                                "note": (f"tersimpan di cache browser (Chromium, fetch "
+                                         f"only-if-cached berhasil); Cache-Control: '{cc}'")
+                                        if r["cached"] else ""})
+            finally:
+                browser.close()
+    except Exception as exc:  # noqa: BLE001
+        # Chromium belum di-install, target tak terjangkau, dsb. — tak bisa diuji.
+        return skip(str(exc).splitlines()[0][:200])
     return out
 
 
@@ -227,6 +310,8 @@ def main():
 
     results = []
     results += check_cache(s, base, cfg.get("sensitive_paths", []))
+    if (cfg.get("browser_cache") or {}).get("enabled"):
+        results += check_browser_cache(cfg, base, cfg.get("sensitive_paths", []))
 
     js_urls = list(cfg.get("js_assets", []))
     if cfg.get("auto_discover_js", True):
