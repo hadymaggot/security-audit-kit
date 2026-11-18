@@ -6,11 +6,13 @@
 #     mempercayai header X-Auth-* yang disuntik gateway, tak punya auth sendiri.
 #   - Risiko klasik: (a) service ikut terekspos LANGSUNG di port host (bypass
 #     gateway), (b) gateway tak menimpa X-Auth-* kiriman klien → eskalasi hak.
-#   Dua-duanya diuji di bawah (endpoints + forged_headers).
+#   Dua-duanya diuji di bawah dalam SATU run: 'base_url' per endpoint untuk port
+#   service langsung, dan 'forged_headers' berupa daftar blok (gateway & bypass).
 #
 # Salin ke authz_matrix.yml, sesuaikan path & role. Kredensial dari ENV, jangan di sini.
 #   export AUTHZ_ADMIN_USER=... AUTHZ_ADMIN_PASS=...
 #   export AUTHZ_LOW_USER=...   AUTHZ_LOW_PASS=...
+#   export SERVICE_DIRECT_URL=http://localhost:<port>   # port service yg terpublish
 
 base_url: "${TARGET_BASE_URL}"        # mis. http://localhost:18880 (lewat gateway)
 
@@ -78,21 +80,36 @@ endpoints:
     body: { note: "probe" }
     expect: { user_rendah: deny }
 
-# Uji header palsu: login sebagai peran rendah lalu suntik X-Auth-* ala gateway.
-# Endpoint admin HARUS tetap menolak — kalau tembus, gateway tak menimpa header
-# klien (service hilir mempercayai X-Auth-* mentah).
-forged_headers:
-  enabled: true
-  as_role: user_rendah
-  inject:
-    X-Auth-Roles: "admin"
-    X-Auth-User-Id: "1"
-    X-Auth-Permissions: "users.read,users.write"
-  endpoints:
-    - { method: GET, path: "/api/users" }
-    - { method: GET, path: "/api/roles" }
+  # Bypass gateway — 'base_url' per endpoint menunjuk LANGSUNG ke port service
+  # (tanpa Traefik/ForwardAuth). Anon tanpa header apa pun harus tetap ditolak.
+  - name: "Area admin langsung ke service (tanpa gateway)"
+    method: GET
+    path: "/api/admin/settings"
+    base_url: "${SERVICE_DIRECT_URL}"   # mis. http://localhost:<port-service>
+    expect: { anon: deny }
 
-# CATATAN uji bypass gateway (manual / jalankan kit dua kali):
-#   Selain base_url gateway, ulangi dengan base_url menunjuk LANGSUNG ke port
-#   service (mis. http://localhost:18002) memakai peran rendah. Bila endpoint
-#   admin di service itu bisa diakses tanpa lewat ForwardAuth → temuan serius.
+# Uji header palsu — satu blok, atau daftar blok seperti di bawah.
+# Endpoint admin HARUS tetap menolak. Kalau tembus: header X-Auth-* kiriman klien
+# dipercaya mentah oleh service hilir.
+forged_headers:
+  # 1) Lewat gateway sebagai peran rendah: ForwardAuth wajib menimpa X-Auth-*.
+  - as_role: user_rendah
+    inject:
+      X-Auth-Roles: "admin"
+      X-Auth-User-Id: "1"
+      X-Auth-Permissions: "users.read,users.write"
+    endpoints:
+      - { method: GET, path: "/api/users" }
+      - { method: GET, path: "/api/roles" }
+  # 2) Bypass gateway: anonim + identitas admin palsu langsung ke port service.
+  #    Service yang hanya membaca X-Auth-* tanpa verifikasi akan tembus di sini.
+  - as_role: anon
+    base_url: "${SERVICE_DIRECT_URL}"   # berlaku utk semua endpoint di blok ini
+    inject:
+      X-Auth-Roles: "admin"
+      X-Auth-User-Id: "1"
+      X-Auth-Company-Id: ""
+    endpoints:
+      - { method: GET, path: "/api/admin/settings" }
+      # base_url per endpoint menimpa base_url blok, mis. service lain:
+      - { method: GET, path: "/api/notifications/templates", base_url: "${SERVICE2_DIRECT_URL}" }
