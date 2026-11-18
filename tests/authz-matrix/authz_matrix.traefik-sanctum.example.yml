@@ -1,0 +1,98 @@
+# Contoh matriks authz untuk stack MICROSERVICE di balik Traefik ForwardAuth,
+# dengan auth Laravel Sanctum (SPA, berbasis session cookie — BUKAN Bearer/JWT).
+#
+# Pola arsitektur yang disasar (umum di stack Laravel + Traefik):
+#   - Gateway (Traefik) memanggil middleware ForwardAuth; service hilir hanya
+#     mempercayai header X-Auth-* yang disuntik gateway, tak punya auth sendiri.
+#   - Risiko klasik: (a) service ikut terekspos LANGSUNG di port host (bypass
+#     gateway), (b) gateway tak menimpa X-Auth-* kiriman klien → eskalasi hak.
+#   Dua-duanya diuji di bawah (endpoints + forged_headers).
+#
+# Salin ke authz_matrix.yml, sesuaikan path & role. Kredensial dari ENV, jangan di sini.
+#   export AUTHZ_ADMIN_USER=... AUTHZ_ADMIN_PASS=...
+#   export AUTHZ_LOW_USER=...   AUTHZ_LOW_PASS=...
+
+base_url: "${TARGET_BASE_URL}"        # mis. http://localhost:18880 (lewat gateway)
+
+auth:
+  mode: session_cookie                # simpan cookie sesi dari respons login
+
+  # Aktifkan alur Sanctum: ambil cookie CSRF dulu, kirim Origin yang stateful,
+  # lalu sertakan X-XSRF-TOKEN otomatis di tiap request.
+  sanctum:
+    enabled: true
+    csrf_path: "/sanctum/csrf-cookie"
+    # WAJIB cocok dengan SANCTUM_STATEFUL_DOMAINS di server. Kalau tidak, login
+    # balas 500 "Session store not set on request." (dianggap request stateless).
+    origin: "${TARGET_BASE_URL}"
+
+  login:
+    method: POST
+    path: "/api/login"
+    body:
+      email: "{username}"
+      password: "{password}"
+    # mode session_cookie tak perlu token_field — auth dibawa lewat cookie sesi.
+
+  roles:
+    admin:
+      username: "${AUTHZ_ADMIN_USER}"
+      password: "${AUTHZ_ADMIN_PASS}"
+    user_rendah:                      # peran paling rendah; harus ditolak di area admin
+      username: "${AUTHZ_LOW_USER}"
+      password: "${AUTHZ_LOW_PASS}"
+    anon: { anonymous: true }
+
+endpoints:
+  # Area admin — hanya admin yang boleh; peran rendah & anon harus ditolak.
+  - name: "Daftar pengguna (admin only)"
+    method: GET
+    path: "/api/users"
+    expect: { admin: allow, user_rendah: deny, anon: deny }
+
+  - name: "Kelola peran/permission (admin only)"
+    method: GET
+    path: "/api/roles"
+    expect: { admin: allow, user_rendah: deny, anon: deny }
+
+  - name: "Log aktivitas (admin only)"
+    method: GET
+    path: "/api/activity-logs"
+    expect: { admin: allow, user_rendah: deny, anon: deny }
+
+  # IDOR — peran rendah mengakses objek milik entitas lain harus ditolak.
+  - name: "IDOR — perusahaan/company lain"
+    method: GET
+    path: "/api/companies/1"
+    expect: { user_rendah: deny }
+
+  - name: "IDOR — detail laporan milik unit lain"
+    method: GET
+    path: "/api/emission-reports/1"
+    expect: { user_rendah: deny }
+
+  # Business-logic — ubah status/approve tanpa peran berwenang harus ditolak.
+  - name: "Approve laporan tanpa wewenang"
+    method: POST
+    path: "/api/emission-reports/1/approve"
+    body: { note: "probe" }
+    expect: { user_rendah: deny }
+
+# Uji header palsu: login sebagai peran rendah lalu suntik X-Auth-* ala gateway.
+# Endpoint admin HARUS tetap menolak — kalau tembus, gateway tak menimpa header
+# klien (service hilir mempercayai X-Auth-* mentah).
+forged_headers:
+  enabled: true
+  as_role: user_rendah
+  inject:
+    X-Auth-Roles: "admin"
+    X-Auth-User-Id: "1"
+    X-Auth-Permissions: "users.read,users.write"
+  endpoints:
+    - { method: GET, path: "/api/users" }
+    - { method: GET, path: "/api/roles" }
+
+# CATATAN uji bypass gateway (manual / jalankan kit dua kali):
+#   Selain base_url gateway, ulangi dengan base_url menunjuk LANGSUNG ke port
+#   service (mis. http://localhost:18002) memakai peran rendah. Bila endpoint
+#   admin di service itu bisa diakses tanpa lewat ForwardAuth → temuan serius.

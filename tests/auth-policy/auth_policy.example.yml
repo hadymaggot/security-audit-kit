@@ -1,6 +1,13 @@
 # Salin ke auth_policy.yml. Non-destruktif — tidak brute-force.
 base_url: "${TARGET_BASE_URL}"
 
+# Opsional — untuk stack Laravel Sanctum, endpoint register sering menolak tanpa
+# CSRF + Origin stateful. Aktifkan agar runner mengirim X-XSRF-TOKEN + Origin.
+# sanctum:
+#   enabled: true
+#   csrf_path: "/sanctum/csrf-cookie"
+#   origin: "${TARGET_BASE_URL}"     # wajib cocok SANCTUM_STATEFUL_DOMAINS
+
 # Uji penolakan sandi lemah saat registrasi (opsional — hapus blok bila tak ada endpoint).
 register:
   path: "/api/auth/register"

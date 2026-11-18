@@ -18,9 +18,13 @@ import json
 import os
 import re
 import sys
+from pathlib import Path
 
 import requests
 import yaml
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _sanctum  # noqa: E402  (helper auth Sanctum lintas-modul di tests/)
 
 ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 
@@ -47,25 +51,34 @@ def dig(obj, dotted):
 
 
 class Session:
-    """Kredensial satu role: menyimpan cookie atau bearer token."""
+    """Kredensial satu role: menyimpan cookie (termasuk sesi Sanctum) atau bearer token."""
 
-    def __init__(self, role, auth_cfg, base_url):
+    def __init__(self, role, auth_cfg, base_url, sanctum=None):
         self.role = role
         self.base_url = base_url.rstrip("/")
         self.sess = requests.Session()
         self.bearer = None
         self.anonymous = bool(auth_cfg.get("anonymous"))
+        # Blok 'sanctum' (opsional) untuk mode session_cookie: {enabled, origin, csrf_path}.
+        self.sanctum = sanctum if (sanctum and sanctum.get("enabled")) else None
+
+    def _sanctum_headers(self):
+        return _sanctum.auth_headers(self.sess, self.sanctum.get("origin")) if self.sanctum else {}
 
     def login(self, login_cfg, creds, mode):
         if self.anonymous:
             return
+        # Sanctum SPA: ambil cookie CSRF + sesi dulu, bawa Origin yang stateful.
+        if self.sanctum:
+            _sanctum.prime_csrf(self.sess, self.base_url, self.sanctum)
         body = {}
         for k, v in (login_cfg.get("body") or {}).items():
             v = v.replace("{username}", creds.get("username", ""))
             v = v.replace("{password}", creds.get("password", ""))
             body[k] = v
         url = self.base_url + login_cfg["path"]
-        resp = self.sess.request(login_cfg.get("method", "POST"), url, json=body, timeout=20)
+        resp = self.sess.request(login_cfg.get("method", "POST"), url, json=body,
+                                 headers=self._sanctum_headers(), timeout=20)
         if resp.status_code >= 400:
             raise RuntimeError(f"login role '{self.role}' gagal: HTTP {resp.status_code}")
         if mode == "bearer":
@@ -76,7 +89,10 @@ class Session:
             self.bearer = token
 
     def request(self, method, path, body=None, extra_headers=None):
-        headers = dict(extra_headers or {})
+        # Header stateful + X-XSRF-TOKEN dulu, lalu header uji (mis. X-Auth-* palsu)
+        # menimpanya bila bentrok — supaya uji header palsu tetap apa adanya.
+        headers = self._sanctum_headers()
+        headers.update(extra_headers or {})
         if self.bearer:
             headers["Authorization"] = f"Bearer {self.bearer}"
         url = self.base_url + path
@@ -113,11 +129,12 @@ def main():
     base_url = cfg["base_url"]
     auth = cfg["auth"]
     mode = auth.get("mode", "bearer")
+    sanctum = auth.get("sanctum")  # opsional; dipakai saat mode session_cookie
 
     # Login semua role lebih dulu.
     sessions = {}
     for role, creds in auth["roles"].items():
-        s = Session(role, creds, base_url)
+        s = Session(role, creds, base_url, sanctum=sanctum)
         try:
             s.login(auth["login"], creds, mode)
         except Exception as exc:  # noqa: BLE001

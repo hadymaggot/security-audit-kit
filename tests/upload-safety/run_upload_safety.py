@@ -22,9 +22,13 @@ import io
 import os
 import re
 import sys
+from pathlib import Path
 
 import requests
 import yaml
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _sanctum  # noqa: E402  (helper auth Sanctum lintas-modul di tests/)
 
 ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 
@@ -78,11 +82,32 @@ def main():
         cfg = expand(yaml.safe_load(f))
 
     ep = cfg["endpoint"]
-    url = cfg["base_url"].rstrip("/") + ep["path"]
-    headers = {}
+    base = cfg["base_url"].rstrip("/")
+    url = base + ep["path"]
+    sess = requests.Session()
     a = cfg.get("auth") or {}
+    sanctum = a.get("sanctum") if (a.get("sanctum") or {}).get("enabled") else None
+    static_headers = {}
     if a.get("header") and a.get("value"):
-        headers[a["header"]] = a["value"]
+        static_headers[a["header"]] = a["value"]
+    # Auth Sanctum (opsional): ambil cookie CSRF + sesi, lalu login bila disediakan.
+    if sanctum:
+        _sanctum.prime_csrf(sess, base, sanctum)
+        login = a.get("login")
+        if login:
+            r = sess.request(login.get("method", "POST"), base + login["path"],
+                             json=login.get("body") or {},
+                             headers=_sanctum.auth_headers(sess, sanctum.get("origin")),
+                             timeout=20)
+            if r.status_code >= 400:
+                print(f"login gagal: HTTP {r.status_code}", file=sys.stderr)
+                return 2
+
+    def req_headers():
+        h = dict(static_headers)
+        if sanctum:
+            h.update(_sanctum.auth_headers(sess, sanctum.get("origin")))
+        return h
 
     failures = 0
     results = []
@@ -91,7 +116,7 @@ def main():
     for name, fname, content, ctype, should_reject in build_cases(cfg):
         files = {ep.get("field", "file"): (fname, io.BytesIO(content), ctype)}
         try:
-            r = requests.post(url, files=files, headers=headers, timeout=20)
+            r = sess.post(url, files=files, headers=req_headers(), timeout=20)
             status = r.status_code
         except Exception as exc:  # noqa: BLE001
             print(f"{name:<34} {'-':>5}  galat: {exc}")
