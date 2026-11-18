@@ -88,16 +88,29 @@ class Session:
                 raise RuntimeError(f"token tak ditemukan di '{field}' untuk role '{self.role}'")
             self.bearer = token
 
-    def request(self, method, path, body=None, extra_headers=None):
+    def request(self, method, path, body=None, extra_headers=None, base_url=None):
         # Header stateful + X-XSRF-TOKEN dulu, lalu header uji (mis. X-Auth-* palsu)
         # menimpanya bila bentrok — supaya uji header palsu tetap apa adanya.
         headers = self._sanctum_headers()
         headers.update(extra_headers or {})
         if self.bearer:
             headers["Authorization"] = f"Bearer {self.bearer}"
-        url = self.base_url + path
+        # base_url per endpoint: mis. port service langsung untuk uji bypass gateway.
+        url = (base_url or self.base_url).rstrip("/") + path
         return self.sess.request(method, url, json=body, headers=headers,
                                  timeout=20, allow_redirects=False)
+
+
+def forged_blocks(fh):
+    """Normalisasi 'forged_headers' jadi list blok aktif.
+
+    Dict tunggal (format lama) aktif hanya bila enabled: true; tiap item list
+    aktif kecuali ditulis enabled: false.
+    """
+    if isinstance(fh, list):
+        return [b for b in fh if b.get("enabled", True) and b.get("as_role")]
+    fh = fh or {}
+    return [fh] if fh.get("enabled") and fh.get("as_role") else []
 
 
 def classify(expected, status):
@@ -151,7 +164,8 @@ def main():
             if not s:
                 continue
             try:
-                resp = s.request(ep.get("method", "GET"), ep["path"], ep.get("body"))
+                resp = s.request(ep.get("method", "GET"), ep["path"], ep.get("body"),
+                                 base_url=ep.get("base_url"))
                 status = resp.status_code
             except Exception as exc:  # noqa: BLE001
                 status = -1
@@ -166,14 +180,15 @@ def main():
                 "status": status, "ok": ok, "note": note,
             })
 
-    # Uji header palsu.
-    fh = cfg.get("forged_headers") or {}
-    if fh.get("enabled"):
+    # Uji header palsu. Satu blok atau daftar blok — mis. lewat gateway sebagai role
+    # rendah, dan langsung ke port service sebagai anon (bypass gateway).
+    for fh in forged_blocks(cfg.get("forged_headers")):
         s = sessions.get(fh["as_role"])
         for ep in fh.get("endpoints", []):
+            base = ep.get("base_url") or fh.get("base_url")
             try:
                 resp = s.request(ep.get("method", "GET"), ep["path"],
-                                 extra_headers=fh.get("inject"))
+                                 extra_headers=fh.get("inject"), base_url=base)
                 status = resp.status_code
             except Exception as exc:  # noqa: BLE001
                 status = -1
@@ -181,10 +196,11 @@ def main():
             ok = status in (401, 403)
             if not ok:
                 failures += 1
+            target = f"{base.rstrip('/')}{ep['path']}" if base else ep["path"]
             results.append({
-                "endpoint": f"[forged] {ep['path']}", "role": fh["as_role"],
+                "endpoint": f"[forged] {target}", "role": fh["as_role"],
                 "expected": "deny", "status": status, "ok": ok,
-                "note": "" if ok else "HEADER PALSU TEMBUS — gateway tak menimpa X-Auth-*",
+                "note": "" if ok else "HEADER PALSU TEMBUS — X-Auth-* klien dipercaya",
             })
 
     # Laporan.
