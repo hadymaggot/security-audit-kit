@@ -216,6 +216,40 @@ async function checkCors(target: string): Promise<Finding[]> {
   }
 }
 
+// Clientleak PASIF: analisa HTML yang SUDAH dilayani publik (tanpa fetch tambahan /
+// probing file) untuk pola rahasia dan referensi source map. Hanya membaca konten yang
+// sama dengan yang dilihat browser mana pun — tidak intrusif.
+function checkClientleak(body: string): Finding[] {
+  const out: Finding[] = [];
+  const b = (body || "").slice(0, 500_000);
+  const patterns: Array<[RegExp, string, string]> = [
+    [/AKIA[0-9A-Z]{16}/, "AWS Access Key ID", "high"],
+    [/AIza[0-9A-Za-z_\-]{35}/, "Google API Key", "high"],
+    [/gh[pousr]_[0-9A-Za-z]{30,}/, "GitHub token", "high"],
+    [/xox[baprs]-[0-9A-Za-z-]{10,}/, "Slack token", "high"],
+    [/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/, "Private key block", "high"],
+    [/eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/, "JWT terekspos", "medium"],
+    [/(?:secret|password|passwd|api[_-]?key|access[_-]?token)\s*[:=]\s*["'][^"'\s]{8,}["']/i,
+      "Kredensial ter-hardcode (kemungkinan)", "medium"],
+  ];
+  const seen = new Set<string>();
+  for (const [re, label, sev] of patterns) {
+    if (re.test(b) && !seen.has(label)) {
+      seen.add(label);
+      out.push({ module: "clientleak", check: label, severity: sev, ok: false,
+        note: "pola rahasia terdeteksi pada HTML publik — verifikasi manual" });
+    }
+  }
+  if (/sourceMappingURL\s*=/.test(b)) {
+    out.push({ module: "clientleak", check: "Source map terekspos", severity: "low", ok: false,
+      note: "referensi sourceMappingURL di aset publik (bisa membocorkan kode sumber)" });
+  }
+  if (out.length === 0) {
+    out.push({ module: "clientleak", check: "Secret/source map di HTML", severity: "lulus", ok: true, note: "" });
+  }
+  return out;
+}
+
 // --- handler -----------------------------------------------------------------
 
 function cors(env: Env, req: Request): Record<string, string> {
@@ -261,6 +295,13 @@ export default {
       const r = await timedFetch(v.url.toString(), { method: "GET" });
       findings.push(...checkHeaders(r.headers));
       findings.push(...checkWebstack(r.headers));
+      const ct = (r.headers.get("content-type") || "").toLowerCase();
+      if (r.status >= 200 && r.status < 300 &&
+          /(text\/html|application\/javascript|text\/javascript|application\/json)/.test(ct)) {
+        let body = "";
+        try { body = await r.text(); } catch { body = ""; }
+        findings.push(...checkClientleak(body));
+      }
     } catch {
       return json({ error: "Target tidak dapat dijangkau." }, 502, ch);
     }
@@ -269,7 +310,7 @@ export default {
     return json({
       target: v.url.toString(),
       scanned_at: new Date().toISOString(),
-      modules: ["headers", "webstack", "cors"],
+      modules: ["headers", "webstack", "cors", "clientleak"],
       notice: "Pemeriksaan PASIF non-intrusif saja. Untuk uji mendalam (injection, " +
         "access control, upload, dll.) gunakan CLI pada target yang Anda miliki.",
       findings,
