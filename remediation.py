@@ -344,6 +344,29 @@ KB = {
         ],
         "referensi": ["OWASP ZAP", "OWASP Top 10 2021"],
     },
+    "ssrf": {
+        "deskripsi": "Server melakukan request HTTP ke URL yang dikendalikan pengguna, termasuk "
+                     "alamat privat/loopback, tanpa validasi tujuan (Server-Side Request Forgery).",
+        "dampak": "Penyerang dapat memakai server sebagai proxy ke jaringan internal: memindai "
+                  "layanan privat, membaca metadata cloud (kredensial), atau mengakses layanan "
+                  "internal yang tidak terekspos ke internet.",
+        "severity": "High",
+        "severity_dasar": "Likelihood sedang (butuh endpoint yang menerima URL) x Impact tinggi "
+                          "(akses jaringan internal, scope berubah).",
+        "rekomendasi": [
+            "Validasi URL dengan allowlist host/skema; tolak alamat privat, loopback, link-local "
+            "(termasuk 169.254.169.254) dan semua representasi alternatifnya (desimal, heks, IPv6-mapped).",
+            "Resolve DNS sendiri, validasi IP hasil resolve, lalu hubungi IP itu langsung "
+            "(cegah DNS rebinding); nonaktifkan atau validasi ulang redirect.",
+            "Contoh (pseudo): ip = resolve(host); if (is_private(ip)) reject(); "
+            "client.get(url, allow_redirects=False)",
+            "Jalankan fetcher di jaringan terisolasi tanpa akses ke layanan internal/metadata; "
+            "wajibkan IMDSv2 di cloud.",
+        ],
+        "referensi": ["OWASP A10:2021 Server-Side Request Forgery",
+                      "OWASP API7:2023 Server Side Request Forgery",
+                      "OWASP SSRF Prevention Cheat Sheet", "CWE-918"],
+    },
     "jwt-forgery": {
         "deskripsi": "Server menerima JWT yang dipalsukan: tanpa tanda tangan (alg=none), dengan "
                      "tanda tangan dibuang, atau dengan payload yang diubah.",
@@ -770,6 +793,8 @@ def classify(modul: str, judul: str) -> str:
         return "open-redirect"
     if modul == "cookie-flags":
         return "cookie-flags"
+    if modul == "ssrf":
+        return "ssrf"
     if modul == "jwt":
         if "secret" in j:
             return "jwt-weak-secret"

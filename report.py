@@ -98,6 +98,7 @@ def collect(d: Path):
                         ("session_mgmt.json", "session-mgmt"),
                         ("captcha.json", "captcha"),
                         ("jwt.json", "jwt"),
+                        ("ssrf.json", "ssrf"),
                         ("headers.json", "headers")):
         data = load(d / name)
         if not data:
@@ -115,7 +116,7 @@ def collect(d: Path):
             if modul == "client-leak":
                 hint = CLIENT_LEAK_KIND.get(r.get("kind"))
             elif modul in ("response-leak", "openapi-coverage", "ratelimit", "session-mgmt",
-                           "captcha", "jwt"):
+                           "captcha", "jwt", "ssrf"):
                 hint = r.get("kind")
             elif modul == "headers":
                 hint = "missing-header"
@@ -237,6 +238,7 @@ KIND_LABEL = {
     "cors-misconfig": "CORS salah konfigurasi",
     "open-redirect": "Open redirect",
     "cookie-flags": "Atribut keamanan cookie tidak lengkap",
+    "ssrf": "Server-Side Request Forgery (server menembak URL yang dikendalikan penyerang)",
     "jwt-forgery": "Server menerima JWT yang dipalsukan",
     "jwt-weak-secret": "Secret JWT lemah dapat ditebak",
     "jwt-weak-config": "Konfigurasi JWT tidak aman",
@@ -325,6 +327,7 @@ KIND_CVSS = {
     "recon-subdomain": (5.3, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"),
     "client-cache": (4.3, "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:L/I:N/A:N"),
     "cookie-flags": (4.2, "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:L/I:L/A:N"),
+    "ssrf": (8.5, "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:L/A:N"),
     "jwt-forgery": (9.8, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"),
     "jwt-weak-secret": (9.8, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"),
     "jwt-weak-config": (5.3, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"),
