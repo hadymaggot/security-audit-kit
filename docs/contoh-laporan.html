@@ -21,30 +21,35 @@
    --text-color:#ffffff; --terminal-bg:rgba(18,18,18,.95);
    --mono:'JetBrains Mono',monospace; --sans:'Poppins',sans-serif;
  }
- *{box-sizing:border-box} html{scroll-behavior:smooth}
- body{background-color:var(--dark-color);color:var(--text-color);font-family:var(--sans);margin:0;min-height:100vh;line-height:1.6}
- .post-page{max-width:900px;margin:0 auto;padding:2rem 1rem 4rem}
- .post-nav{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;gap:1rem;align-items:center;margin:-2rem -1rem 1.5rem;padding:.9rem 1rem;background:rgba(18,18,18,.9);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-bottom:1px solid rgba(122,197,90,.2);font-family:var(--mono);font-size:.9rem}
- .post-nav a{color:var(--primary-color);text-decoration:none} .post-nav a:hover{text-decoration:underline}
- .breadcrumb{font-size:.85rem;opacity:.85;margin-bottom:1rem} .breadcrumb a{color:var(--primary-color);text-decoration:none}
- h1{font-size:1.8rem;margin:0 0 .3rem}
- .lead{opacity:.85;margin-bottom:1.4rem}
+ *{box-sizing:border-box}
+ html,body{height:100%}
+ /* fit-screen: halaman tidak scroll vertikal; hanya view (kanan) yang boleh scroll */
+ body{background-color:var(--dark-color);color:var(--text-color);font-family:var(--sans);margin:0;line-height:1.6;height:100vh;display:flex;flex-direction:column;overflow:hidden}
  a{color:var(--primary-color)}
- .fmts{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin:0 0 1.2rem}
- .fmt{text-align:left;background:rgba(255,255,255,.03);border:1px solid rgba(122,197,90,.25);border-radius:10px;padding:14px 16px;cursor:pointer;color:var(--text-color);font:inherit;transition:border-color .2s ease,background-color .2s ease}
+ .topbar{display:flex;flex-wrap:wrap;gap:1rem;align-items:center;padding:.7rem 1.2rem;border-bottom:1px solid rgba(122,197,90,.2);background:rgba(18,18,18,.9);font-family:var(--mono);font-size:.85rem;flex:0 0 auto}
+ .topbar a{color:var(--primary-color);text-decoration:none} .topbar a:hover{text-decoration:underline}
+ .topbar .title{font-weight:600;color:#fff}
+ .topbar .crumb{opacity:.7}
+ /* dua kolom mengisi sisa tinggi */
+ .layout{flex:1 1 auto;display:flex;min-height:0;width:100%;max-width:1600px;margin:0 auto}
+ .side{flex:0 0 320px;max-width:42%;overflow:auto;padding:1.2rem;border-right:1px solid rgba(122,197,90,.2)}
+ .side h2{font-size:1rem;font-family:var(--mono);color:var(--secondary-color);margin:.2rem 0 1rem}
+ .fmt{display:block;width:100%;text-align:left;background:rgba(255,255,255,.03);border:1px solid rgba(122,197,90,.25);border-radius:10px;padding:12px 14px;margin-bottom:.7rem;cursor:pointer;color:var(--text-color);font:inherit;transition:border-color .2s ease,background-color .2s ease}
  .fmt:hover{border-color:var(--primary-color)}
- .fmt.active{border-color:var(--primary-color);background:rgba(122,197,90,.1)}
- .fmt .ic{font-size:1.3rem;color:var(--primary-color)}
- .fmt h3{margin:.4rem 0 .3rem;font-family:var(--mono);font-size:1rem}
- .fmt p{margin:0;font-size:.88rem;opacity:.85}
- .bar{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;margin:0 0 .6rem;font-family:var(--mono);font-size:.85rem}
- .bar .open{margin-left:auto;border:1px solid var(--primary-color);color:var(--primary-color);border-radius:8px;padding:.3rem .8rem;text-decoration:none}
- .bar .open:hover{background:rgba(122,197,90,.1)}
- .frame{border:1px solid rgba(122,197,90,.25);border-radius:10px;overflow:hidden;background:#fff}
- iframe{width:100%;height:72vh;border:0;display:block;background:#fff}
- .note{font-size:.85rem;opacity:.8;margin-top:.8rem}
- .mdwrap{display:none;border:1px solid rgba(122,197,90,.25);border-radius:10px;background:rgba(255,255,255,.02);padding:1.4rem 1.6rem;max-height:72vh;overflow:auto}
- #mdbox{line-height:1.8}
+ .fmt.active{border-color:var(--primary-color);background:rgba(122,197,90,.12)}
+ .fmt .ic{font-size:1.15rem;color:var(--primary-color)}
+ .fmt h3{margin:.35rem 0 .3rem;font-family:var(--mono);font-size:.95rem}
+ .fmt p{margin:0;font-size:.85rem;opacity:.85}
+ .side .hint{font-size:.8rem;opacity:.7;margin-top:1rem;line-height:1.5}
+ /* kolom kanan: header tipis + area view yang mengisi dan scroll internal */
+ .view{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
+ .view-head{display:flex;align-items:center;gap:.6rem;padding:.55rem 1rem;border-bottom:1px solid rgba(122,197,90,.2);font-family:var(--mono);font-size:.85rem;flex:0 0 auto}
+ .view-head .open{margin-left:auto;border:1px solid var(--primary-color);color:var(--primary-color);border-radius:8px;padding:.25rem .7rem;text-decoration:none}
+ .view-head .open:hover{background:rgba(122,197,90,.1)}
+ .view-body{flex:1 1 auto;min-height:0;position:relative}
+ iframe{width:100%;height:100%;border:0;display:block;background:#fff}
+ .mdwrap{display:none;position:absolute;inset:0;overflow:auto;padding:1.4rem 1.8rem;background:rgba(255,255,255,.02)}
+ #mdbox{line-height:1.8;max-width:860px}
  #mdbox h1{font-size:1.5rem;color:var(--secondary-color)}
  #mdbox h2{font-size:1.25rem;color:var(--secondary-color);border-bottom:1px solid rgba(122,197,90,.2);padding-bottom:.3rem;margin-top:1.8rem}
  #mdbox h3{color:var(--secondary-color)}
@@ -53,84 +58,85 @@
  #mdbox table{border-collapse:collapse;width:100%;margin:1rem 0;font-size:.92rem} #mdbox th,#mdbox td{border:1px solid rgba(122,197,90,.25);padding:6px 10px;text-align:left;vertical-align:top} #mdbox th{background:rgba(122,197,90,.1)}
  #mdbox a{color:var(--primary-color)} #mdbox blockquote{border-left:3px solid var(--primary-color);margin:0 0 1rem;padding-left:1rem;opacity:.9}
  #mdbox img{max-width:100%} #mdbox hr{border:0;border-top:1px solid rgba(122,197,90,.2);margin:1.5rem 0}
+ /* mobile: tumpuk & izinkan scroll halaman */
+ @media (max-width:820px){
+   body{height:auto;overflow:auto}
+   .layout{flex-direction:column;max-width:100%}
+   .side{flex:none;max-width:100%;border-right:0;border-bottom:1px solid rgba(122,197,90,.2)}
+   .view{min-height:80vh}
+   .mdwrap{position:static}
+ }
 </style>
 </head>
 <body>
-<main class="post-page">
-  <nav class="post-nav" aria-label="Navigasi">
-    <a href="https://hadymaggot.github.io/">&larr; Beranda</a>
-    <a href="./">Security Audit Kit</a>
-    <a href="https://github.com/hadymaggot/security-audit-kit">GitHub</a>
-  </nav>
-  <nav class="breadcrumb"><a href="https://hadymaggot.github.io/">Beranda</a> &rsaquo; <a href="./">Security Audit Kit</a> &rsaquo; Contoh laporan</nav>
-  <h1>Contoh laporan</h1>
-  <p class="lead">Keluaran Security Audit Kit tersedia dalam <b>tiga format</b>. Pilih salah satu untuk melihat pratinjau langsung di bawah.</p>
+<header class="topbar">
+  <a href="https://hadymaggot.github.io/">&larr; Beranda</a>
+  <a href="./">Security Audit Kit</a>
+  <span class="crumb">&rsaquo; <span class="title">Contoh laporan</span></span>
+  <a href="https://github.com/hadymaggot/security-audit-kit" style="margin-left:auto"><i class="fab fa-github"></i> GitHub</a>
+</header>
 
-  <div class="fmts" role="tablist">
-    <button class="fmt active" data-fmt="html" role="tab" aria-selected="true">
+<div class="layout">
+  <aside class="side">
+    <h2># format laporan</h2>
+    <button class="fmt active" data-fmt="html" aria-pressed="true">
       <div class="ic"><i class="fas fa-file-lines"></i></div>
       <h3>HTML lengkap</h3>
       <p>Laporan penuh standar konsultan: executive summary, tiap temuan dengan ID, CVSS indikatif, bukti, dan rekomendasi.</p>
     </button>
-    <button class="fmt" data-fmt="slides" role="tab" aria-selected="false">
+    <button class="fmt" data-fmt="slides" aria-pressed="false">
       <div class="ic"><i class="fas fa-display"></i></div>
       <h3>Slide presentasi</h3>
       <p>Ringkasan untuk rapat/manajemen — satu temuan per slide, cocok dipresentasikan.</p>
     </button>
-    <button class="fmt" data-fmt="md" role="tab" aria-selected="false">
+    <button class="fmt" data-fmt="md" aria-pressed="false">
       <div class="ic"><i class="fab fa-markdown"></i></div>
       <h3>Markdown</h3>
       <p>Untuk ditempel ke wiki/issue atau dikonversi ke test. Dirender rapi langsung di halaman.</p>
     </button>
-  </div>
+    <p class="hint">Ketiga format dihasilkan oleh <code>python audit.py all</code>. Pratinjau tampil di kanan; gulir di dalam panel untuk melihat keseluruhan.</p>
+  </aside>
 
-  <div class="bar">
-    <span id="label">HTML lengkap</span>
-    <a class="open" id="openLink" href="contoh-laporan-html.html" target="_blank" rel="noopener">Buka di tab baru &nearr;</a>
-  </div>
-  <div class="frame" id="frameWrap"><iframe id="frame" title="Pratinjau laporan" src="contoh-laporan-html.html"></iframe></div>
-  <div class="mdwrap" id="mdwrap"><div id="mdbox">Memuat…</div></div>
-  <p class="note" id="note">Pratinjau HTML lengkap. Format ini dihasilkan oleh <code>python audit.py all</code>.</p>
-</main>
+  <section class="view">
+    <div class="view-head">
+      <span id="label">HTML lengkap</span>
+      <a class="open" id="openLink" href="contoh-laporan-html.html" target="_blank" rel="noopener">Buka di tab baru &nearr;</a>
+    </div>
+    <div class="view-body">
+      <iframe id="frame" title="Pratinjau laporan" src="contoh-laporan-html.html"></iframe>
+      <div class="mdwrap" id="mdwrap"><div id="mdbox">Memuat…</div></div>
+    </div>
+  </section>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.9/purify.min.js"></script>
 <script>
  var MD_GH = "https://github.com/hadymaggot/security-audit-kit/blob/main/docs/contoh-laporan.md";
  var FMT = {
-   html:  {src:"contoh-laporan-html.html",   open:"contoh-laporan-html.html",   label:"HTML lengkap",      note:"Pratinjau HTML lengkap (standar konsultan)."},
-   slides:{src:"contoh-laporan-slides.html", open:"contoh-laporan-slides.html", label:"Slide presentasi",  note:"Pratinjau slide presentasi — satu temuan per slide."},
-   md:    {src:"contoh-laporan.md",          open:MD_GH,                         label:"Markdown",          note:"Pratinjau Markdown (dirender di halaman). Tombol kanan atas membuka versi terender GitHub."}
+   html:  {src:"contoh-laporan-html.html",   open:"contoh-laporan-html.html",   label:"HTML lengkap"},
+   slides:{src:"contoh-laporan-slides.html", open:"contoh-laporan-slides.html", label:"Slide presentasi"},
+   md:    {src:"contoh-laporan.md",          open:MD_GH,                         label:"Markdown"}
  };
- var frame=document.getElementById("frame"), frameWrap=document.getElementById("frameWrap"),
-     mdwrap=document.getElementById("mdwrap"), mdbox=document.getElementById("mdbox"),
-     label=document.getElementById("label"), openLink=document.getElementById("openLink"),
-     note=document.getElementById("note");
+ var frame=document.getElementById("frame"), mdwrap=document.getElementById("mdwrap"),
+     mdbox=document.getElementById("mdbox"), label=document.getElementById("label"),
+     openLink=document.getElementById("openLink");
  var mdLoaded=false;
  function renderMd(){
    if(mdLoaded)return; mdLoaded=true;
    fetch("contoh-laporan.md").then(function(r){return r.text()}).then(function(t){
-     if(window.marked&&window.DOMPurify){
-       mdbox.innerHTML=DOMPurify.sanitize(marked.parse(t));
-     }else{
-       var pre=document.createElement("pre"); pre.textContent=t; mdbox.innerHTML=""; mdbox.appendChild(pre);
-     }
+     if(window.marked&&window.DOMPurify){ mdbox.innerHTML=DOMPurify.sanitize(marked.parse(t)); }
+     else{ var pre=document.createElement("pre"); pre.textContent=t; mdbox.innerHTML=""; mdbox.appendChild(pre); }
    }).catch(function(){ mdbox.textContent="Gagal memuat Markdown. Buka di GitHub via tombol di atas."; mdLoaded=false; });
  }
  function pick(k){
    var f=FMT[k]; if(!f)return;
-   label.textContent=f.label; openLink.href=f.open; note.textContent=f.note;
-   if(k==="md"){
-     frameWrap.style.display="none"; mdwrap.style.display="block"; renderMd();
-   }else{
-     mdwrap.style.display="none"; frameWrap.style.display="block"; frame.src=f.src;
-   }
-   var btns=document.querySelectorAll(".fmt");
-   btns.forEach(function(b){var on=b.getAttribute("data-fmt")===k;b.classList.toggle("active",on);b.setAttribute("aria-selected",on?"true":"false");});
+   label.textContent=f.label; openLink.href=f.open;
+   if(k==="md"){ frame.style.display="none"; mdwrap.style.display="block"; renderMd(); }
+   else{ mdwrap.style.display="none"; frame.style.display="block"; frame.src=f.src; }
+   document.querySelectorAll(".fmt").forEach(function(b){var on=b.getAttribute("data-fmt")===k;b.classList.toggle("active",on);b.setAttribute("aria-pressed",on?"true":"false");});
  }
- document.querySelectorAll(".fmt").forEach(function(b){
-   b.addEventListener("click",function(){pick(b.getAttribute("data-fmt"));});
- });
- // dukung ?format=slides|md|html
+ document.querySelectorAll(".fmt").forEach(function(b){ b.addEventListener("click",function(){pick(b.getAttribute("data-fmt"));}); });
  var q=new URLSearchParams(location.search).get("format");
  if(q&&FMT[q])pick(q);
 </script>
