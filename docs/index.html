@@ -324,7 +324,7 @@ python audit.py all                                # scan + laporan</code></pre>
  });
 
  var SEVC={critical:"#ff6b6b",high:"#ff8a3d",medium:"#ffcf5c",low:"#7AC55A",info:"#9bb39b",lulus:"#7AC55A"};
- var api = new URLSearchParams(location.search).get("api") || localStorage.getItem("sak_api") || "";
+ var api = new URLSearchParams(location.search).get("api") || localStorage.getItem("sak_api") || "https://security-audit-kit-scanner.saptohadi.workers.dev";
  if(api) localStorage.setItem("sak_api", api);
  var stage=document.getElementById("stage");
  function logEl(){return document.getElementById("log")}

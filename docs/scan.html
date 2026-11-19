@@ -63,7 +63,7 @@
   <p class="muted" id="cfg"></p>
 </main>
 <script>
- var WORKER_URL = "";
+ var WORKER_URL = "https://security-audit-kit-scanner.saptohadi.workers.dev";
  var api = new URLSearchParams(location.search).get("api") || WORKER_URL ||
            localStorage.getItem("sak_api") || "";
  if (api) localStorage.setItem("sak_api", api);
