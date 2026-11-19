@@ -10,14 +10,45 @@ extra_targets: []
 # auth: { header: "Authorization", value: "${TOKEN}" }
 
 # Daftar versi rentan. 'server' dicocokkan sebagai substring (case-insensitive) pada
-# banner 'Server'; versi di bawah 'max_version' dianggap rentan. Perbarui dari advisory
-# vendor saat ada CVE baru.
+# banner 'Server' maupun 'X-Powered-By'. Versi dianggap rentan bila berada pada rentang
+# min_version..<max_version (min opsional; untuk backport multi-branch buat beberapa entri).
+# Perbarui dari advisory vendor saat ada CVE baru.
 known_vulnerable:
   - server: "apache"
     max_version: "2.4.71"          # perbaikan mod_http2
     cve: "CVE-2026-119618"
     catatan: "Apache mod_http2 unauthenticated RCE (aktif dieksploitasi 2026)"
+  # NGINX HTTP/2 (Black October 2026, CVSS 9.2) — stable line; untuk mainline 1.31.x,
+  # ganti max_version ke 1.31.9.
   - server: "nginx"
-    max_version: "1.30.7"          # perbaikan HTTP/2 (stable)
+    min_version: "1.9.5"
+    max_version: "1.30.7"
+    cve: "CVE-2026-123007"
+    catatan: "NGINX HTTP/2 integer underflow RCE"
+  - server: "nginx"
+    min_version: "1.9.5"
+    max_version: "1.30.7"
     cve: "CVE-2026-123633"
-    catatan: "NGINX HTTP/2 memory corruption / RCE (CVSS 9.2)"
+    catatan: "NGINX HTTP/2 use-after-free RCE"
+  # PHP2Shell (CVE-2026-109618/109619) — terdeteksi via X-Powered-By: PHP/x.y.z.
+  # Backport per-branch: entri terpisah agar versi yang sudah di-patch tidak false positive.
+  - server: "php"
+    min_version: "8.5.0"
+    max_version: "8.5.12"
+    cve: "CVE-2026-109618"
+    catatan: "PHP2Shell unauthenticated RCE"
+  - server: "php"
+    min_version: "8.4.0"
+    max_version: "8.4.27"
+    cve: "CVE-2026-109618"
+    catatan: "PHP2Shell unauthenticated RCE"
+  - server: "php"
+    min_version: "8.3.0"
+    max_version: "8.3.36"
+    cve: "CVE-2026-109618"
+    catatan: "PHP2Shell unauthenticated RCE"
+  - server: "php"
+    min_version: "8.2.0"
+    max_version: "8.2.35"
+    cve: "CVE-2026-109618"
+    catatan: "PHP2Shell unauthenticated RCE"

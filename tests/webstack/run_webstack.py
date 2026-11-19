@@ -123,29 +123,46 @@ def check_target(sess, url, known, http2_probe=supports_http2):
         "url": f"GET {url}",
     })
 
-    # 2. Known-vulnerable version.
+    # 2. Known-vulnerable version — cek banner Server DAN X-Powered-By, dengan rentang
+    #    min_version–max_version (mendukung backport multi-branch, mis. PHP2Shell).
     h2 = http2_probe(url)
     if altsvc and "h2" in altsvc.lower() and h2 is None:
         h2 = True
+    candidates = []
+    if name:
+        candidates.append(("Server", name, ver))
+    pname, pver = parse_banner(powered)
+    if pname:
+        candidates.append(("X-Powered-By", pname, pver))
+    flagged = set()
     for kv in known:
         kname = str(kv.get("server", "")).lower()
-        if not kname or kname not in name:
+        if not kname:
             continue
-        maxv = kv.get("max_version")
-        if maxv and ver and not less_than(ver, maxv):
-            continue  # versi >= perbaikan → tak rentan
-        if maxv and not ver:
-            continue  # versi tak terbaca → jangan klaim rentan
-        catatan = kv.get("catatan", "")
-        h2note = " HTTP/2 aktif (ALPN h2)." if h2 else ""
-        out.append({
-            "check": f"Versi rentan: {name} {ver or '?'}",
-            "status": r.status_code, "ok": False,
-            "note": (f"{name}/{ver} < {maxv} — {kv.get('cve', '?')}. {catatan}.{h2note} "
-                     "Konfirmasi ke advisory vendor."),
-            "url": f"GET {url}",
-            "cve": [kv["cve"]] if kv.get("cve") else [],
-        })
+        for src, cname, cver in candidates:
+            if kname not in cname or not cver:
+                continue
+            mn, mx = kv.get("min_version"), kv.get("max_version")
+            if mn and less_than(cver, mn):
+                continue                   # di bawah rentang rentan
+            if mx and not less_than(cver, mx):
+                continue                   # sudah di versi perbaikan
+            key = kv.get("cve") or kname
+            if key in flagged:
+                continue
+            flagged.add(key)
+            h2note = " HTTP/2 aktif (ALPN h2)." if h2 else ""
+            rng = f"{mn}–<{mx}" if mn else (f"< {mx}" if mx else "(semua versi)")
+            out.append({
+                "check": f"Versi rentan: {cname} {cver}",
+                "status": r.status_code, "ok": False,
+                "note": (f"{cname}/{cver} ({src}) dalam rentang rentan {rng} — "
+                         f"{kv.get('cve', '?')}. {kv.get('catatan', '')}.{h2note} "
+                         "Konfirmasi ke advisory vendor."),
+                "url": f"GET {url}",
+                "cve": [kv["cve"]] if kv.get("cve") else [],
+            })
+            break                          # satu temuan per entri known_vulnerable
     return out
 
 

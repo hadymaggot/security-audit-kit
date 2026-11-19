@@ -22,7 +22,7 @@ solusinya, dan rujukan ke OWASP/BSSN.
 | `cors` | CORS misconfiguration: reflected origin, wildcard+credentials, Origin `null` diterima |
 | `open-redirect` | Parameter pengalih (`next`/`url`/`redirect`/…) yang mengarah ke host luar |
 | `tls` / `headers` | Protokol/cipher TLS usang, security header yang kurang atau malah membocorkan info |
-| `webstack` | Deteksi versi web server dari banner lalu petakan ke CVE yang diketahui (mis. Apache mod_http2, NGINX HTTP/2); non-destruktif, `known_vulnerable` dapat diperbarui lewat config |
+| `webstack` | Deteksi versi dari banner `Server`/`X-Powered-By` lalu petakan ke CVE yang diketahui (mis. Apache mod_http2, NGINX HTTP/2, PHP2Shell); mendukung rentang `min_version`, non-destruktif, `known_vulnerable` dapat diperbarui lewat config |
 | `injection` | SQL injection (error-based, boolean-based, time-based opsional); non-destruktif (probing baca, tidak mengubah data) |
 | `deps` | CVE dependency (Trivy) + SAST OWASP Top 10 (semgrep) + secret ter-commit (gitleaks) |
 | `report` | Gabung semua hasil jadi `reports/laporan.html` & `.md` |
