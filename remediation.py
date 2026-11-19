@@ -728,6 +728,24 @@ KB = {
         "referensi": ["OWASP A07:2021 Identification and Authentication Failures",
                       "CWE-798 Use of Hard-coded Credentials", "OWASP ASVS V2.10"],
     },
+    "sast-finding": {
+        "deskripsi": "Analisis statis kode (semgrep) menemukan pola yang berpotensi rentan "
+                     "(mis. injeksi, XSS, kriptografi lemah, konfigurasi tidak aman) pada source.",
+        "dampak": "Bergantung aturan yang cocok; dapat berupa celah yang dapat dieksploitasi "
+                  "(SQL injection, command injection, XSS) atau false positive yang perlu triase.",
+        "severity": "Medium",
+        "severity_dasar": "Mengikuti severity aturan semgrep (ERROR=High, WARNING=Medium); "
+                          "wajib diverifikasi manual karena SAST dapat menghasilkan false positive.",
+        "rekomendasi": [
+            "Triase tiap temuan: konfirmasi apakah jalur data pengguna benar-benar mencapai sink.",
+            "Perbaiki sesuai pesan aturan (parameterized query, escaping output, API kripto aman).",
+            "Tambahkan `# nosemgrep: <aturan>` hanya untuk false positive yang terverifikasi, "
+            "disertai alasan di komentar.",
+            "Jalankan semgrep di CI agar regresi tertangkap sebelum merge.",
+        ],
+        "referensi": ["OWASP Top 10 2021", "semgrep rules (p/owasp-top-ten, p/security-audit)",
+                      "CWE sesuai metadata aturan"],
+    },
     "recon-finding": {
         "deskripsi": "Temuan dari pemindaian vuln aktif (nuclei) terhadap aset hidup. "
                      "Severity dibawa langsung dari template nuclei yang cocok.",
@@ -793,6 +811,10 @@ def classify(modul: str, judul: str) -> str:
         return "open-redirect"
     if modul == "cookie-flags":
         return "cookie-flags"
+    if modul == "semgrep":
+        return "sast-finding"
+    if modul == "gitleaks":
+        return "leaked-secret"
     if modul == "ssrf":
         return "ssrf"
     if modul == "jwt":
