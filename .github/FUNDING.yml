@@ -1,0 +1,10 @@
+# Mengaktifkan tombol "Sponsor" pada repositori ini.
+# Dokumentasi: https://docs.github.com/articles/displaying-a-sponsor-button-in-your-repository
+github: [hadymaggot]
+
+# Platform lain (hapus tanda komentar dan isi bila diperlukan):
+# patreon: username
+# open_collective: username
+# ko_fi: username
+# buy_me_a_coffee: username
+# custom: ["https://contoh.example/donasi"]
