@@ -383,13 +383,19 @@ python audit.py all                                # scan + laporan</code></pre>
  var cmdHist=[], histPos=0; // riwayat perintah (panah atas/bawah)
  function setInput(inp,val){ inp.value=val||""; var p=inp.value.length; try{inp.setSelectionRange(p,p);}catch(e){} updateCur(inp); }
  var COMMANDS=["help","clear"];
- function hintLine(text){ var p=logEl().querySelector(".cliln"), d=document.createElement("div"); d.className="ln mut"; d.textContent=text; if(p)logEl().insertBefore(d,p); else out(text,"mut"); logEl().scrollTop=logEl().scrollHeight; }
+ // multi-match Tab: echo baris saat ini, cetak opsi di bawahnya, lalu gambar ulang prompt (input dipertahankan) — seperti shell
+ function showOpts(inp,opts){
+   var val=inp.value, line=inp.closest(".cliln");
+   line.className="ln"; line.innerHTML=(curLabel||promptEl())+" "+esc(val);
+   out("<span class='mut'>"+opts.map(esc).join("   ")+"</span>");
+   addPrompt(); var ni=logEl().querySelector(".cliln .cli"); if(ni){ setInput(ni,val); ni.focus(); }
+ }
  function complete(inp){
    var parts=(inp.value||"").split(/\s+/), last=parts[parts.length-1]||"", opts;
    if(parts.length<=1){ opts=COMMANDS.filter(function(x){return x.indexOf(last)===0;}); if(last&&"https://".indexOf(last)===0)opts.push("https://"); }
    else { opts=["--active"].filter(function(x){return x.indexOf(last)===0;}); if(last.charAt(0)==="-"&&!opts.length)opts=["--active"]; }
    if(opts.length===1){ parts[parts.length-1]=opts[0]; var trail=(parts.length<=1&&opts[0]!=="https://")?" ":""; setInput(inp, parts.join(" ")+trail); }
-   else if(opts.length>1){ hintLine(opts.join("   ")); }
+   else if(opts.length>1){ showOpts(inp, opts); }
  }
  var curLabel=null; // label prompt aktif (prompt shell biasa, atau 'lanjutkan? [y/N]')
  function addPrompt(label){
