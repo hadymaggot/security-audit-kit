@@ -231,6 +231,79 @@ def test_write_html_colors_per_severity(tmp_path):
     assert "class='badge'" in h                                   # badge severity CVE
 
 
+# --- URL/endpoint sebagai bukti ---
+
+def test_collect_carries_url_from_runner(tmp_path):
+    (tmp_path / "authz.json").write_text(json.dumps([
+        {"endpoint": "admin", "role": "low", "expected": "deny", "status": 200,
+         "ok": False, "note": "bocor", "url": "GET http://t:18002/api/admin"},
+    ]), encoding="utf-8")
+    f = RP.collect(tmp_path)[0]
+    assert f["url"] == "GET http://t:18002/api/admin"
+
+
+def test_url_appears_as_instance_evidence(tmp_path):
+    (tmp_path / "authz.json").write_text(json.dumps([
+        {"endpoint": "File terekspos", "role": "anon", "expected": "deny", "status": 200,
+         "ok": False, "note": "bocor", "url": "GET http://t:18008/api/activity-logs"},
+    ]), encoding="utf-8")
+    findings = RP.collect(tmp_path)
+    counts = RP.summarize(findings)
+    RP.write_md(tmp_path / "m.md", findings, counts, "2026-01-01", [])
+    RP.write_html(tmp_path / "m.html", findings, counts, "2026-01-01", [])
+    md = (tmp_path / "m.md").read_text(encoding="utf-8")
+    h = (tmp_path / "m.html").read_text(encoding="utf-8")
+    assert "Endpoint diuji" in md and "http://t:18008/api/activity-logs" in md
+    assert "Endpoint diuji" in h and "http://t:18008/api/activity-logs" in h
+
+
+def test_missing_url_renders_dash(tmp_path):
+    (tmp_path / "headers.json").write_text(json.dumps({"results": [
+        {"label": "Content-Security-Policy", "status": 200, "ok": False, "note": "x"},
+    ]}), encoding="utf-8")
+    findings = RP.collect(tmp_path)
+    RP.write_md(tmp_path / "m.md", findings, RP.summarize(findings), "2026-01-01", [])
+    md = (tmp_path / "m.md").read_text(encoding="utf-8")
+    assert "Endpoint diuji" in md and "| `-` |" in md   # tak ada url → sel '-'
+
+
+# --- gaya ZAP: alert dikelompokkan per kind, keyakinan, kredit pembuat ---
+
+def test_group_alerts_by_kind_with_instances():
+    gagal = [
+        {"modul": "authz-matrix", "judul": "[forged] http://t:18002/x", "kind": "forged-header",
+         "lulus": False, "severity": "critical", "status": 200, "evidence": "e1",
+         "url": "GET http://t:18002/x", "cve": [], "kb": R.lookup("forged-header")},
+        {"modul": "authz-matrix", "judul": "[forged] http://t:18004/y", "kind": "forged-header",
+         "lulus": False, "severity": "critical", "status": 200, "evidence": "e2",
+         "url": "GET http://t:18004/y", "cve": [], "kb": R.lookup("forged-header")},
+        {"modul": "authz-matrix", "judul": "IDOR company", "kind": "idor",
+         "lulus": False, "severity": "high", "status": 200, "evidence": "e3",
+         "url": "GET http://t/api/companies/9", "cve": [], "kb": R.lookup("idor")},
+    ]
+    alerts = RP.group_alerts(gagal)
+    assert [a["kind"] for a in alerts] == ["forged-header", "idor"]   # critical dulu
+    assert len(alerts[0]["instances"]) == 2 and alerts[0]["keyakinan"] == "Tinggi"
+    assert alerts[0]["nama"] == RP.KIND_LABEL["forged-header"]
+
+
+def test_zap_module_confidence_sedang():
+    assert RP._confidence({"zap"}) == "Sedang"
+    assert RP._confidence({"authz-matrix"}) == "Tinggi"
+    assert RP._confidence({"zap", "authz-matrix"}) == "Tinggi"
+
+
+def test_credit_always_in_every_report(tmp_path):
+    # Walau tak ada temuan sama sekali, kredit pembuat tetap ada di MD & HTML.
+    findings = RP.collect(tmp_path)   # direktori kosong → nol temuan
+    RP.write_md(tmp_path / "m.md", findings, RP.summarize(findings), "2026-01-01", [])
+    RP.write_html(tmp_path / "m.html", findings, RP.summarize(findings), "2026-01-01", [])
+    md = (tmp_path / "m.md").read_text(encoding="utf-8")
+    h = (tmp_path / "m.html").read_text(encoding="utf-8")
+    assert RP.KIT_AUTHOR in md and RP.KIT_URL in md
+    assert RP.KIT_AUTHOR in h and RP.KIT_URL in h
+
+
 # --- runner client-leak: guard skip-timeout & SPA-fallback tanpa jaringan ---
 
 class _LeakResp:
