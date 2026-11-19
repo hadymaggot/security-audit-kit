@@ -114,7 +114,13 @@
  #log::-webkit-scrollbar-thumb:hover{background:rgba(122,197,90,.6)}
  #log .ln{margin:1px 0} #log .ok{color:var(--primary)} #log .bad{color:#ff8a3d} #log .mut{color:rgba(255,255,255,.6)} #log a{color:var(--secondary);cursor:pointer;text-decoration:underline}
  /* prompt elegan + input mengalir di dalam log (seperti terminal sungguhan) */
- .cliln{display:flex;align-items:baseline;margin:5px 0 0;position:relative}
+ .cliln{margin:8px 0 2px;position:relative}
+ .ptop{display:flex;align-items:center;font-size:12.5px;line-height:1;opacity:.9}
+ .ptop .seg{white-space:nowrap;color:rgba(255,255,255,.4)} .ptop .seg .pu{color:var(--primary);font-weight:600} .ptop .seg .pd{color:rgba(255,255,255,.55)}
+ .ptop .fr,.pbot .fr{color:rgba(122,197,90,.5)}
+ .ptop .fill{flex:1;height:0;border-bottom:1px dotted rgba(122,197,90,.3);margin:0 .9ch}
+ .ptop .ptime{white-space:nowrap;color:rgba(255,255,255,.42)}
+ .pbot{display:flex;align-items:baseline;line-height:1.1;margin-top:-4px} .pbot .pa{color:var(--primary);font-weight:700} .pbot .pd{color:rgba(255,255,255,.4)}
  .cli{flex:1;min-width:0;background:transparent;border:0;outline:0;color:var(--text);font-family:var(--mono);font-size:12.5px;caret-color:transparent;padding:0;margin-left:1ch;white-space:pre}
  .blockcur{position:absolute;width:1ch;height:1.05em;background:var(--primary);pointer-events:none;animation:tblink 1s step-end infinite}
  @keyframes tblink{0%,100%{opacity:1}50%{opacity:0}}
@@ -372,7 +378,9 @@ python audit.py all                                # scan + laporan</code></pre>
  document.addEventListener("keydown",function(e){if(e.key==="Escape")closeScan()});
 
  // ---- prompt elegan + input mengalir di dalam log (seperti terminal) ----
- function promptEl(){ return "<span class='pr'><span class='pu'>me</span><span class='pd'>@ahadizapto</span><span class='pa'>#</span></span>"; }
+ function nowTime(){ try{return new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true});}catch(e){return "";} }
+ function promptTop(){ return "<div class='ptop'><span class='seg'><span class='fr'>╭─</span> <span class='pu'>me</span><span class='pd'>@ahadizapto</span><span class='pa'>#</span></span><span class='fill'></span><span class='ptime'>"+nowTime()+"</span></div>"; }
+ function promptBot(){ return "<span class='pr'><span class='fr'>╰─</span><span class='pa'>❯</span></span>"; }
  var _meas=null;
  function measW(s){ if(!_meas){_meas=document.createElement("span");_meas.id="meas";document.body.appendChild(_meas);} _meas.textContent=s||""; return _meas.offsetWidth; }
  function updateCur(inp){ var cur=inp.parentNode&&inp.parentNode.querySelector(".blockcur"); if(!cur)return;
@@ -382,11 +390,11 @@ python audit.py all                                # scan + laporan</code></pre>
    cur.style.top=(inp.offsetTop+(inp.offsetHeight-cur.offsetHeight)/2)+"px"; }
  var cmdHist=[], histPos=0; // riwayat perintah (panah atas/bawah)
  function setInput(inp,val){ inp.value=val||""; var p=inp.value.length; try{inp.setSelectionRange(p,p);}catch(e){} updateCur(inp); }
- var COMMANDS=["scan","help","clear"];
+ var COMMANDS=["scan","help","clear","exit"];
  // multi-match Tab: echo baris saat ini, cetak opsi di bawahnya, lalu gambar ulang prompt (input dipertahankan) — seperti shell
  function showOpts(inp,opts){
    var val=inp.value, line=inp.closest(".cliln");
-   line.className="ln"; line.innerHTML=(curLabel||promptEl())+" "+esc(val);
+   line.className="ln"; line.innerHTML=curTop+"<div class='pbot'>"+curBot+" "+esc(val)+"</div>";
    out("<span class='mut'>"+opts.map(esc).join("   ")+"</span>");
    addPrompt(); var ni=logEl().querySelector(".cliln .cli"); if(ni){ setInput(ni,val); ni.focus(); }
  }
@@ -397,11 +405,12 @@ python audit.py all                                # scan + laporan</code></pre>
    if(opts.length===1){ parts[parts.length-1]=opts[0]; var trail=(parts.length<=1&&opts[0]!=="https://")?" ":""; setInput(inp, parts.join(" ")+trail); }
    else if(opts.length>1){ showOpts(inp, opts); }
  }
- var curLabel=null; // label prompt aktif (prompt shell biasa, atau 'lanjutkan? [y/N]')
+ var curTop="", curBot=""; // prompt aktif: baris atas (fish) + baris bawah/label
  function addPrompt(label){
-   var lbl=label||promptEl(); curLabel=lbl;
+   curTop = label ? "" : promptTop();   // prompt fish 2-baris untuk perintah normal
+   curBot = label || promptBot();        // atau label 1-baris (mis. 'lanjutkan? [y/N]')
    var d=document.createElement("div"); d.className="ln cliln";
-   d.innerHTML=lbl+"<input class='cli' autocomplete='off' autocorrect='off' autocapitalize='off' spellcheck='false' aria-label='perintah scanner'><span class='blockcur'></span>";
+   d.innerHTML=curTop+"<div class='pbot'>"+curBot+"<input class='cli' autocomplete='off' autocorrect='off' autocapitalize='off' spellcheck='false' aria-label='perintah scanner'><span class='blockcur'></span></div>";
    logEl().appendChild(d);
    var inp=d.querySelector(".cli");
    inp.addEventListener("keydown",function(e){
@@ -424,6 +433,7 @@ python audit.py all                                # scan + laporan</code></pre>
    out("  <span style='color:var(--primary)'>&lt;url&gt;</span>       (sama — kata 'scan' opsional)");
    out("  <span style='color:var(--primary)'>help</span>        tampilkan bantuan ini");
    out("  <span style='color:var(--primary)'>clear</span>       bersihkan layar");
+   out("  <span style='color:var(--primary)'>exit</span>        tutup terminal");
    out("");
    out("<span style='color:var(--secondary)'>ARGUMEN</span>");
    out("  <span style='color:var(--primary)'>--active</span>, <span style='color:var(--primary)'>-a</span>   konfirmasi scan aktif/intrusif (ditampilkan sebagai perintah CLI, bukan via demo)");
@@ -438,7 +448,7 @@ python audit.py all                                # scan + laporan</code></pre>
  var pendingActive=null; // url yang menunggu konfirmasi scan aktif
  function submitCmd(inp){
    var v=inp.value, line=inp.closest(".cliln");
-   line.className="ln"; line.innerHTML=(curLabel||promptEl())+" "+esc(v); // echo pakai label prompt aktif
+   line.className="ln"; line.innerHTML=curTop+"<div class='pbot'>"+curBot+" "+esc(v)+"</div>"; // echo prompt aktif
    if(pendingActive!==null){ answerActive(v); ensurePrompt(); return; }
    if(v.trim()&&cmdHist[cmdHist.length-1]!==v) cmdHist.push(v); // simpan ke riwayat
    histPos=cmdHist.length;
@@ -456,6 +466,7 @@ python audit.py all                                # scan + laporan</code></pre>
    if(c==="clear"){logEl().innerHTML="";logEl().removeAttribute("data-init");openScan();return false;}
    if(c==="help"){printHelp();return false;}
    if(c==="scan"){out("penggunaan: scan &lt;url&gt; — mis. scan https://contoh.example","mut");return false;}
+   if(c==="exit"){closeScan();return true;} // tutup terminal
    c=c.replace(/^scan\s+/,"");
    var toks=c.split(/\s+/), url=toks[0];
    var active=toks.slice(1).some(function(x){return x==="--active"||x==="-a"||x==="--aktif";});
