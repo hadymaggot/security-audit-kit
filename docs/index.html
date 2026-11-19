@@ -90,7 +90,7 @@
  .mods{display:flex;flex-wrap:wrap;gap:.38rem;margin:0 0 1.35rem}
  .mods span{font-size:.73rem;color:#d4ddd4;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:7px;padding:.2rem .5rem}
  .foot{display:flex;flex-wrap:wrap;gap:.7rem;align-items:center;justify-content:space-between;border-top:1px solid rgba(122,197,90,.14);padding-top:.9rem;font-size:.79rem;color:var(--muted)}
- .foot a{color:var(--primary)} .foot .lang img{vertical-align:-3px;margin-right:1px}
+ .foot a{color:var(--primary)} .foot .lang{display:inline-flex;align-items:center;gap:.5rem} .foot .lang img{vertical-align:-3px;border-radius:2px} .foot .lang .sep{opacity:.5;margin-left:.1rem}
 
  /* panel scanner (terminal) — muncul saat Open scanner */
  .scanpanel{min-width:0;width:100%;overflow:hidden;opacity:0;transform:translateX(26px);pointer-events:none;
@@ -154,10 +154,10 @@ python audit.py all                                # scan + laporan</code></pre>
 
     <div class="foot">
       <span class="lang">
-        <img src="https://flagcdn.com/id.svg" width="17" alt="ID"><a href="https://github.com/hadymaggot/security-audit-kit/blob/main/README.md">ID</a> ·
-        <img src="https://flagcdn.com/gb.svg" width="17" alt="EN"><a href="https://github.com/hadymaggot/security-audit-kit/blob/main/README.en.md">EN</a> ·
-        <img src="https://flagcdn.com/de.svg" width="17" alt="DE"><a href="https://github.com/hadymaggot/security-audit-kit/blob/main/README.de.md">DE</a>
-        · <a href="https://github.com/hadymaggot/security-audit-kit/blob/main/docs/panduan-penggunaan.md">Panduan</a>
+        <a href="https://github.com/hadymaggot/security-audit-kit/blob/main/README.md" title="Indonesia"><img src="https://flagcdn.com/id.svg" width="20" alt="Indonesia"></a>
+        <a href="https://github.com/hadymaggot/security-audit-kit/blob/main/README.en.md" title="English"><img src="https://flagcdn.com/gb.svg" width="20" alt="English"></a>
+        <a href="https://github.com/hadymaggot/security-audit-kit/blob/main/README.de.md" title="Deutsch"><img src="https://flagcdn.com/de.svg" width="20" alt="Deutsch"></a>
+        <span class="sep">·</span> <a href="https://github.com/hadymaggot/security-audit-kit/blob/main/docs/panduan-penggunaan.md">Panduan</a>
       </span>
       <span>dibuat oleh <a href="https://hadymaggot.github.io/">hadymaggot</a></span>
     </div>
