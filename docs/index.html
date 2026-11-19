@@ -407,10 +407,10 @@ python audit.py all                                # scan + laporan</code></pre>
      return "<div class='chip'><span class='dot' style='background:"+SEVR[p[0]]+"'></span><b>"+(cnt[p[0]]||0)+"</b> "+p[1]+"</div>";
    }).join("");
    var rows=f.map(function(x){var k=key(x),c=SEVR[k]||"#8b8d98";
-     return "<div class='find'><span class='badge' style='background:"+c+"'>"+esc(sevLabel(k))+"</span>"+
-       "<div class='fbody'><div class='fh'>"+esc(x.module)+" &middot; "+esc(x.check)+"</div>"+
+     return "<div class='find'><div class='fbody'><div class='fh'>"+esc(x.module)+" &middot; "+esc(x.check)+"</div>"+
        (x.note?"<div class='fn'>"+esc(x.note)+"</div>":"")+
-       (x.cve&&x.cve.length?"<div class='fcve'>"+esc(x.cve.join(", "))+"</div>":"")+"</div></div>";
+       (x.cve&&x.cve.length?"<div class='fcve'>"+esc(x.cve.join(", "))+"</div>":"")+"</div>"+
+       "<span class='badge' style='background:"+c+"'>"+esc(sevLabel(k))+"</span></div>";
    }).join("");
    var html="<!doctype html><html lang='id'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"+
      "<title>Laporan Scan Pasif — "+esc(data.target)+"</title><style>"+
@@ -424,7 +424,7 @@ python audit.py all                                # scan + laporan</code></pre>
      ".chips{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 22px}.chip{display:flex;align-items:center;gap:6px;background:#f4f7f4;border:1px solid #e2e8e2;border-radius:999px;padding:5px 12px;font-size:13px}.chip .dot{width:9px;height:9px;border-radius:50%}"+
      ".find{display:flex;gap:12px;align-items:flex-start;border:1px solid #e6ebe6;border-radius:10px;padding:12px 14px;margin:0 0 10px;background:#fff}"+
      ".badge{color:#fff;font:700 11px/1 ui-monospace,monospace;letter-spacing:.04em;padding:5px 8px;border-radius:6px;white-space:nowrap;margin-top:1px}"+
-     ".fbody{min-width:0}.fh{font-weight:600;font-size:14.5px}.fn{color:#4a564f;font-size:13.5px;margin-top:3px}.fcve{font:12px ui-monospace,monospace;color:#b4531a;margin-top:4px}"+
+     ".fbody{min-width:0;flex:1}.fh{font-weight:600;font-size:14.5px}.fn{color:#4a564f;font-size:13.5px;margin-top:3px}.fcve{font:12px ui-monospace,monospace;color:#b4531a;margin-top:4px}"+
      ".notice{background:#f4f7f4;border:1px solid #e2e8e2;border-radius:10px;padding:12px 14px;font-size:13px;color:#44524b;margin-top:16px}"+
      "footer{padding:20px 30px;color:#7b857e;font-size:12px;border-top:1px solid #eef1ee;text-align:center}"+
      "@media print{body{background:#fff}.wrap{box-shadow:none}}</style></head><body><div class='wrap'>"+
