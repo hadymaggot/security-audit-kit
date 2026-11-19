@@ -56,7 +56,7 @@
  .topbar .sp{margin-left:auto}
 
  .stage{position:relative;z-index:2;flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(0,640px) 0fr;justify-content:center;align-items:center;gap:0;padding:0 1.2rem 1.3rem;transition:grid-template-columns .5s cubic-bezier(.4,0,.2,1),gap .5s ease}
- .stage.scanning{grid-template-columns:minmax(0,720px) minmax(0,560px);gap:1.4rem;align-items:stretch}
+ .stage.scanning{grid-template-columns:minmax(0,720px) minmax(0,560px);gap:1.4rem;align-items:stretch;align-content:center}
  /* saat split: kartu dan terminal sama tinggi, sejajar */
  /* saat split: tinggi kartu mengikuti isi; terminal menyamai (stretch) — kartu tak perlu scroll */
  .stage.scanning .card{max-height:100%}
@@ -94,7 +94,7 @@
  .scanpanel{min-width:0;width:100%;overflow:hidden;opacity:0;transform:translateX(26px);pointer-events:none;
    transition:opacity .4s ease,transform .4s ease}
  .stage.scanning .scanpanel{opacity:1;transform:none;pointer-events:auto}
- .termcard{display:flex;flex-direction:column;height:100%;min-height:360px;max-height:84vh;background-color:var(--terminal-bg);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+ .termcard{display:flex;flex-direction:column;height:100%;min-height:0;background-color:var(--terminal-bg);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5)}
  .terminal-header{display:flex;align-items:center;background-color:rgba(60,60,60,.6);padding:.5rem 1rem;border-bottom:1px solid rgba(122,197,90,.3)}
  .terminal-buttons{display:flex;gap:.4rem;align-items:center} .term-btn{width:12px;height:12px;border-radius:50%}
  .red{background:#ff5f56}.yellow{background:#ffbd2e}.green{background:#27c93f}
