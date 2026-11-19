@@ -82,3 +82,11 @@ forged_headers:
     X-Auth-User-Id: "1"
   endpoints:
     - { method: GET, path: "/api/users" }
+
+# Bukti screenshot (opsional, default off). Bila diaktifkan, setiap temuan broken-access
+# (role tak berwenang menerima HTTP 2xx pada GET) ditangkap sebagai PNG via Chromium
+# headless memakai header/cookie role tsb, lalu disematkan di laporan & slide.
+# Butuh: pip install playwright && python -m playwright install chromium (graceful bila absen).
+screenshot:
+  enabled: false
+  full_page: false

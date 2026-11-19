@@ -119,25 +119,18 @@ BROWSER_PROBE_JS = """async (u) => {
 
 
 def _capture_shot(page, bc, reports_dir, p):
-    """Tangkap screenshot bukti (default viewport; crop opsional via selector/clip/
-    full_page). Kembalikan path relatif terhadap reports_dir, atau '' bila gagal."""
+    """Tangkap screenshot bukti via helper reusable tests/_screenshot.py.
+    Kembalikan path relatif terhadap reports_dir, atau '' bila gagal/dinonaktifkan."""
     if not reports_dir or not bc.get("screenshot", True):
         return ""
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     try:
-        ssdir = Path(reports_dir) / "evidence"
-        ssdir.mkdir(parents=True, exist_ok=True)
-        fn = "cache_" + (re.sub(r"[^A-Za-z0-9]+", "_", p).strip("_")[:40] or "root") + ".png"
-        fpath = ssdir / fn
-        sel = bc.get("selector")
-        if sel:                                   # crop ke elemen tertentu
-            page.locator(sel).first.screenshot(path=str(fpath))
-        elif bc.get("clip"):                      # crop ke region x/y/width/height
-            page.screenshot(path=str(fpath), clip=bc["clip"])
-        else:                                     # viewport (default) atau full_page
-            page.screenshot(path=str(fpath), full_page=bool(bc.get("full_page")))
-        return "evidence/" + fn
-    except Exception:  # noqa: BLE001
+        import _screenshot
+    except ImportError:
         return ""
+    return _screenshot.capture_page(page, reports_dir, p, prefix="cache",
+                                    selector=bc.get("selector"), clip=bc.get("clip"),
+                                    full_page=bc.get("full_page"))
 
 
 def check_browser_cache(cfg, base, paths, reports_dir=None):

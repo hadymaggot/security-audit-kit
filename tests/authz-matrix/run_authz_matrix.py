@@ -25,6 +25,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import _sanctum  # noqa: E402  (helper auth Sanctum lintas-modul di tests/)
+import _screenshot  # noqa: E402  (helper screenshot bukti lintas-modul di tests/)
 
 ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 
@@ -130,6 +131,20 @@ def classify(expected, status):
     return False, f"harapan tak dikenal '{expected}'"
 
 
+def _evidence_shot(shot_cfg, reports_dir, sess_obj, method, full_url, extra_headers, tag):
+    """Tangkap bukti screenshot halaman yang tembus (gated + graceful). Return path / ''."""
+    if not (shot_cfg.get("enabled") and reports_dir and (method or "GET").upper() == "GET"):
+        return ""
+    headers = dict(extra_headers or {})
+    if getattr(sess_obj, "bearer", None):
+        headers.setdefault("Authorization", f"Bearer {sess_obj.bearer}")
+    cookies = _screenshot.cookies_from_requests(getattr(sess_obj, "sess", None), full_url) \
+        if getattr(sess_obj, "sess", None) else []
+    return _screenshot.capture_url(full_url, reports_dir, tag, prefix="authz",
+                                   headers=headers, cookies=cookies,
+                                   full_page=bool(shot_cfg.get("full_page")))
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="authz_matrix.yml")
@@ -143,6 +158,10 @@ def main():
     auth = cfg["auth"]
     mode = auth.get("mode", "bearer")
     sanctum = auth.get("sanctum")  # opsional; dipakai saat mode session_cookie
+    # Bukti screenshot (opsional, default off): tangkap halaman yang TEMBUS oleh role tak
+    # berwenang via Chromium headless. Graceful bila Playwright/Chromium tak terpasang.
+    shot_cfg = cfg.get("screenshot") or {}
+    reports_dir = str(Path(args.json).resolve().parent) if args.json else None
 
     # Login semua role lebih dulu.
     sessions = {}
@@ -176,10 +195,14 @@ def main():
             if not ok:
                 failures += 1
             full = (ep.get("base_url") or base_url).rstrip("/") + ep["path"]
+            shot = ""
+            if not ok and isinstance(status, int) and 200 <= status < 300:
+                shot = _evidence_shot(shot_cfg, reports_dir, s, ep.get("method", "GET"),
+                                      full, None, f"{role}_{ep['name']}")
             results.append({
                 "endpoint": ep["name"], "role": role, "expected": expected,
                 "status": status, "ok": ok, "note": note,
-                "url": f"{ep.get('method', 'GET')} {full}",
+                "url": f"{ep.get('method', 'GET')} {full}", "screenshot": shot,
             })
 
     # Uji header palsu. Satu blok atau daftar blok — mis. lewat gateway sebagai role
@@ -201,11 +224,15 @@ def main():
             full = (base or base_url).rstrip("/") + ep["path"]
             target = f"{base.rstrip('/')}{ep['path']}" if base else ep["path"]
             inj = ",".join(sorted(fh.get("inject", {}))) or "-"
+            shot = ""
+            if not ok and isinstance(status, int) and 200 <= status < 300:
+                shot = _evidence_shot(shot_cfg, reports_dir, s, ep.get("method", "GET"),
+                                      full, fh.get("inject"), f"forged_{fh['as_role']}")
             results.append({
                 "endpoint": f"[forged] {target}", "role": fh["as_role"],
                 "expected": "deny", "status": status, "ok": ok,
                 "note": "" if ok else "HEADER PALSU TEMBUS — X-Auth-* klien dipercaya",
-                "url": f"{ep.get('method', 'GET')} {full}  (inject: {inj})",
+                "url": f"{ep.get('method', 'GET')} {full}  (inject: {inj})", "screenshot": shot,
             })
 
     # Laporan.
