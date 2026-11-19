@@ -19,3 +19,14 @@ header_probe_path: "/"
 
 # Direktori repo kode (untuk scanner statis: trivy, semgrep, gitleaks).
 code_path: "."
+
+# Jaringan Docker untuk scanner berbasis container (ZAP, testssl) — OPSIONAL.
+# Perlu bila target hanya terjangkau dari jaringan tertentu, terutama target `localhost`:
+# di dalam container, `localhost` menunjuk ke container itu sendiri (Connection refused).
+# Nilai:
+#   "host"                 jaringan host (Docker Desktop: aktifkan host networking)
+#   "<nama-jaringan>"      bergabung ke jaringan Docker tertentu (mis. jaringan compose)
+#   "container:<nama>"     berbagi network namespace container lain (mis. gateway/proxy
+#                          yang melayani base_url) -> `localhost` = container tsb.
+# Contoh (target di balik Traefik pada localhost:18880):
+# docker_network: "container:app-traefik-1"

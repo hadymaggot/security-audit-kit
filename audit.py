@@ -58,6 +58,20 @@ def load_targets():
         return expand(yaml.safe_load(f))
 
 
+def docker_net_args(tgt):
+    """Argumen `--network` untuk `docker run` dari 'docker_network' di targets.yml.
+
+    Berguna saat target hanya terjangkau dari jaringan Docker tertentu — mis. target
+    `localhost` (yang di dalam container menunjuk ke container itu sendiri). Nilai:
+      "host"                  -> jaringan host
+      "<nama-jaringan>"       -> bergabung ke jaringan Docker tsb (mis. compose)
+      "container:<nama>"      -> berbagi network namespace container lain (mis. gateway/
+                                 reverse proxy) sehingga `localhost` = container itu.
+    Kosong/tidak diset -> tanpa --network (perilaku bawaan)."""
+    net = str((tgt or {}).get("docker_network") or "").strip()
+    return ["--network", net] if net else []
+
+
 def have_docker():
     if shutil.which("docker") is None:
         print("Docker tidak ditemukan di PATH — modul scanner butuh Docker.", file=sys.stderr)
@@ -91,7 +105,8 @@ def mod_zap(tgt, sub="baseline"):
         return 2
     image = os.environ.get("ZAP_IMAGE", "ghcr.io/zaproxy/zaproxy:stable")
     out = dockervol(reports_dir())
-    base = ["docker", "run", "--rm", "-v", f"{out}:/zap/wrk:rw", image]
+    base = (["docker", "run", "--rm"] + docker_net_args(tgt)
+            + ["-v", f"{out}:/zap/wrk:rw", image])
     extra = []
     hdr = os.environ.get("ZAP_AUTH_HEADER")  # mis. "Authorization: Bearer xxx"
     if hdr:
@@ -126,7 +141,8 @@ def mod_tls(tgt):
     if not have_docker():
         return 2
     out = dockervol(reports_dir())
-    return run(["docker", "run", "--rm", "-v", f"{out}:/out",
+    return run(["docker", "run", "--rm"] + docker_net_args(tgt)
+               + ["-v", f"{out}:/out",
                 "drwetter/testssl.sh:latest", "--protocols", "--vulnerable",
                 "--severity", "HIGH", "--jsonfile", "/out/testssl.json",
                 tgt["tls_host"]])
