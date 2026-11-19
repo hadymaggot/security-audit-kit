@@ -1,0 +1,16 @@
+{
+  // Open scanner (pasif) untuk Security Audit Kit. Deploy: lihat worker/README.md.
+  "name": "security-audit-kit-scanner",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-19",
+  "observability": { "enabled": true, "head_sampling_rate": 1 },
+  // Rate-limit counter. Buat dulu: `wrangler kv namespace create RL`, lalu tempel id-nya.
+  "kv_namespaces": [
+    { "binding": "RL", "id": "GANTI_DENGAN_KV_ID" }
+  ],
+  "vars": {
+    // Origin Pages yang boleh memanggil Worker (CORS). Ganti sesuai situs Anda.
+    "ALLOW_ORIGIN": "https://hadymaggot.github.io",
+    "RATE_PER_MIN": "10"
+  }
+}

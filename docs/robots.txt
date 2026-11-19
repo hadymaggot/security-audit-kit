@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://hadymaggot.github.io/security-audit-kit/sitemap.xml

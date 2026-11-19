@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+title: Security Audit Kit
+message: "Jika Anda menggunakan toolkit ini, mohon sitasi seperti berikut."
+type: software
+authors:
+  - alias: hadymaggot
+repository-code: "https://github.com/hadymaggot/security-audit-kit"
+url: "https://hadymaggot.github.io/security-audit-kit/"
+abstract: >-
+  Toolkit otomatisasi security testing web/API lintas sistem operasi dan berbasis
+  konfigurasi (DAST + SCA), non-destruktif dengan rollback otomatis, dengan laporan
+  berstandar konsultan IT security.
+keywords:
+  - security audit
+  - DAST
+  - SCA
+  - OWASP
+  - pentest
+  - web security
+  - api security
+license: Apache-2.0
+version: "1.0.0"
