@@ -1,3 +1,5 @@
+**🇮🇩 Indonesia** · [🇬🇧 English](CODE_OF_CONDUCT.en.md) · [🇩🇪 Deutsch](CODE_OF_CONDUCT.de.md)
+
 # Kode Etik Kontributor
 
 ## Ikrar Kami

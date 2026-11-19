@@ -1,3 +1,5 @@
+**🇮🇩 Indonesia** · [🇬🇧 English](temuan-to-test-mapping.en.md) · [🇩🇪 Deutsch](temuan-to-test-mapping.de.md)
+
 # Menerjemahkan laporan pentest menjadi test
 
 Cara menggunakan kit ini untuk "mengunci" temuan dari sebuah laporan pentest (misalnya dari

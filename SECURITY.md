@@ -1,3 +1,5 @@
+**🇮🇩 Indonesia** · [🇬🇧 English](SECURITY.en.md) · [🇩🇪 Deutsch](SECURITY.de.md)
+
 # Kebijakan Keamanan
 
 Terima kasih sudah membantu menjaga keamanan **Security Audit Kit**.
