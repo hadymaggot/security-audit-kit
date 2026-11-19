@@ -232,11 +232,64 @@ def mod_report():
     return run([sys.executable, str(ROOT / "report.py")])
 
 
+def mod_rollback():
+    """Pulihkan otomatis semua aksi destruktif yang tercatat di jurnal rollback.
+
+    Dijalankan sebagai fase TERAKHIR (setelah laporan) supaya target kembali ke
+    keadaan semula — 'rasa non-destruktif'. Juga bisa dipanggil manual:
+    `python audit.py rollback`.
+    """
+    import importlib.util
+
+    sys.path.insert(0, str(ROOT / "tests"))
+    import _rollback  # noqa: E402
+    import _sanctum  # noqa: E402
+
+    reports = reports_dir()
+    if not _rollback.pending(reports):
+        return 0
+    # Auth memakai config modul destruktif (mass-assignment satu-satunya saat ini).
+    cfg_path = ROOT / "tests" / "mass-assignment" / "mass_assignment.yml"
+    if not cfg_path.exists():
+        print("Jurnal rollback ada tapi config auth tak ditemukan — pulihkan manual.",
+              file=sys.stderr)
+        return 2
+    spec = importlib.util.spec_from_file_location(
+        "run_mass_assignment", ROOT / "tests" / "mass-assignment" / "run_mass_assignment.py")
+    ma = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ma)
+    import yaml
+    with open(cfg_path, encoding="utf-8") as f:
+        cfg = ma.expand(yaml.safe_load(f))
+    base = cfg["base_url"].rstrip("/")
+    sess, sanctum = ma.build_session(base, cfg.get("auth") or {})
+
+    def headers():
+        return _sanctum.auth_headers(sess, sanctum.get("origin")) if sanctum else {}
+
+    def do_restore(entry):
+        a = entry["action"]
+        url = (a.get("base_url") or base).rstrip("/") + a["path"]
+        r = sess.request(a.get("method", "PATCH"), url, json=a.get("json"),
+                         headers=headers(), timeout=20)
+        ok = 200 <= r.status_code < 400
+        return ok, ("dipulihkan" if ok else f"HTTP {r.status_code} — pulihkan manual")
+
+    print("== Rollback (memulihkan keadaan target) ==")
+    res = _rollback.replay(reports, do_restore)
+    gagal = sum(1 for r in res if not r["ok"])
+    for r in res:
+        print(f"  {'ok ' if r['ok'] else 'XX '}{r['label']}  {r['note']}")
+    print(f"{len(res) - gagal}/{len(res)} dipulihkan.")
+    return 1 if gagal else 0
+
+
 def main():
     ap = argparse.ArgumentParser(description="Security Audit Kit — lintas-platform")
     ap.add_argument("module", choices=["all", "zap", "tls", "headers", "deps",
                                        "authz", "upload", "auth-policy", "clientleak",
-                                       "cors", "open-redirect", "report"])
+                                       "cors", "open-redirect", "mass-assignment",
+                                       "rollback", "report"])
     ap.add_argument("sub", nargs="?", default="baseline",
                     help="subperintah untuk 'zap': baseline|api|full")
     args = ap.parse_args()
@@ -280,6 +333,15 @@ def main():
                     ROOT / "tests" / "open-redirect" / "open_redirect.yml", "open_redirect.json")
         mod_report()
         return rc
+    if args.module == "mass-assignment":
+        rc = mod_py(ROOT / "tests" / "mass-assignment" / "run_mass_assignment.py",
+                    ROOT / "tests" / "mass-assignment" / "mass_assignment.yml",
+                    "mass_assignment.json")
+        mod_report()
+        mod_rollback()          # fase terakhir: pulihkan keadaan target.
+        return rc
+    if args.module == "rollback":
+        return mod_rollback()
     if args.module == "report":
         return mod_report()
     if args.module == "all":
@@ -295,10 +357,12 @@ def main():
             (ROOT / "tests/client-leak/run_client_leak.py", ROOT / "tests/client-leak/client_leak.yml", "client_leak.json"),
             (ROOT / "tests/cors/run_cors.py", ROOT / "tests/cors/cors.yml", "cors.json"),
             (ROOT / "tests/open-redirect/run_open_redirect.py", ROOT / "tests/open-redirect/open_redirect.yml", "open_redirect.json"),
+            (ROOT / "tests/mass-assignment/run_mass_assignment.py", ROOT / "tests/mass-assignment/mass_assignment.yml", "mass_assignment.json"),
         ):
             if cfg.exists():
                 rc |= mod_py(script, cfg, jn)
         mod_report()
+        mod_rollback()          # fase terakhir: pulihkan aksi destruktif ke semula.
         return rc
     return 2
 

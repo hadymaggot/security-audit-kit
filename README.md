@@ -18,6 +18,7 @@ solusinya, dan rujukan ke OWASP/BSSN.
 | `clientleak` | Cache response sensitif, secret/endpoint yang nyangkut di bundle JS & HTML, source map, file kebuka (`.env`, `.git/`, dump, backup) — tetap jalan walau app-nya nggak pakai JS |
 | `upload` | Nolak file upload berbahaya: PDF ber-JS, polyglot, double extension, kegedean |
 | `auth-policy` | Kekuatan password, captcha harus regenerate tiap gagal |
+| `mass-assignment` | Mass assignment / privilege escalation (BOPLA): nyuntik field terlarang (`role`, `is_admin`, `company_id`) ke objek milik sendiri. **Destruktif tapi reversibel** — tiap tulisan dicatat ke jurnal & dipulihkan otomatis setelah laporan (`audit.py rollback` buat replay) |
 | `cors` | CORS misconfiguration: reflected origin, wildcard+credentials, Origin `null` diterima |
 | `open-redirect` | Parameter pengalih (`next`/`url`/`redirect`/…) yang mengarah ke host luar |
 | `tls` / `headers` | Protokol/cipher TLS usang, security header yang kurang atau malah bocorin info |
@@ -62,6 +63,15 @@ Makefile, audit.ps1 wrapper perintah pendek per-OS
 Lebih detail ada di [docs/metodologi.md](docs/metodologi.md) dan
 [docs/temuan-to-test-mapping.md](docs/temuan-to-test-mapping.md). Contoh bentuk
 laporan akhir: [docs/contoh-laporan.md](docs/contoh-laporan.md).
+
+## Dokumentasi
+
+| Dokumen | Isi |
+|---|---|
+| [docs/metodologi.md](docs/metodologi.md) | Metodologi uji & acuan standar (OWASP, ASVS, Risk Rating) |
+| [docs/temuan-to-test-mapping.md](docs/temuan-to-test-mapping.md) | Nerjemahin temuan laporan pentest jadi kasus uji per modul |
+| [docs/contoh-laporan.md](docs/contoh-laporan.md) · [contoh-laporan.html](docs/contoh-laporan.html) | Contoh output laporan (data fiktif) — gaya ZAP, bukti endpoint, kontrol LULUS |
+| [CONTRIBUTING.md](CONTRIBUTING.md) · [SECURITY.md](SECURITY.md) · [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) | Kontribusi, kebijakan keamanan, kode etik |
 
 ## Kontribusi
 

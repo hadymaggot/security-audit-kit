@@ -135,6 +135,27 @@ KB = {
         "referensi": ["OWASP A05:2021 Security Misconfiguration",
                       "OWASP Secure Headers Project"],
     },
+    "mass-assignment": {
+        "deskripsi": "Server menerima field yang tidak semestinya boleh diubah klien "
+                     "(mis. role, is_admin, company_id, status) saat membuat/memperbarui "
+                     "objek — mass assignment / otorisasi level-properti objek yang rusak.",
+        "dampak": "Eskalasi hak atau manipulasi data: pengguna biasa menaikkan diri jadi "
+                  "admin, pindah tenant, atau mengubah kepemilikan objek hanya dengan "
+                  "menambah satu field pada request.",
+        "severity": "High",
+        "severity_dasar": "Likelihood sedang (cukup tambah field di body) x Impact tinggi "
+                          "(eskalasi hak / integritas data).",
+        "rekomendasi": [
+            "Pakai allowlist field yang boleh di-assign; jangan mass-assign seluruh input.",
+            "    // Laravel: batasi via $fillable + FormRequest->validated(),\n"
+            "    // JANGAN Model::update($request->all()).",
+            "Pisahkan field yang hanya boleh diubah admin; tolak/abaikan field istimewa "
+            "dari peran non-admin.",
+            "Terapkan otorisasi per-properti (BOPLA), bukan hanya per-objek.",
+        ],
+        "referensi": ["OWASP API3:2023 Broken Object Property Level Authorization",
+                      "CWE-915 Improperly Controlled Modification of Object Attributes"],
+    },
     "tls-weak": {
         "deskripsi": "Server menerima protokol/cipher TLS usang.",
         "dampak": "Komunikasi berpotensi didekripsi (downgrade/known attacks).",
@@ -307,6 +328,8 @@ def classify(modul: str, judul: str) -> str:
         return "broken-access"
     if modul == "upload-safety":
         return "upload-accepted"
+    if modul == "mass-assignment":
+        return "mass-assignment"
     if modul == "auth-policy":
         if "captcha" in j:
             return "captcha-static"

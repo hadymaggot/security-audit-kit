@@ -14,6 +14,7 @@ kasusnya.
 | SQL Injection | `zap api` + verifikasi | Kasih OpenAPI; review alert ZAP, pastiin true positive |
 | Stored/Reflected XSS | `zap` + `upload` | Scan; kalau XSS lewat upload pakai modul upload |
 | Upload berbahaya (JS di PDF, polyglot, ekstensi ganda, oversize) | `upload` | Udah kecover; sesuaikan `allow_only`/`max_bytes`, pakai `endpoint.data` buat field wajib, dan isi `cleanup` biar berkas uji yang keterima otomatis kehapus |
+| Mass assignment / privilege escalation (BOPLA) | `mass-assignment` | Isi `targets` (get/update/inject/fields). DESTRUKTIF tapi reversibel: tiap tulisan dicatat ke jurnal & dipulihkan otomatis setelah laporan (`audit.py rollback` buat replay manual) |
 | Weak Password Policy | `auth-policy` | Isi `register` atau `password_checks` + `weak_passwords`; tambah `strong_password` sbg kontrol. Cuma 422 di field sandi yang dianggap ketolak |
 | Improper Captcha | `auth-policy` | Isi blok `captcha` |
 | CORS misconfiguration | `cors` | Isi `paths`; cek ACAO reflektif / wildcard+creds / origin null |
