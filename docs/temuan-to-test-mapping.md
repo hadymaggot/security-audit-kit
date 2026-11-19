@@ -13,8 +13,8 @@ kasusnya.
 | Service microservice terekspos langsung (bypass gateway/ForwardAuth) | `authz` | Endpoint dengan `base_url` port service + `expect: { anon: deny }`, dan blok `forged_headers` `as_role: anon` ke port itu (lihat `authz_matrix.traefik-sanctum.example.yml`) |
 | SQL Injection | `zap api` + verifikasi | Kasih OpenAPI; review alert ZAP, pastiin true positive |
 | Stored/Reflected XSS | `zap` + `upload` | Scan; kalau XSS lewat upload pakai modul upload |
-| Upload berbahaya (JS di PDF, polyglot) | `upload` | Udah kecover; sesuaikan `allow_only` & `max_bytes` |
-| Weak Password Policy | `auth-policy` | Isi `register` + `weak_passwords` |
+| Upload berbahaya (JS di PDF, polyglot, ekstensi ganda, oversize) | `upload` | Udah kecover; sesuaikan `allow_only`/`max_bytes`, pakai `endpoint.data` buat field wajib, dan isi `cleanup` biar berkas uji yang keterima otomatis kehapus |
+| Weak Password Policy | `auth-policy` | Isi `register` atau `password_checks` + `weak_passwords`; tambah `strong_password` sbg kontrol. Cuma 422 di field sandi yang dianggap ketolak |
 | Improper Captcha | `auth-policy` | Isi blok `captcha` |
 | CORS misconfiguration | `cors` | Isi `paths`; cek ACAO reflektif / wildcard+creds / origin null |
 | Open redirect | `open-redirect` | Isi `paths` + `params`; cek Location ke host luar |

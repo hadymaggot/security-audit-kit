@@ -53,6 +53,23 @@ PDF_WITH_JS = (
 )
 HTML_AS_PDF = b"<html><body><script>/*probe*/</script></body></html>"
 SVG_FILE = b'<svg xmlns="http://www.w3.org/2000/svg"><text>probe</text></svg>'
+# Polyglot: header GIF valid + penanda kode server — menguji apakah validasi hanya
+# melihat magic byte. Penanda tak dieksekusi apa pun.
+POLYGLOT_GIF_PHP = b"GIF89a\x01\x00\x01\x00\x00\x00\x00;<?php /*probe*/ ?>"
+PDF_OK = b"%PDF-1.3\n%%EOF\n"
+TRAVERSAL = "Nama file path traversal"
+
+
+def sanitized(case, resp):
+    """Kasus nama berkas: diterima tapi nama tersimpan bersih = aman (tolak ATAU sanitasi)."""
+    return case == TRAVERSAL and b".." not in (resp.content or b"")
+
+
+def dig(obj, dotted):
+    """Ambil nilai bersarang via 'a.b.c'."""
+    for part in dotted.split("."):
+        obj = obj.get(part) if isinstance(obj, dict) else None
+    return obj
 
 
 def build_cases(cfg):
@@ -62,15 +79,39 @@ def build_cases(cfg):
         ("HTML dengan ekstensi .pdf", "a.pdf", HTML_AS_PDF, "application/pdf", True),
         ("SVG (bisa bawa skrip)", "a.svg", SVG_FILE, "image/svg+xml", True),
         ("Ekstensi ganda", "a.pdf.html", HTML_AS_PDF, "text/html", True),
-        ("Nama file path traversal", "../../a.pdf", b"%PDF-1.3\n%%EOF\n", "application/pdf", True),
+        ("Ekstensi ganda berakhir .php", "a.pdf.php", PDF_OK, "application/pdf", True),
+        ("Polyglot GIF+PHP", "a.pdf", POLYGLOT_GIF_PHP, "application/pdf", True),
+        (TRAVERSAL, "../../a.pdf", PDF_OK, "application/pdf", True),
     ]
     mx = cfg.get("max_bytes")
     if mx:
         big = b"%PDF-1.3\n" + b"0" * (int(mx) + 1024) + b"\n%%EOF\n"
         cases.append(("Melebihi batas ukuran", "big.pdf", big, "application/pdf", True))
     # Kontrol positif: file sah harus DITERIMA (memastikan uji tak selalu "tolak").
-    cases.append(("PDF sah (kontrol)", "ok.pdf", b"%PDF-1.3\n%%EOF\n", "application/pdf", False))
+    cases.append(("PDF sah (kontrol)", "ok.pdf", PDF_OK, "application/pdf", False))
     return cases
+
+
+def cleanup_accepted(sess, base, cleanup, resp, headers):
+    """Hapus berkas uji yang terlanjur diterima. Kembalikan catatan singkat.
+
+    `cleanup`: {method, path (berisi {id}), id_field (dotted di respons JSON)}.
+    """
+    try:
+        file_id = dig(resp.json(), cleanup.get("id_field", "id"))
+    except ValueError:
+        file_id = None
+    if not file_id:
+        return "cleanup: id tak ditemukan di respons — hapus manual"
+    path = cleanup["path"].replace("{id}", str(file_id))
+    try:
+        r = sess.request(cleanup.get("method", "DELETE"), base + path,
+                         headers=headers, timeout=20)
+    except Exception as exc:  # noqa: BLE001
+        return f"cleanup gagal ({exc}) — hapus manual id {file_id}"
+    if 200 <= r.status_code < 300:
+        return f"cleanup ok (id {file_id})"
+    return f"cleanup HTTP {r.status_code} — hapus manual id {file_id}"
 
 
 def main():
@@ -113,10 +154,12 @@ def main():
     results = []
     print(f"{'KASUS':<34} {'HTTP':>5}  HASIL")
     print("-" * 70)
+    form = ep.get("data") or {}         # field form tambahan, mis. jenis dokumen
+    cleanup = cfg.get("cleanup")        # hapus berkas uji yang terlanjur diterima
     for name, fname, content, ctype, should_reject in build_cases(cfg):
         files = {ep.get("field", "file"): (fname, io.BytesIO(content), ctype)}
         try:
-            r = sess.post(url, files=files, headers=req_headers(), timeout=20)
+            r = sess.post(url, files=files, data=form, headers=req_headers(), timeout=20)
             status = r.status_code
         except Exception as exc:  # noqa: BLE001
             print(f"{name:<34} {'-':>5}  galat: {exc}")
@@ -125,13 +168,18 @@ def main():
             continue
         accepted = 200 <= status < 300
         ok = (not accepted) if should_reject else accepted
+        clean = accepted and should_reject and sanitized(name, r)
+        ok = ok or clean
         if not ok:
             failures += 1
         verdict = "ok" if ok else ("XX DITERIMA padahal harus ditolak" if should_reject
                                    else "XX ditolak padahal file sah")
-        print(f"{name:<34} {status:>5}  {verdict}")
-        results.append({"case": name, "status": status, "ok": ok,
-                        "note": "" if ok else verdict})
+        note = "diterima, nama berkas disanitasi" if clean else ("" if ok else verdict)
+        if accepted and cleanup:
+            done = cleanup_accepted(sess, base, cleanup, r, req_headers())
+            note = f"{note}; {done}" if note else done
+        print(f"{name:<34} {status:>5}  {verdict}" + (f"  [{note}]" if accepted and cleanup else ""))
+        results.append({"case": name, "status": status, "ok": ok, "note": note})
 
     print(f"\n{failures} gagal.")
     if args.json:
