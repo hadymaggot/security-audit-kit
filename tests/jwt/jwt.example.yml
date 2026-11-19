@@ -1,0 +1,24 @@
+# Salin ke jwt.yml. Hanya untuk API yang memakai JWT. Token diambil dari login yang sah (atau env var);
+# probe pemalsuan hanya memanggil endpoint GET terlindungi yang Anda tentukan.
+base_url: "${TARGET_BASE_URL}"
+
+# Sumber token — pilih salah satu.
+login:
+  method: POST
+  path: "/api/login"
+  body: { email: "${JWT_USER}", password: "${JWT_PASS}" }
+  token_path: "data.token"          # lokasi token di respons JSON
+# token: "${JWT_TOKEN}"            # atau token langsung dari environment variable
+
+# Endpoint terlindungi yang menerima token (harus 2xx untuk token asli).
+protected: { method: GET, path: "/api/me" }
+
+# Cara token dikirim.
+auth_header: "Authorization"
+auth_prefix: "Bearer "
+# cookie: "token"                  # bila token dikirim lewat cookie, bukan header
+
+# Batas umur token yang wajar (jam) dan kamus tambahan untuk uji secret HS lemah (offline).
+max_lifetime_hours: 24
+# weak_secrets: ["nama-perusahaan", "app-key-lama"]
+# wordlist_file: "wordlist.txt"

@@ -331,7 +331,7 @@ def main():
     ap.add_argument("module", choices=["all", "zap", "tls", "headers", "deps",
                                        "authz", "upload", "auth-policy", "clientleak",
                                        "cors", "open-redirect", "mass-assignment",
-                                       "webstack", "injection", "cookie-flags", "response-leak", "openapi-coverage", "ratelimit", "session-mgmt", "captcha", "recon", "rollback", "report"])
+                                       "webstack", "injection", "cookie-flags", "response-leak", "openapi-coverage", "ratelimit", "session-mgmt", "captcha", "jwt", "recon", "rollback", "report"])
     ap.add_argument("sub", nargs="?", default="baseline",
                     help="subperintah untuk 'zap': baseline|api|full")
     args = ap.parse_args()
@@ -383,6 +383,11 @@ def main():
     if args.module == "injection":
         rc = mod_py(ROOT / "tests" / "injection" / "run_injection.py",
                     ROOT / "tests" / "injection" / "injection.yml", "injection.json")
+        mod_report()
+        return rc
+    if args.module == "jwt":
+        rc = mod_py(ROOT / "tests" / "jwt" / "run_jwt.py",
+                    ROOT / "tests" / "jwt" / "jwt.yml", "jwt.json")
         mod_report()
         return rc
     if args.module == "captcha":
@@ -450,6 +455,7 @@ def main():
             (ROOT / "tests/ratelimit/run_ratelimit.py", ROOT / "tests/ratelimit/ratelimit.yml", "ratelimit.json"),
             (ROOT / "tests/session-mgmt/run_session_mgmt.py", ROOT / "tests/session-mgmt/session_mgmt.yml", "session_mgmt.json"),
             (ROOT / "tests/captcha/run_captcha.py", ROOT / "tests/captcha/captcha.yml", "captcha.json"),
+            (ROOT / "tests/jwt/run_jwt.py", ROOT / "tests/jwt/jwt.yml", "jwt.json"),
             (ROOT / "tests/mass-assignment/run_mass_assignment.py", ROOT / "tests/mass-assignment/mass_assignment.yml", "mass_assignment.json"),
             (ROOT / "tests/recon/run_recon.py", ROOT / "tests/recon/recon.yml", "recon.json"),
         ):

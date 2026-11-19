@@ -27,3 +27,4 @@ tests/*/openapi_coverage.yml
 tests/*/ratelimit.yml
 tests/*/session_mgmt.yml
 tests/*/captcha.yml
+tests/*/jwt.yml
