@@ -344,6 +344,29 @@ KB = {
         ],
         "referensi": ["OWASP ZAP", "OWASP Top 10 2021"],
     },
+    "cookie-flags": {
+        "deskripsi": "Cookie sesi/autentikasi tidak memakai atribut keamanan lengkap "
+                     "(HttpOnly, Secure, SameSite) atau berumur terlalu panjang.",
+        "dampak": "Tanpa HttpOnly, XSS dapat mencuri cookie sesi; tanpa Secure, cookie "
+                  "dapat bocor lewat HTTP biasa; tanpa SameSite, risiko CSRF meningkat.",
+        "severity": "Medium",
+        "severity_dasar": "Likelihood sedang (butuh XSS/jaringan tak aman/CSRF sebagai "
+                          "prasyarat) x Impact sedang-tinggi (pengambilalihan sesi).",
+        "rekomendasi": [
+            "Set HttpOnly pada seluruh cookie sesi/autentikasi (kecuali yang memang harus "
+            "dibaca SPA, mis. XSRF-TOKEN).",
+            "Set Secure dan sajikan situs hanya lewat HTTPS (aktifkan HSTS).",
+            "Set SameSite=Lax (atau Strict untuk sesi sensitif); gunakan None hanya bila "
+            "perlu lintas-situs dan wajib bersama Secure.",
+            "Contoh Laravel (config/session.php):",
+            "    'http_only' => true,\n    'secure' => env('SESSION_SECURE_COOKIE', true),\n"
+            "    'same_site' => 'lax',\n    'lifetime' => 120,   // menit",
+            "Pertimbangkan prefix __Host- untuk cookie sesi.",
+        ],
+        "referensi": ["OWASP A05:2021 Security Misconfiguration",
+                      "OWASP ASVS V3.4 Cookie-based Session Management",
+                      "OWASP Session Management Cheat Sheet", "CWE-1004, CWE-614, CWE-1275"],
+    },
     "recon-subdomain": {
         "deskripsi": "Aset/subdomain yang dapat ditemukan publik melalui OSINT "
                      "(subfinder/httpx), memperluas attack surface.",
@@ -458,6 +481,8 @@ def classify(modul: str, judul: str) -> str:
         return "cors-misconfig"
     if modul == "open-redirect":
         return "open-redirect"
+    if modul == "cookie-flags":
+        return "cookie-flags"
     if modul == "recon":
         if j.startswith("secret"):
             return "leaked-secret"

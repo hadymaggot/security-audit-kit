@@ -21,3 +21,4 @@ node_modules/
 worker/node_modules/
 .wrangler/
 tests/*/recon.yml
+tests/*/cookie_flags.yml
