@@ -1,0 +1,41 @@
+# Konfigurasi modul recon — salin ke recon.yml lalu sesuaikan.
+# Jalankan: python audit.py recon            (pakai nilai di file ini)
+#      atau: python audit.py recon contoh.example -m owasp --active
+#
+# Hanya untuk target yang Anda miliki/berwenang uji.
+
+# Target domain/host. Boleh dikosongkan bila base_url diisi (diturunkan dari host-nya).
+target: "contoh.example"
+base_url: "https://contoh.example"
+
+# Kedalaman fase:
+#   osint : subfinder -> dnsx -> httpx                 (non-intrusif)
+#   infra : + naabu (port scan)                        (AKTIF, lihat gating)
+#   full  : + nuclei (vuln scan)                       (AKTIF, lihat gating)
+depth: "infra"
+
+# Mode nuclei (hanya relevan pada depth full):
+#   fast | stealth | full | owasp
+mode: "fast"
+
+# Gating fase intrusif. SEMUA default off — port scan & nuclei tidak jalan
+# kecuali enabled:true DAN toggle tool-nya true (atau pakai flag --active di CLI).
+active:
+  enabled: false
+  naabu: false     # port scan
+  nuclei: false    # vuln scan
+  ffuf: false      # fuzzing (cadangan, belum dipakai)
+
+# Override nama/path binari bila tidak di PATH (opsional).
+tools:
+  subfinder: "subfinder"
+  dnsx: "dnsx"
+  httpx: "httpx"
+  naabu: "naabu"
+  nuclei: "nuclei"
+
+# Timeout per tool (detik).
+timeout: 600
+
+# API key sumber pasif subfinder (opsional) lewat environment variable, bukan di file:
+#   export PDCP_API_KEY=...   lalu rujuk sebagai ${PDCP_API_KEY} bila perlu.
