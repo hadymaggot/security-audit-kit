@@ -323,8 +323,14 @@ python audit.py all                                # scan + laporan</code></pre>
    });
  });
 
- var SEVC={critical:"#ff6b6b",high:"#ff8a3d",medium:"#ffcf5c",low:"#7AC55A",info:"#9bb39b",lulus:"#7AC55A",ok:"#7AC55A"};
- function sevLabel(s){s=(""+(s||"")).toLowerCase();return (s==="lulus"||s==="ok")?"OK":s.toUpperCase();}
+ var SEVC={critical:"#ff6b6b",high:"#ff8a3d",medium:"#ffcf5c",low:"#5aa9ff",info:"#9bb39b",lulus:"#7AC55A",ok:"#7AC55A"};
+ function sevLabel(s){s=(""+(s||"")).toLowerCase();return (s==="lulus"||s==="ok")?"PASS":s.toUpperCase();}
+ var BANNER=[
+   " ___  ___   _   _  _ _  _ ___ ___ ",
+   "/ __|/ __| /_\\ | \\| | \\| | __| _ \\",
+   "\\__ \\ (__ / _ \\| .` | .` | _||   /",
+   "|___/\\___/_/ \\_\\_|\\_|_|\\_|___|_|_\\"
+ ];
  var api = new URLSearchParams(location.search).get("api") || localStorage.getItem("sak_api") || "https://security-audit-kit-scanner.saptohadi.workers.dev";
  if(api) localStorage.setItem("sak_api", api);
  var stage=document.getElementById("stage");
@@ -343,8 +349,9 @@ python audit.py all                                # scan + laporan</code></pre>
    stage.classList.add("scanning"); stage.querySelector(".scanpanel").setAttribute("aria-hidden","false");
    if(!logEl().dataset.init){
      logEl().dataset.init="1";
-     out("Open Scanner (pasif) — pemeriksaan non-intrusif: security headers, cookie flags, CORS, banner-&gt;CVE.","mut");
-     out("Tidak mengirim payload serangan / menulis data. Uji hanya target yang Anda miliki/berwenang.","mut");
+     out("<span style='color:var(--primary)'>"+BANNER.map(esc).join("\n")+"</span>");
+     out("pasif &middot; non-intrusif &mdash; security headers, cookie flags, CORS, banner-&gt;CVE","mut");
+     out("uji hanya target yang Anda miliki/berwenang. tidak mengirim payload / menulis data.","mut");
      if(!api) out("backend belum diset — ketik: api https://...workers.dev","mut"); // URL disembunyikan saat aktif
      out("perintah: &lt;url&gt; · api &lt;url&gt; · clear · help","mut");
    }
@@ -389,7 +396,7 @@ python audit.py all                                # scan + laporan</code></pre>
      .catch(function(err){out("tidak bisa menghubungi backend ("+esc(api)+"): "+esc(err),"bad")}); // URL hanya muncul saat error
  }
  function genReport(data){
-   var SEVR={critical:"#e5484d",high:"#f76808",medium:"#ffb224",low:"#30a46c",info:"#8b8d98",lulus:"#30a46c",ok:"#30a46c"};
+   var SEVR={critical:"#e5484d",high:"#f76808",medium:"#e0b400",low:"#3b82f6",info:"#8b8d98",lulus:"#1f9d57",ok:"#1f9d57"};
    var ord={critical:0,high:1,medium:2,low:3,info:4,lulus:5,ok:5};
    var f=(data.findings||[]).slice(); var cnt={critical:0,high:0,medium:0,low:0,info:0,lulus:0};
    function key(x){return x.ok?"lulus":(x.severity||"info");}

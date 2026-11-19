@@ -69,7 +69,7 @@
  if (api) localStorage.setItem("sak_api", api);
  var SEV = {critical:"var(--c)",high:"var(--h)",medium:"var(--m)",low:"var(--l)",
             info:"var(--i)",lulus:"var(--ok)",ok:"var(--ok)"};
- function sevLabel(s){s=(""+(s||"")).toLowerCase();return (s==="lulus"||s==="ok")?"OK":s.toUpperCase();}
+ function sevLabel(s){s=(""+(s||"")).toLowerCase();return (s==="lulus"||s==="ok")?"PASS":s.toUpperCase();}
  var out = document.getElementById("out");
  document.getElementById("cfg").innerHTML = api
    ? ""
