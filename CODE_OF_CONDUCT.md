@@ -5,9 +5,8 @@
 Demi membangun lingkungan yang terbuka dan ramah, kami sebagai kontributor dan
 pengelola berjanji menjadikan partisipasi dalam proyek dan komunitas kami sebagai
 pengalaman yang bebas dari pelecehan untuk semua orang, tanpa memandang usia, ukuran
-tubuh, disabilitas, etnis, karakteristik seksual, tingkat pengalaman, pendidikan,
-status sosial-ekonomi, kebangsaan, penampilan, ras, agama, maupun identitas dan
-orientasi seksual.
+tubuh, disabilitas, etnis, tingkat pengalaman, pendidikan, status sosial-ekonomi,
+kebangsaan, penampilan, ras, maupun agama.
 
 ## Standar Kami
 
