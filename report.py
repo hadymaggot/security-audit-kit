@@ -93,6 +93,7 @@ def collect(d: Path):
                         ("injection.json", "injection"),
                         ("cookie_flags.json", "cookie-flags"),
                         ("response_leak.json", "response-leak"),
+                        ("openapi_coverage.json", "openapi-coverage"),
                         ("headers.json", "headers")):
         data = load(d / name)
         if not data:
@@ -109,7 +110,7 @@ def collect(d: Path):
             hint = None
             if modul == "client-leak":
                 hint = CLIENT_LEAK_KIND.get(r.get("kind"))
-            elif modul == "response-leak":
+            elif modul in ("response-leak", "openapi-coverage"):
                 hint = r.get("kind")
             elif modul == "headers":
                 hint = "missing-header"
@@ -231,6 +232,10 @@ KIND_LABEL = {
     "cors-misconfig": "CORS salah konfigurasi",
     "open-redirect": "Open redirect",
     "cookie-flags": "Atribut keamanan cookie tidak lengkap",
+    "auth-coverage-gap": "Endpoint terlindungi menurut spesifikasi namun terbuka tanpa login",
+    "unauthenticated-endpoint": "Endpoint terbuka tanpa autentikasi (perlu ditinjau)",
+    "spec-mismatch": "Spesifikasi OpenAPI tidak akurat terhadap perilaku nyata",
+    "anon-server-error": "Galat server (5xx) pada request anonim",
     "sensitive-data-exposure": "Data sensitif terekspos di respons API",
     "verbose-error": "Respons verbose/debug membocorkan detail implementasi",
     "internal-info-leak": "Alamat/hostname internal bocor di respons",
@@ -304,6 +309,10 @@ KIND_CVSS = {
     "recon-subdomain": (5.3, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"),
     "client-cache": (4.3, "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:L/I:N/A:N"),
     "cookie-flags": (4.2, "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:L/I:L/A:N"),
+    "auth-coverage-gap": (7.5, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"),
+    "unauthenticated-endpoint": (5.3, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"),
+    "spec-mismatch": (3.7, "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N"),
+    "anon-server-error": (5.3, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"),
     "sensitive-data-exposure": (7.5, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"),
     "verbose-error": (5.3, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"),
     "internal-info-leak": (3.7, "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N"),
