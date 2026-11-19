@@ -148,7 +148,7 @@ After `report` or `all`, the results are stored in:
 See example output at [contoh-laporan.md](contoh-laporan.md) /
 [contoh-laporan.html](contoh-laporan.html).
 
-The **Controls That Passed (LULUS)** section details the checks that were tested and
+The **Controls That Passed (PASS)** section details the checks that were tested and
 behaved correctly — evidence of test coverage, not a finding.
 
 ## 6. Rollback (destructive modules)

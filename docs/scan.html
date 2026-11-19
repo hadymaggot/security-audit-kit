@@ -64,11 +64,10 @@
 </main>
 <script>
  var WORKER_URL = "https://security-audit-kit-scanner.saptohadi.workers.dev";
- var api = new URLSearchParams(location.search).get("api") || WORKER_URL ||
-           localStorage.getItem("sak_api") || "";
- if (api) localStorage.setItem("sak_api", api);
+ var api = new URLSearchParams(location.search).get("api") || WORKER_URL;
  var SEV = {critical:"var(--c)",high:"var(--h)",medium:"var(--m)",low:"var(--l)",
-            info:"var(--i)",lulus:"var(--ok)"};
+            info:"var(--i)",lulus:"var(--ok)",ok:"var(--ok)"};
+ function sevLabel(s){s=(""+(s||"")).toLowerCase();return (s==="lulus"||s==="ok")?"PASS":s.toUpperCase();}
  var out = document.getElementById("out");
  document.getElementById("cfg").innerHTML = api
    ? ""
@@ -85,7 +84,7 @@
    f.forEach(function(x){
      var col = SEV[x.severity]||"#555";
      html += "<div class='finding' style='border-left-color:"+col+"'>"+
-       "<span class='badge' style='background:"+col+"'>"+esc((x.severity||"").toUpperCase())+"</span>"+
+       "<span class='badge' style='background:"+col+"'>"+esc(sevLabel(x.severity))+"</span>"+
        "<b>["+esc(x.module)+"] "+esc(x.check)+"</b>"+
        (x.note?" — "+esc(x.note):"")+
        (x.cve&&x.cve.length?" <span class='muted'>("+esc(x.cve.join(", "))+")</span>":"")+

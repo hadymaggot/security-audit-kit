@@ -182,7 +182,7 @@ Total alert: **6** · Total CVE: **2**.
   - Padukan dengan rate-limit dan lockout per-akun.
 - **Referensi:** OWASP A07:2021 Identification & Authentication Failures
 
-### Kontrol yang Lolos (LULUS: 12)
+### Kontrol yang Lolos (PASS: 12)
 
 Pemeriksaan yang diuji dan berperilaku benar (bukan temuan) — bukti cakupan uji.
 
