@@ -329,10 +329,10 @@ python audit.py all                                # scan + laporan</code></pre>
  var SEVC={critical:"#ff6b6b",high:"#ff8a3d",medium:"#ffcf5c",low:"#5aa9ff",info:"#9bb39b",lulus:"#7AC55A",ok:"#7AC55A"};
  function sevLabel(s){s=(""+(s||"")).toLowerCase();return (s==="lulus"||s==="ok")?"PASS":s.toUpperCase();}
  var BANNER=[
-   " ___  ___   _   _  _ _  _ ___ ___ ",
-   "/ __|/ __| /_\\ | \\| | \\| | __| _ \\",
-   "\\__ \\ (__ / _ \\| .` | .` | _||   /",
-   "|___/\\___/_/ \\_\\_|\\_|_|\\_|___|_|_\\"
+   "  ___  ___  ___  ___   _   _  _ _  _ ___ ___",
+   " / _ \\| _ \\/ __|/ __| /_\\ | \\| | \\| | __| _ \\",
+   "| (_) |  _/\\__ \\ (__ / _ \\| .` | .` | _||   /",
+   " \\___/|_|  |___/\\___/_/ \\_\\_|\\_|_|\\_|___|_|_\\"
  ];
  // backend tetap (Worker). ?api= hanya untuk self-host; tanpa override localStorage yang lengket.
  var api = new URLSearchParams(location.search).get("api") || "https://security-audit-kit-scanner.saptohadi.workers.dev";
@@ -353,6 +353,7 @@ python audit.py all                                # scan + laporan</code></pre>
    if(!logEl().dataset.init){
      logEl().dataset.init="1";
      out("<span style='color:var(--primary)'>"+BANNER.map(esc).join("\n")+"</span>");
+     out("<span style='font-size:10.5px;color:var(--secondary);opacity:.9'>by: Security Audit Kit — hadymaggot</span>");
      out("pasif &middot; non-intrusif &mdash; security headers, cookie flags, CORS, banner-&gt;CVE","mut");
      out("uji hanya target yang Anda miliki/berwenang. tidak mengirim payload / menulis data.","mut");
      out("perintah: &lt;url&gt; · clear · help","mut");
