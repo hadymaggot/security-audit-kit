@@ -323,7 +323,7 @@ def main():
     ap.add_argument("module", choices=["all", "zap", "tls", "headers", "deps",
                                        "authz", "upload", "auth-policy", "clientleak",
                                        "cors", "open-redirect", "mass-assignment",
-                                       "webstack", "injection", "cookie-flags", "recon", "rollback", "report"])
+                                       "webstack", "injection", "cookie-flags", "response-leak", "recon", "rollback", "report"])
     ap.add_argument("sub", nargs="?", default="baseline",
                     help="subperintah untuk 'zap': baseline|api|full")
     args = ap.parse_args()
@@ -377,6 +377,11 @@ def main():
                     ROOT / "tests" / "injection" / "injection.yml", "injection.json")
         mod_report()
         return rc
+    if args.module == "response-leak":
+        rc = mod_py(ROOT / "tests" / "response-leak" / "run_response_leak.py",
+                    ROOT / "tests" / "response-leak" / "response_leak.yml", "response_leak.json")
+        mod_report()
+        return rc
     if args.module == "cookie-flags":
         rc = mod_py(ROOT / "tests" / "cookie-flags" / "run_cookie_flags.py",
                     ROOT / "tests" / "cookie-flags" / "cookie_flags.yml", "cookie_flags.json")
@@ -409,6 +414,7 @@ def main():
             (ROOT / "tests/webstack/run_webstack.py", ROOT / "tests/webstack/webstack.yml", "webstack.json"),
             (ROOT / "tests/injection/run_injection.py", ROOT / "tests/injection/injection.yml", "injection.json"),
             (ROOT / "tests/cookie-flags/run_cookie_flags.py", ROOT / "tests/cookie-flags/cookie_flags.yml", "cookie_flags.json"),
+            (ROOT / "tests/response-leak/run_response_leak.py", ROOT / "tests/response-leak/response_leak.yml", "response_leak.json"),
             (ROOT / "tests/mass-assignment/run_mass_assignment.py", ROOT / "tests/mass-assignment/mass_assignment.yml", "mass_assignment.json"),
             (ROOT / "tests/recon/run_recon.py", ROOT / "tests/recon/recon.yml", "recon.json"),
         ):

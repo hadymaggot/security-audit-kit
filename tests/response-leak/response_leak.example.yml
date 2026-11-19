@@ -1,0 +1,28 @@
+# Salin ke response_leak.yml. PASIF: hanya GET. Nilai sensitif TIDAK pernah dicetak ke laporan
+# (hanya path kunci + panjang nilai).
+base_url: "${TARGET_BASE_URL}"
+
+# Opsional — login agar endpoint ber-autentikasi ikut diperiksa (kredensial via env var).
+# auth:
+#   sanctum: { enabled: true, csrf_path: "/sanctum/csrf-cookie", origin: "${TARGET_BASE_URL}" }
+#   login: { method: POST, path: "/api/login", body: { email: "${RL_USER}", password: "${RL_PASS}" } }
+#   # atau token statis:  header: "Authorization"  /  value: "${RL_TOKEN}"
+
+# Endpoint data (GET). Jangan masukkan endpoint login/token — respons token di sana wajar.
+endpoints:
+  - { name: "Profil sendiri", path: "/api/me" }
+  # - { name: "Daftar pengguna", path: "/api/users" }
+  # - { name: "Katalog publik", path: "/api/public/katalog", anonymous: true }   # tanpa sesi
+
+# Kunci yang diabaikan walau cocok pola sensitif (mis. nama kolom yang memang wajar).
+allow_keys: ["csrf_token", "captcha_token"]
+
+# Kunci tambahan yang dianggap sensitif (cocok persis, huruf kecil).
+# sensitive_keys: ["nik", "no_ktp"]
+
+# Probe error: path acak (404) otomatis dicek untuk halaman error verbose; tambahkan path lain.
+random_404_probe: true
+# error_probes: ["/api/users/bukan-id-valid"]
+
+# Periksa kebocoran alamat IP internal (RFC1918) di isi respons.
+check_internal_ips: true
