@@ -239,15 +239,23 @@ DEPS_TOOLS = ("gitleaks", "semgrep", "trivy")
 
 def semgrep_cmd(tgt, repo, out, name):
     """Perintah docker semgrep. targets.yml (opsional): semgrep_paths (subdirektori sumber yang
-    dipindai; default seluruh repo), semgrep_exclude (pola tambahan)."""
+    dipindai; default seluruh repo), semgrep_exclude (pola tambahan).
+
+    Sumber yang dipilih DISALIN (tar) ke filesystem container lalu dipindai di sana: memindai langsung
+    dari akar repo pada bind mount Windows sangat lambat (menit sampai tak selesai), sedangkan salin +
+    pindai satu direktori PHP ber-104 berkas hanya beberapa detik."""
+    import shlex
     excl = ["vendor", "node_modules", "dist", "build", "docs"] + list(tgt.get("semgrep_exclude", []))
-    cmd = ["docker", "run", "--rm", "--name", name, "-v", f"{repo}:/src:ro", "-v", f"{out}:/out",
-           "-w", "/src", "-e", "SEMGREP_SEND_METRICS=off", "semgrep/semgrep:latest",
-           "semgrep", "scan", "--config", "p/owasp-top-ten", "--config", "p/security-audit",
-           "--severity", "ERROR", "--metrics=off", "--json-output", "/out/semgrep.json"]
-    for e in excl:
-        cmd += ["--exclude", e]
-    return cmd + list(tgt.get("semgrep_paths") or ["."])
+    paths = list(tgt.get("semgrep_paths") or ["."])
+    tar_ex = " ".join(f"--exclude={shlex.quote(e)}" for e in excl)
+    sg_ex = " ".join(f"--exclude {shlex.quote(e)}" for e in excl)
+    script = (f"mkdir -p /tmp/scan && tar -C /src {tar_ex} -cf - {' '.join(shlex.quote(p) for p in paths)} "
+              f"| tar -C /tmp/scan -xf - && cd /tmp/scan && "
+              "semgrep scan --config p/owasp-top-ten --config p/security-audit --severity ERROR "
+              "--metrics=off --no-git-ignore --timeout 20 --json-output /out/semgrep.json "
+              f"{sg_ex} .")
+    return ["docker", "run", "--rm", "--name", name, "-v", f"{repo}:/src:ro", "-v", f"{out}:/out",
+            "-e", "SEMGREP_SEND_METRICS=off", "--entrypoint", "sh", "semgrep/semgrep:latest", "-c", script]
 
 
 def run_semgrep(tgt, repo, out, runner=None):
