@@ -18,21 +18,34 @@ depth: "infra"
 #   fast | stealth | full | owasp
 mode: "fast"
 
-# Gating fase intrusif. SEMUA default off — port scan & nuclei tidak jalan
+# Gating fase intrusif. SEMUA default off — port scan/nuclei/crawl/fuzz tidak jalan
 # kecuali enabled:true DAN toggle tool-nya true (atau pakai flag --active di CLI).
 active:
   enabled: false
-  naabu: false     # port scan
-  nuclei: false    # vuln scan
-  ffuf: false      # fuzzing (cadangan, belum dipakai)
+  naabu: false     # port scan (infra/full)
+  nuclei: false    # vuln scan (full)
+  katana: false    # crawl untuk memperluas URL sebelum nuclei (full)
+  ffuf: false      # content discovery/fuzzing path (full)
+
+# Scan rahasia (trufflehog) atas source lokal. Pasif; hanya jalan bila diisi.
+code_path: ""              # mis. "." untuk repo saat ini
+
+# Wordlist untuk ffuf (wajib bila active.ffuf: true).
+ffuf_wordlist: ""          # mis. "/usr/share/seclists/Discovery/Web-Content/common.txt"
 
 # Override nama/path binari bila tidak di PATH (opsional).
 tools:
   subfinder: "subfinder"
+  amass: "amass"
   dnsx: "dnsx"
   httpx: "httpx"
   naabu: "naabu"
   nuclei: "nuclei"
+  gau: "gau"
+  waybackurls: "waybackurls"
+  katana: "katana"
+  ffuf: "ffuf"
+  trufflehog: "trufflehog"
 
 # Timeout per tool (detik).
 timeout: 600

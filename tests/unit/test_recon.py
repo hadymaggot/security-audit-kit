@@ -129,6 +129,75 @@ def test_failures_excludes_info():
     assert RC._failures(rows) == 2
 
 
+# ── amass digabung dengan subfinder ──────────────────────────────────────────
+def test_amass_merged_with_subfinder():
+    rt = make_run_tool({"subfinder": "a.contoh.example\n",
+                        "amass": "b.contoh.example\nc.contoh.example\n", "httpx": ""})
+    res, _ = RC.phase_osint(_cfg(), rt, _whicher_all)
+    sub = [r for r in res if r["kind"] == "recon-subdomain"
+           and "subdomain enumeration" in r["check"]][0]
+    assert "subfinder+amass" in sub["note"]
+    assert "a.contoh.example" in sub["note"] and "b.contoh.example" in sub["note"]
+
+
+# ── gau/waybackurls → ringkasan URL historis (pasif) ─────────────────────────
+def test_historical_urls_summary():
+    rt = make_run_tool({"subfinder": "", "httpx": "",
+                        "gau": "https://contoh.example/a\nhttps://contoh.example/b\n",
+                        "waybackurls": "https://contoh.example/b\nhttps://contoh.example/c\n"})
+    res, alive = RC.phase_osint(_cfg(), rt, _whicher_all)
+    hist = [r for r in res if "URL historis" in r["check"]]
+    assert hist and "gau+waybackurls" in hist[0]["note"]
+    # 3 URL unik (a,b,c) ikut masuk pool untuk nuclei
+    assert any("/c" in u for u in alive)
+
+
+# ── trufflehog: secret di code_path (pasif) ──────────────────────────────────
+def test_trufflehog_secret_verified_high():
+    th = json.dumps({"DetectorName": "AWS", "Verified": True,
+                     "SourceMetadata": {"Data": {"Filesystem": {"file": "app/cfg.py"}}}})
+    rt = make_run_tool({"trufflehog": th})
+    res = RC.phase_secrets(_cfg(code_path="."), rt, _whicher_all)
+    sec = [r for r in res if r["kind"] == "leaked-secret"]
+    assert sec and sec[0]["severity"] == "high" and "app/cfg.py" in sec[0]["url"]
+
+
+def test_secrets_skipped_without_code_path():
+    rt = make_run_tool({})
+    assert RC.phase_secrets(_cfg(), rt, _whicher_all) == []   # tanpa code_path: lewati diam-diam
+
+
+# ── katana & ffuf hanya jalan saat di-gate aktif ─────────────────────────────
+def test_katana_ffuf_gated_off():
+    rt = make_run_tool({"subfinder": "", "httpx": ""})
+    RC.orchestrate(_cfg(depth="full", active={"enabled": False}), run_tool=rt,
+                   whicher=_whicher_all)
+    assert not any("katana" in c[0] or "ffuf" in c[0] for c in rt.calls)
+
+
+def test_ffuf_needs_wordlist():
+    rt = make_run_tool({})
+    res = RC.phase_fuzz(_cfg(), [], rt, _whicher_all)   # ffuf ada tapi wordlist kosong
+    assert res[0]["ok"] and "wordlist" in res[0]["note"]
+
+
+def test_ffuf_parses_hits():
+    out = json.dumps({"results": [{"url": "https://contoh.example/admin", "status": 200},
+                                  {"url": "https://contoh.example/old", "status": 403}]})
+    rt = make_run_tool({"ffuf": out})
+    res = RC.phase_fuzz(_cfg(ffuf_wordlist="/wl.txt"), ["https://contoh.example"], rt,
+                        _whicher_all)
+    hit = [r for r in res if "/admin" in r["check"]]
+    assert hit and hit[0]["severity"] == "medium"
+
+
+def test_katana_expands_urls():
+    out = "https://contoh.example/x\nhttps://contoh.example/y\n"
+    rt = make_run_tool({"katana": out})
+    urls, res = RC.phase_crawl(_cfg(), ["https://contoh.example"], rt, _whicher_all)
+    assert "https://contoh.example/x" in urls and res and "crawl katana" in res[0]["check"]
+
+
 # ── load_config: tanpa file tetap jalan bila target di-override ───────────────
 def test_load_config_no_file():
     cfg = RC.load_config(str(ROOT / "tests" / "recon" / "tidak-ada.yml"),
