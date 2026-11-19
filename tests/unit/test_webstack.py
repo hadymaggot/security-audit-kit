@@ -42,9 +42,47 @@ class _Sess:
         return _Resp(self._h)
 
 
-def _check(headers, http2=None):
+def _check(headers, http2=None, known=None):
     sess = _Sess(headers)
-    return WS.check_target(sess, "http://t/", KNOWN, http2_probe=lambda u: http2)
+    return WS.check_target(sess, "http://t/", known if known is not None else KNOWN,
+                           http2_probe=lambda u: http2)
+
+
+# known_vulnerable PHP multi-branch (backport) — dua entri, CVE sama.
+PHP_KNOWN = [
+    {"server": "php", "min_version": "8.4.0", "max_version": "8.4.27",
+     "cve": "CVE-2026-109618", "catatan": "PHP2Shell"},
+    {"server": "php", "min_version": "8.3.0", "max_version": "8.3.36",
+     "cve": "CVE-2026-109618", "catatan": "PHP2Shell"},
+]
+
+
+def _vuln(res):
+    return [r for r in res if r["check"].startswith("Versi rentan")]
+
+
+def test_x_powered_by_php_in_range_flagged():
+    res = _check({"Server": "nginx/1.31.9", "X-Powered-By": "PHP/8.3.20"}, known=PHP_KNOWN)
+    v = _vuln(res)
+    assert len(v) == 1 and v[0]["cve"] == ["CVE-2026-109618"]
+    assert "X-Powered-By" in v[0]["note"]
+
+
+def test_php_patched_version_not_flagged():
+    res = _check({"X-Powered-By": "PHP/8.3.36"}, known=PHP_KNOWN)   # tepat versi perbaikan
+    assert _vuln(res) == []
+
+
+def test_php_other_branch_not_false_positive():
+    # 8.5.x tak masuk rentang 8.3/8.4 → tak ditandai oleh entri itu.
+    res = _check({"X-Powered-By": "PHP/8.5.1"}, known=PHP_KNOWN)
+    assert _vuln(res) == []
+
+
+def test_php_multibranch_dedup_one_finding():
+    # Versi 8.3.20 cocok entri 8.3; CVE sama dengan entri 8.4 → tetap satu temuan.
+    res = _check({"X-Powered-By": "PHP/8.3.20"}, known=PHP_KNOWN)
+    assert len(_vuln(res)) == 1
 
 
 # --- helper versi ---
