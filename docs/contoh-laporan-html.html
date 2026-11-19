@@ -7,9 +7,9 @@
  .sub{opacity:.85;font-size:13px;margin-top:4px} .sub a{color:#9ec5ff}
  main{max-width:1000px;margin:0 auto;padding:20px}
  h2{border-bottom:2px solid #e3e7ec;padding-bottom:6px;margin-top:32px}
- .note{background:#fff;border-left:4px solid #14233b;padding:12px 14px;border-radius:6px;font-size:14px}
+ .note{background:#fff;border:1px solid #e3e7ec;padding:12px 14px;border-radius:6px;font-size:14px}
  .cards{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}
- .card{flex:1;min-width:110px;background:#fff;border-left:5px solid;border-radius:8px;padding:12px 14px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+ .card{flex:1;min-width:110px;background:#fff;border:1px solid #e3e7ec;border-radius:8px;padding:12px 14px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
  .card .n{font-size:26px;font-weight:700} .card .l{font-size:11px;letter-spacing:.05em;color:#555}
  .card.zero{opacity:.45}
  .finding{background:#fff;border-radius:8px;padding:14px 16px;margin:14px 0;box-shadow:0 1px 2px rgba(0,0,0,.06)}
@@ -26,7 +26,7 @@
  footer a{color:#14233b}
  .klas{display:inline-block;background:#b4232a;color:#fff;font-size:11px;font-weight:700;letter-spacing:.08em;padding:3px 10px;border-radius:4px;margin-top:8px}
  .meta td{font-size:13px} .meta td:first-child{color:#555;width:160px;white-space:nowrap}
- .exec{background:#fff;border-left:4px solid #14233b;padding:14px 16px;border-radius:6px;font-size:14px}
+ .exec{background:#fff;border:1px solid #e3e7ec;padding:14px 16px;border-radius:6px;font-size:14px}
 </style>
 <header><h1>Laporan Hasil Uji Keamanan</h1>
 <div class="sub">Dibuat 2026-11-19 (contoh)</div>
@@ -39,7 +39,7 @@
 </tbody></table>
 <h2>1. Ringkasan Eksekutif</h2>
 <div class="exec">Pengujian menemukan 6 instance temuan (1 Critical, 3 High, 1 Medium, 1 Low) yang tergolong dalam 6 jenis alert. Temuan berisiko tertinggi: Kontrol akses rusak (role rendah membuka area terbatas); SQL Injection (A03); Web server versi rentan (CVE diketahui). Perbaikan disarankan memprioritaskan temuan Critical dan High terlebih dahulu. Rincian teknis, bukti endpoint, dan rekomendasi tersedia pada bagian Rincian Temuan.</div>
-<div class="cards"><div class='card' style='border-color:#c0392b'><div class='n' style='color:#c0392b'>1</div><div class='l'>CRITICAL</div></div><div class='card' style='border-color:#e8710a'><div class='n' style='color:#e8710a'>3</div><div class='l'>HIGH</div></div><div class='card' style='border-color:#d4a017'><div class='n' style='color:#d4a017'>1</div><div class='l'>MEDIUM</div></div><div class='card' style='border-color:#2f6feb'><div class='n' style='color:#2f6feb'>1</div><div class='l'>LOW</div></div><div class='card zero' style='border-color:#6b7280'><div class='n' style='color:#6b7280'>0</div><div class='l'>INFO</div></div><div class='card' style='border-color:#1f9d57'><div class='n' style='color:#1f9d57'>2</div><div class='l'>PASS</div></div></div>
+<div class="cards"><div class='card'><div class='n' style='color:#c0392b'>1</div><div class='l'>CRITICAL</div></div><div class='card'><div class='n' style='color:#e8710a'>3</div><div class='l'>HIGH</div></div><div class='card'><div class='n' style='color:#d4a017'>1</div><div class='l'>MEDIUM</div></div><div class='card'><div class='n' style='color:#2f6feb'>1</div><div class='l'>LOW</div></div><div class='card zero'><div class='n' style='color:#6b7280'>0</div><div class='l'>INFO</div></div><div class='card'><div class='n' style='color:#1f9d57'>2</div><div class='l'>PASS</div></div></div>
 <p>Total alert: <b>6</b> · Total CVE: <b>1</b>.</p>
 <h2>2. Ruang Lingkup &amp; Metodologi</h2>
 <div class="note"><p><b>Target.</b> Contoh Aplikasi (demo) (<code>https://dev.contoh.example</code>)</p>
@@ -49,7 +49,7 @@
 <table><thead><tr><th>ID</th><th>Alert</th><th>Risiko</th><th>CVSS v3.1</th><th>Keyakinan</th><th>Instance</th></tr></thead>
 <tbody><tr><td><a href='#alert-1'>SAK-001</a></td><td>Kontrol akses rusak (role rendah membuka area terbatas)</td><td><span class='badge' style='background:#c0392b'>CRITICAL</span></td><td>9.1</td><td>Tinggi</td><td>1</td></tr><tr><td><a href='#alert-2'>SAK-002</a></td><td>SQL Injection (A03)</td><td><span class='badge' style='background:#e8710a'>HIGH</span></td><td>9.8</td><td>Tinggi</td><td>1</td></tr><tr><td><a href='#alert-3'>SAK-003</a></td><td>Web server versi rentan (CVE diketahui)</td><td><span class='badge' style='background:#e8710a'>HIGH</span></td><td>7.5</td><td>Tinggi</td><td>1</td></tr><tr><td><a href='#alert-4'>SAK-004</a></td><td>Kredensial/secret bocor di source/aset</td><td><span class='badge' style='background:#e8710a'>HIGH</span></td><td>8.6</td><td>Tinggi</td><td>1</td></tr><tr><td><a href='#alert-5'>SAK-005</a></td><td>CORS salah konfigurasi</td><td><span class='badge' style='background:#d4a017'>MEDIUM</span></td><td>6.5</td><td>Tinggi</td><td>1</td></tr><tr><td><a href='#alert-6'>SAK-006</a></td><td>Header keamanan tidak diset</td><td><span class='badge' style='background:#2f6feb'>LOW</span></td><td>3.7</td><td>Tinggi</td><td>1</td></tr></tbody></table>
 <h2>4. Rincian Temuan</h2>
-        <div class="finding" id="alert-1" style="border-left:5px solid #c0392b">
+        <div class="finding" id="alert-1">
           <h3><span class="badge" style="background:#c0392b">CRITICAL</span>
               SAK-001 — Kontrol akses rusak (role rendah membuka area terbatas)</h3>
           <p><b>Severity:</b> CRITICAL &nbsp;·&nbsp;
@@ -69,7 +69,7 @@
     if (!user.roles.intersects(endpoint.allowedRoles)) return deny(403);</pre><li>Gunakan RBAC/ABAC terpusat; jadikan &#x27;default deny&#x27; sebagai perilaku bawaan.</li></ul>
           <p class="ref"><b>Referensi:</b> OWASP A01:2021 Broken Access Control; OWASP ASVS V4 Access Control; BSSN Perban No.4/2021 Pasal 26 huruf c (persyaratan kontrol akses)</p>
         </div>
-        <div class="finding" id="alert-2" style="border-left:5px solid #e8710a">
+        <div class="finding" id="alert-2">
           <h3><span class="badge" style="background:#e8710a">HIGH</span>
               SAK-002 — SQL Injection (A03)</h3>
           <p><b>Severity:</b> HIGH &nbsp;·&nbsp;
@@ -89,7 +89,7 @@
     // JANGAN DB::raw(&quot;... = &#x27;$input&#x27;&quot;).</pre><li>Terapkan allowlist tipe/format input dan least-privilege pada akun DB.</li><li>Pakai ORM/query builder dengan benar; hindari raw query berisi input mentah.</li></ul>
           <p class="ref"><b>Referensi:</b> OWASP A03:2021 Injection; CWE-89 SQL Injection; OWASP Testing Guide WSTG-INPV-05</p>
         </div>
-        <div class="finding" id="alert-3" style="border-left:5px solid #e8710a">
+        <div class="finding" id="alert-3">
           <h3><span class="badge" style="background:#e8710a">HIGH</span>
               SAK-003 — Web server versi rentan (CVE diketahui)</h3>
           <p><b>Severity:</b> HIGH &nbsp;·&nbsp;
@@ -108,7 +108,7 @@
           <p><b>Rekomendasi & contoh solusi.</b></p><ul><li>Update ke versi yang sudah diperbaiki sesuai advisory vendor (mis. Apache httpd 2.4.71+, NGINX 1.30.7+/1.31.9+).</li><li>Batasi exposure komponen yang rentan; terapkan mitigasi sementara (mis. WAF, nonaktifkan modul/fitur terkait bila memungkinkan).</li><li>Kosongkan banner versi (ServerTokens Prod / server_tokens off) agar tidak memudahkan fingerprint.</li></ul>
           <p class="ref"><b>Referensi:</b> OWASP A06:2021 Vulnerable and Outdated Components; CISA Known Exploited Vulnerabilities (KEV)</p>
         </div>
-        <div class="finding" id="alert-4" style="border-left:5px solid #e8710a">
+        <div class="finding" id="alert-4">
           <h3><span class="badge" style="background:#e8710a">HIGH</span>
               SAK-004 — Kredensial/secret bocor di source/aset</h3>
           <p><b>Severity:</b> HIGH &nbsp;·&nbsp;
@@ -127,7 +127,7 @@
           <p><b>Rekomendasi & contoh solusi.</b></p><ul><li>Cabut (revoke) dan rotasi segera secret yang bocor; anggap sudah terkompromi.</li><li>Hapus secret dari riwayat git (git filter-repo/BFG), bukan hanya commit terbaru.</li><li>Pindahkan secret ke environment variable / secret manager; jangan commit ke repo.</li><li>Pasang pre-commit hook (gitleaks/trufflehog) untuk mencegah kebocoran berulang.</li></ul>
           <p class="ref"><b>Referensi:</b> OWASP A07:2021 Identification and Authentication Failures; CWE-798 Use of Hard-coded Credentials; OWASP ASVS V2.10</p>
         </div>
-        <div class="finding" id="alert-5" style="border-left:5px solid #d4a017">
+        <div class="finding" id="alert-5">
           <h3><span class="badge" style="background:#d4a017">MEDIUM</span>
               SAK-005 — CORS salah konfigurasi</h3>
           <p><b>Severity:</b> MEDIUM &nbsp;·&nbsp;
@@ -146,7 +146,7 @@
           <p><b>Rekomendasi & contoh solusi.</b></p><ul><li>Jangan pantulkan Origin mentah. Pakai allowlist origin yang tepercaya saja.</li><li>Contoh (pola backend):</li><pre>    if (allowlist.includes(origin)) resp.header(&#x27;Access-Control-Allow-Origin&#x27;, origin);</pre><li>Kalau butuh Access-Control-Allow-Credentials: true, Origin WAJIB spesifik, bukan &#x27;*&#x27; dan bukan hasil pantulan sembarangan.</li><li>Tolak Origin &#x27;null&#x27;. Batasi method &amp; header yang diizinkan seperlunya.</li></ul>
           <p class="ref"><b>Referensi:</b> OWASP A05:2021 Security Misconfiguration; OWASP ASVS V14 Configuration; BSSN Perban No.4/2021 huruf h (keamanan komunikasi)</p>
         </div>
-        <div class="finding" id="alert-6" style="border-left:5px solid #2f6feb">
+        <div class="finding" id="alert-6">
           <h3><span class="badge" style="background:#2f6feb">LOW</span>
               SAK-006 — Header keamanan tidak diset</h3>
           <p><b>Severity:</b> LOW &nbsp;·&nbsp;

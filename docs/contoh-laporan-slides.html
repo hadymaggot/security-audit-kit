@@ -12,7 +12,7 @@
  .tgt{font-size:3vh;font-weight:600} .tgt .u{opacity:.7;font-weight:400;font-size:2.2vh}
  .meta{opacity:.8} .credit{opacity:.75;font-size:2vh}
  .scards{display:flex;gap:2vw;margin:3vh 0}
- .scard{flex:1;background:#fff;border-left:7px solid;border-radius:10px;padding:2.5vh 2vw;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,.08)}
+ .scard{flex:1;background:#fff;border:1px solid #e3e7ec;border-radius:10px;padding:2.5vh 2vw;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,.08)}
  .scard .n{font-size:6vh;font-weight:800} .scard .l{font-size:1.6vh;letter-spacing:.05em;color:#555}
  .badge{color:#fff;font-size:1.8vh;padding:2px 10px;border-radius:12px}
  .fid{font-size:2vh;color:#555;margin-bottom:1vh} code{background:#0003;padding:1px 6px;border-radius:4px}
@@ -26,7 +26,7 @@
       <p class="tgt">Contoh Aplikasi (demo) <span class="u">https://dev.contoh.example</span></p>
       <p class="meta">2026-11-19 (contoh)</p>
       <p class="credit">Security Audit Kit — dibuat oleh hadymaggot · https://github.com/hadymaggot/security-audit-kit</p></section><section class="slide"><h2>Ringkasan Risiko</h2>
-      <div class="scards"><div class='scard' style='border-color:#c0392b'><div class='n' style='color:#c0392b'>1</div><div class='l'>CRITICAL</div></div><div class='scard' style='border-color:#e8710a'><div class='n' style='color:#e8710a'>3</div><div class='l'>HIGH</div></div><div class='scard' style='border-color:#d4a017'><div class='n' style='color:#d4a017'>1</div><div class='l'>MEDIUM</div></div><div class='scard' style='border-color:#2f6feb'><div class='n' style='color:#2f6feb'>1</div><div class='l'>LOW</div></div><div class='scard' style='border-color:#6b7280'><div class='n' style='color:#6b7280'>0</div><div class='l'>INFO</div></div></div>
+      <div class="scards"><div class='scard'><div class='n' style='color:#c0392b'>1</div><div class='l'>CRITICAL</div></div><div class='scard'><div class='n' style='color:#e8710a'>3</div><div class='l'>HIGH</div></div><div class='scard'><div class='n' style='color:#d4a017'>1</div><div class='l'>MEDIUM</div></div><div class='scard'><div class='n' style='color:#2f6feb'>1</div><div class='l'>LOW</div></div><div class='scard'><div class='n' style='color:#6b7280'>0</div><div class='l'>INFO</div></div></div>
       <p class="big">6 instance temuan · 6 alert · 1 CVE · 2 kontrol lolos</p></section><section class="slide"><h2>Ringkasan Eksekutif</h2>
       <p class="exec">Pengujian menemukan 6 instance temuan (1 Critical, 3 High, 1 Medium, 1 Low) yang tergolong dalam 6 jenis alert. Temuan berisiko tertinggi: Kontrol akses rusak (role rendah membuka area terbatas); SQL Injection (A03); Web server versi rentan (CVE diketahui). Perbaikan disarankan memprioritaskan temuan Critical dan High terlebih dahulu. Rincian teknis, bukti endpoint, dan rekomendasi tersedia pada bagian Rincian Temuan.</p></section><section class="slide" style="border-top:7px solid #c0392b">
           <div class="fid">SAK-001 &nbsp;·&nbsp;

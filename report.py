@@ -449,7 +449,7 @@ def write_html(path, findings, counts, when, cves):
     alerts = group_alerts(gagal)
 
     cards = "".join(
-        f"<div class='card{' zero' if not counts[s] else ''}' style='border-color:{SEV_COLOR[s]}'>"
+        f"<div class='card{' zero' if not counts[s] else ''}'>"
         f"<div class='n' style='color:{SEV_COLOR[s]}'>{counts[s]}</div>"
         f"<div class='l'>{sev_label(s)}</div></div>" for s in SEV_ORDER)
 
@@ -488,7 +488,7 @@ def write_html(path, findings, counts, when, cves):
         cve = ", ".join(a["cve"]) if a["cve"] else "-"
         col = SEV_COLOR[a["severity"]]
         blocks += f"""
-        <div class="finding" id="alert-{i}" style="border-left:5px solid {col}">
+        <div class="finding" id="alert-{i}">
           <h3><span class="badge" style="background:{col}">{esc(a['severity'].upper())}</span>
               {esc(finding_id(i))} — {esc(a['nama'])}</h3>
           <p><b>Severity:</b> {esc(a['severity'].upper())} &nbsp;·&nbsp;
@@ -541,9 +541,9 @@ def write_html(path, findings, counts, when, cves):
  .sub{{opacity:.85;font-size:13px;margin-top:4px}} .sub a{{color:#9ec5ff}}
  main{{max-width:1000px;margin:0 auto;padding:20px}}
  h2{{border-bottom:2px solid #e3e7ec;padding-bottom:6px;margin-top:32px}}
- .note{{background:#fff;border-left:4px solid #14233b;padding:12px 14px;border-radius:6px;font-size:14px}}
+ .note{{background:#fff;border:1px solid #e3e7ec;padding:12px 14px;border-radius:6px;font-size:14px}}
  .cards{{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}}
- .card{{flex:1;min-width:110px;background:#fff;border-left:5px solid;border-radius:8px;padding:12px 14px;box-shadow:0 1px 2px rgba(0,0,0,.06)}}
+ .card{{flex:1;min-width:110px;background:#fff;border:1px solid #e3e7ec;border-radius:8px;padding:12px 14px;box-shadow:0 1px 2px rgba(0,0,0,.06)}}
  .card .n{{font-size:26px;font-weight:700}} .card .l{{font-size:11px;letter-spacing:.05em;color:#555}}
  .card.zero{{opacity:.45}}
  .finding{{background:#fff;border-radius:8px;padding:14px 16px;margin:14px 0;box-shadow:0 1px 2px rgba(0,0,0,.06)}}
@@ -560,7 +560,7 @@ def write_html(path, findings, counts, when, cves):
  footer a{{color:#14233b}}
  .klas{{display:inline-block;background:#b4232a;color:#fff;font-size:11px;font-weight:700;letter-spacing:.08em;padding:3px 10px;border-radius:4px;margin-top:8px}}
  .meta td{{font-size:13px}} .meta td:first-child{{color:#555;width:160px;white-space:nowrap}}
- .exec{{background:#fff;border-left:4px solid #14233b;padding:14px 16px;border-radius:6px;font-size:14px}}
+ .exec{{background:#fff;border:1px solid #e3e7ec;padding:14px 16px;border-radius:6px;font-size:14px}}
 </style>
 <header><h1>Laporan Hasil Uji Keamanan</h1>
 <div class="sub">Dibuat {esc(when)}</div>
@@ -617,7 +617,7 @@ def write_slides(path, findings, counts, when, cves):
       <p class="credit">{esc(CREDIT)}</p></section>"""]
 
     cards = "".join(
-        f"<div class='scard' style='border-color:{SEV_COLOR[s]}'>"
+        f"<div class='scard'>"
         f"<div class='n' style='color:{SEV_COLOR[s]}'>{counts[s]}</div>"
         f"<div class='l'>{sev_label(s)}</div></div>"
         for s in ("critical", "high", "medium", "low", "info"))
@@ -664,7 +664,7 @@ def write_slides(path, findings, counts, when, cves):
  .tgt{{font-size:3vh;font-weight:600}} .tgt .u{{opacity:.7;font-weight:400;font-size:2.2vh}}
  .meta{{opacity:.8}} .credit{{opacity:.75;font-size:2vh}}
  .scards{{display:flex;gap:2vw;margin:3vh 0}}
- .scard{{flex:1;background:#fff;border-left:7px solid;border-radius:10px;padding:2.5vh 2vw;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,.08)}}
+ .scard{{flex:1;background:#fff;border:1px solid #e3e7ec;border-radius:10px;padding:2.5vh 2vw;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,.08)}}
  .scard .n{{font-size:6vh;font-weight:800}} .scard .l{{font-size:1.6vh;letter-spacing:.05em;color:#555}}
  .badge{{color:#fff;font-size:1.8vh;padding:2px 10px;border-radius:12px}}
  .fid{{font-size:2vh;color:#555;margin-bottom:1vh}} code{{background:#0003;padding:1px 6px;border-radius:4px}}
