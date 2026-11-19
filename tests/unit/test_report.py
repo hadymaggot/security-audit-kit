@@ -528,3 +528,32 @@ def test_collect_reads_client_leak_skip_rows(tmp_path):
     assert by["cache respons /akun"]["lulus"] is True
     leak = by["File terekspos: .env"]
     assert leak["lulus"] is False and leak["kind"] == "info-exposure"
+
+
+# --- tag HTML dari sumber eksternal (ZAP/trivy/testssl) tak boleh bocor sebagai teks ---
+
+def test_plain_text_buang_tag_dan_entity():
+    assert RP.plain_text("&lt;p&gt;Header  hilang&lt;/p&gt;") == "Header hilang"
+    assert RP.plain_text("<p>a</p><p>b &amp; c</p>") == "a b & c"
+    assert RP.plain_text("&amp;lt;b&amp;gt;x&amp;lt;/b&amp;gt;") == "x"      # entity ganda
+    assert RP.plain_text("x" * 50, 10) == "x" * 10
+    assert RP.plain_text(None) == ""
+
+
+def test_zap_desc_html_tidak_bocor(tmp_path):
+    (tmp_path / "zap-baseline.json").write_text(json.dumps({"site": [{"alerts": [{
+        "alert": "Anti-clickjacking &lt;b&gt;Header&lt;/b&gt; Missing",
+        "riskdesc": "Medium (High)",
+        "desc": "&lt;p&gt;Respons tidak melindungi dari ClickJacking.&lt;/p&gt;",
+        "instances": [{"uri": "http://t/"}],
+    }]}]}), encoding="utf-8")
+    findings = RP.collect(tmp_path)
+    counts = RP.summarize(findings)
+    RP.write_md(tmp_path / "m.md", findings, counts, "2026-01-01", [])
+    RP.write_html(tmp_path / "m.html", findings, counts, "2026-01-01", [])
+    md = (tmp_path / "m.md").read_text(encoding="utf-8")
+    h = (tmp_path / "m.html").read_text(encoding="utf-8")
+    for doc in (md, h):
+        assert "&lt;p&gt;" not in doc and "<p>Respons" not in doc
+        assert "Respons tidak melindungi dari ClickJacking." in doc
+    assert "<b>Header</b>" not in md and "Anti-clickjacking Header Missing" in md
