@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Security Audit Kit — toolkit uji keamanan web/API (DAST + SCA)</title>
+<meta name="description" content="Security Audit Kit: toolkit otomatisasi security testing web/API lintas sistem operasi, berbasis konfigurasi. Modul DAST (access control, upload, injection, CORS, dsb.) dan SCA (CVE, SAST, secret), non-destruktif dengan rollback otomatis, laporan berstandar konsultan. Open-source, Apache-2.0.">
+<meta name="keywords" content="security audit, DAST, SCA, OWASP, pentest, web security, api security, vulnerability scanner, SAST, devsecops, security testing, open scanner">
+<link rel="canonical" href="https://hadymaggot.github.io/security-audit-kit/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Security Audit Kit — toolkit uji keamanan web/API">
+<meta property="og:description" content="DAST + SCA, berbasis konfigurasi, non-destruktif dengan rollback otomatis, laporan standar konsultan. Open-source.">
+<meta property="og:url" content="https://hadymaggot.github.io/security-audit-kit/">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Security Audit Kit",
+  "applicationCategory": "SecurityApplication",
+  "operatingSystem": "Windows, Linux, macOS",
+  "description": "Toolkit otomatisasi security testing web/API (DAST + SCA), berbasis konfigurasi, non-destruktif dengan rollback otomatis, laporan standar konsultan.",
+  "url": "https://hadymaggot.github.io/security-audit-kit/",
+  "codeRepository": "https://github.com/hadymaggot/security-audit-kit",
+  "license": "https://www.apache.org/licenses/LICENSE-2.0",
+  "author": { "@type": "Person", "name": "hadymaggot" },
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+}
+</script>
+<style>
+ body{font-family:system-ui,Segoe UI,sans-serif;margin:0;background:#f6f7f9;color:#1b1f24;line-height:1.6}
+ header{background:#14233b;color:#fff;padding:48px 20px;text-align:center}
+ header h1{margin:0 0 8px;font-size:30px} header p{margin:0 auto;max-width:640px;opacity:.9}
+ .cta{margin-top:20px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+ .cta a{background:#fff;color:#14233b;text-decoration:none;padding:10px 18px;border-radius:8px;font-weight:600}
+ .cta a.ghost{background:transparent;color:#fff;border:1px solid #fff6}
+ main{max-width:900px;margin:0 auto;padding:24px 20px}
+ h2{border-bottom:2px solid #e3e7ec;padding-bottom:6px;margin-top:36px}
+ .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:16px}
+ .card{background:#fff;border-radius:10px;padding:14px 16px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+ .card h3{margin:0 0 6px;font-size:15px} .card p{margin:0;font-size:14px;color:#444}
+ code,pre{background:#0f1b2d;color:#e6edf3;border-radius:6px} pre{padding:12px;overflow:auto;font-size:13px} code{padding:1px 5px;font-size:13px}
+ a{color:#14233b} footer{text-align:center;color:#555;font-size:13px;padding:24px;border-top:1px solid #e3e7ec}
+ .lang a{margin:0 4px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Security Audit Kit</h1>
+  <p>Toolkit otomatisasi <b>security testing web/API</b> lintas sistem operasi, berbasis
+  konfigurasi — <b>DAST + SCA</b>, non-destruktif dengan <b>rollback otomatis</b>, dan
+  laporan berstandar konsultan IT security.</p>
+  <div class="cta">
+    <a href="https://github.com/hadymaggot/security-audit-kit">⭐ GitHub</a>
+    <a href="scan.html" class="ghost">Open scanner (pasif)</a>
+    <a href="contoh-laporan.html" class="ghost">Contoh laporan</a>
+  </div>
+</header>
+<main>
+  <h2>Apa ini</h2>
+  <p>Security Audit Kit mengadaptasi alur pentest berbasis <b>OWASP</b> menjadi automated
+  regression testing yang dapat dijalankan lokal maupun di CI. Satu entry point
+  <code>python audit.py &lt;modul&gt;</code>, identik di Windows dan Linux, dengan
+  kredensial lewat environment variable.</p>
+
+  <h2>Modul</h2>
+  <div class="grid">
+    <div class="card"><h3>Access control &amp; BOPLA</h3><p>Privilege escalation, IDOR, forged header, bypass gateway, mass assignment (destruktif + rollback otomatis).</p></div>
+    <div class="card"><h3>Injection &amp; upload</h3><p>SQL injection (error/boolean/time-based) dan penolakan upload berbahaya.</p></div>
+    <div class="card"><h3>Web stack &amp; CVE</h3><p>Banner <code>Server</code>/<code>X-Powered-By</code> → CVE (Apache, NGINX, PHP), dependency CVE via Trivy.</p></div>
+    <div class="card"><h3>CORS, redirect, TLS, header</h3><p>CORS misconfiguration, open redirect, TLS/cipher usang, security header.</p></div>
+    <div class="card"><h3>SCA &amp; SAST</h3><p>CVE dependency (Trivy) + SAST (semgrep) + secret ter-commit (gitleaks).</p></div>
+    <div class="card"><h3>Laporan</h3><p>Standar konsultan: executive summary, ID temuan, CVSS indikatif, bukti endpoint &amp; screenshot, varian HTML/Markdown/slide.</p></div>
+  </div>
+
+  <h2>Mulai cepat</h2>
+  <pre>pip install -r requirements.txt
+cp config/targets.example.yml config/targets.yml   # isi base_url target Anda
+python audit.py all                                # scan + laporan</pre>
+  <p>Panduan lengkap:
+  <a href="https://github.com/hadymaggot/security-audit-kit/blob/main/docs/panduan-penggunaan.md">Panduan Penggunaan</a> ·
+  <a href="https://github.com/hadymaggot/security-audit-kit/blob/main/docs/metodologi.md">Metodologi</a> ·
+  <a href="https://github.com/hadymaggot/security-audit-kit/blob/main/docs/temuan-to-test-mapping.md">Temuan → Test</a>.</p>
+
+  <h2>Dokumentasi (tiga bahasa)</h2>
+  <p class="lang">
+    🇮🇩 <a href="https://github.com/hadymaggot/security-audit-kit/blob/main/README.md">Indonesia</a> ·
+    🇬🇧 <a href="https://github.com/hadymaggot/security-audit-kit/blob/main/README.en.md">English</a> ·
+    🇩🇪 <a href="https://github.com/hadymaggot/security-audit-kit/blob/main/README.de.md">Deutsch</a>
+  </p>
+</main>
+<footer>
+  Security Audit Kit — dibuat oleh <b>hadymaggot</b> ·
+  <a href="https://github.com/hadymaggot/security-audit-kit">github.com/hadymaggot/security-audit-kit</a> ·
+  Apache-2.0
+</footer>
+</body>
+</html>
