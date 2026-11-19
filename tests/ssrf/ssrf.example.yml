@@ -1,0 +1,30 @@
+# Salin ke ssrf.yml. Uji SSRF berbasis CANARY LOKAL: modul menjalankan listener HTTP milik Anda,
+# mengirim URL canary ke endpoint yang menerima URL, lalu melihat apakah server target menembaknya.
+# Tidak ada pemindaian host internal dan tidak ada pemanggilan metadata cloud.
+base_url: "${TARGET_BASE_URL}"
+
+# Opsional — autentikasi bila endpoint butuh login (kredensial lewat env var).
+# auth:
+#   sanctum: { enabled: true, csrf_path: "/sanctum/csrf-cookie", origin: "${TARGET_BASE_URL}" }
+#   login: { method: POST, path: "/api/login", body: { email: "${SSRF_USER}", password: "${SSRF_PASS}" } }
+#   # atau token statis:  header: "Authorization"  /  value: "${SSRF_TOKEN}"
+
+# Listener canary. `public_url` = alamat listener SEPERTI TERLIHAT DARI SERVER TARGET
+# (mis. host.docker.internal untuk target di Docker pada mesin yang sama, atau IP LAN Anda).
+callback:
+  bind: "0.0.0.0"
+  port: 18999
+  public_url: "http://host.docker.internal:18999"
+  wait_seconds: 4
+
+# Coba varian bypass (IP desimal/heks/oktal, userinfo '@', redirect).
+variants: true
+
+# Endpoint yang MENERIMA URL (webhook, pratinjau tautan, impor dari URL, dst.).
+targets:
+  - name: "Pratinjau tautan"
+    method: POST
+    path: "/api/link-preview"
+    param: "url"
+    location: json            # query | json | form
+    # extra: { type: "article" }
