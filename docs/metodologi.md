@@ -31,6 +31,8 @@ Setelah target dev/staging tersedia, pengujian dinamis dijalankan:
 - `upload` — penolakan file upload berbahaya.
 - `auth-policy` — kekuatan password dan regenerasi captcha.
 - `cors` dan `open-redirect` — CORS misconfiguration dan open redirect.
+- `webstack` — deteksi versi web server dari banner lalu dipetakan ke CVE yang diketahui
+  (mis. Apache mod_http2, NGINX HTTP/2); non-destruktif.
 - `tls` dan `headers` — protokol/cipher TLS usang dan security header yang kurang.
 
 Tahap terakhir, `python audit.py report` merangkai `reports/laporan.html` dan

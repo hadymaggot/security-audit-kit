@@ -21,6 +21,7 @@ kasusnya.
 | Open redirect | `open-redirect` | Isi `paths` + `params`; cek Location ke host luar |
 | Deprecated Cryptography | `tls` | `python audit.py tls` |
 | Missing Security Header | `headers` | `python audit.py headers` |
+| Web server/komponen versi rentan (CVE) | `webstack` | Isi `known_vulnerable` (server, max_version, cve); non-destruktif, membaca banner `Server`/`X-Powered-By` + HTTP/2. Perbarui saat ada CVE baru (mis. Apache mod_http2, NGINX HTTP/2) |
 | Cache response sensitif | `clientleak` | Isi `sensitive_paths`; cek `Cache-Control: no-store` |
 | Cache response sensitif (bukti tersimpan di browser) | `clientleak` | `browser_cache.enabled: true` (butuh Playwright + Chromium) |
 | Secret/endpoint admin bocor di JS (awal temuan BSSN) | `clientleak` | `auto_discover_js` + `internal_endpoints` |
