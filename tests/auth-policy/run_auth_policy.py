@@ -145,6 +145,7 @@ def main():
     for chk in password_checks(cfg):
         label = chk.get("name", chk["path"])
         field = chk.get("password_field", "password")
+        ep_url = f"{chk.get('method', 'POST')} {base + chk['path']}"
         print(f"== Kebijakan sandi: {label} ==")
 
         def body_for(pw):
@@ -166,7 +167,7 @@ def main():
                 # Rate limit = tak bisa disimpulkan, bukan bukti sandi lemah lolos.
                 print(f"  sandi {pw!r:<16} HTTP 429  skip (rate limit)")
                 results.append({"check": f"{label} sandi lemah {pw}", "status": 429,
-                                "ok": True, "note": "skip: rate limit"})
+                                "ok": True, "note": "skip: rate limit", "url": ep_url})
                 continue
             rejected = password_error(r, field)
             mark = "ok" if rejected else "XX DITERIMA (sandi lemah lolos)"
@@ -174,7 +175,8 @@ def main():
                 failures += 1
             print(f"  sandi {pw!r:<16} HTTP {r.status_code}  {mark}")
             results.append({"check": f"{label} sandi lemah {pw}", "status": r.status_code,
-                            "ok": rejected, "note": "" if rejected else "sandi lemah lolos"})
+                            "ok": rejected, "note": "" if rejected else "sandi lemah lolos",
+                            "url": ep_url})
 
         # Kontrol positif: sandi kuat TAK boleh kena error sandi — kalau kena, uji di
         # atas tak bermakna (endpoint menolak apa pun). Template sebaiknya membuat
@@ -193,7 +195,7 @@ def main():
             status = r.status_code if r is not None else -1
             print(f"  kontrol sandi kuat     HTTP {status}  {'ok' if ok else 'XX ' + note}")
             results.append({"check": f"{label} kontrol sandi kuat", "status": status,
-                            "ok": ok, "note": note})
+                            "ok": ok, "note": note, "url": ep_url})
 
     # 2. Captcha harus regenerasi (token baru tiap terbit).
     cap = cfg.get("captcha")
@@ -215,7 +217,8 @@ def main():
         print(f"  token terbit: {tokens}")
         print(f"  {'ok unik' if ok else 'XX token captcha berulang'}")
         results.append({"check": "captcha-regenerasi", "status": None, "ok": ok,
-                        "note": "" if ok else "token captcha berulang"})
+                        "note": "" if ok else "token captcha berulang",
+                        "url": f"GET {base + cap['issue_path']}"})
 
     print(f"\n{failures} gagal.")
     if args.json:

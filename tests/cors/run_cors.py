@@ -71,6 +71,8 @@ def evaluate(path, s, url, evil_origin):
         cred = " + credentials" if acac2 == "true" else ""
         results.append({"label": f"CORS origin-null {path}", "status": 200, "ok": False,
                         "note": f"Origin 'null' diterima{cred}"})
+    for r in results:
+        r.setdefault("url", f"GET {url}  (uji Origin: {evil_origin} / null)")
     return results
 
 

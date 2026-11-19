@@ -158,13 +158,15 @@ def main():
     cleanup = cfg.get("cleanup")        # hapus berkas uji yang terlanjur diterima
     for name, fname, content, ctype, should_reject in build_cases(cfg):
         files = {ep.get("field", "file"): (fname, io.BytesIO(content), ctype)}
+        evidence_url = f"{ep.get('method', 'POST')} {url}  (file={fname!r}, type={ctype})"
         try:
             r = sess.post(url, files=files, data=form, headers=req_headers(), timeout=20)
             status = r.status_code
         except Exception as exc:  # noqa: BLE001
             print(f"{name:<34} {'-':>5}  galat: {exc}")
             failures += 1
-            results.append({"case": name, "status": -1, "ok": False, "note": str(exc)})
+            results.append({"case": name, "status": -1, "ok": False,
+                            "note": str(exc), "url": evidence_url})
             continue
         accepted = 200 <= status < 300
         ok = (not accepted) if should_reject else accepted
@@ -179,7 +181,8 @@ def main():
             done = cleanup_accepted(sess, base, cleanup, r, req_headers())
             note = f"{note}; {done}" if note else done
         print(f"{name:<34} {status:>5}  {verdict}" + (f"  [{note}]" if accepted and cleanup else ""))
-        results.append({"case": name, "status": status, "ok": ok, "note": note})
+        results.append({"case": name, "status": status, "ok": ok, "note": note,
+                        "url": evidence_url})
 
     print(f"\n{failures} gagal.")
     if args.json:

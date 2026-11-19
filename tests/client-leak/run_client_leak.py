@@ -87,7 +87,7 @@ def check_cache(s, base, paths):
         except Exception as exc:  # noqa: BLE001
             # Tak terjangkau/timeout = tak bisa diuji, bukan temuan keamanan.
             out.append({"kind": "cache", "label": f"cache {p}", "status": -1,
-                        "ok": True, "note": f"skip: {exc}"})
+                        "ok": True, "note": f"skip: {exc}", "url": f"GET {url}"})
             continue
         cc = (r.headers.get("Cache-Control", "") or "").lower()
         # Aman bila melarang penyimpanan.
@@ -96,7 +96,7 @@ def check_cache(s, base, paths):
         ok = safe and not cacheable_public
         note = "" if ok else f"Cache-Control: '{r.headers.get('Cache-Control','(kosong)')}'"
         out.append({"kind": "cache", "label": f"cache respons {p}", "status": r.status_code,
-                    "ok": ok, "note": note})
+                    "ok": ok, "note": note, "url": f"GET {url}"})
     return out
 
 
@@ -169,6 +169,7 @@ def check_browser_cache(cfg, base, paths):
                     cc = r["cc"] or "(kosong)"
                     out.append({"kind": "browser-cache", "label": f"cache browser {p}",
                                 "status": r["status"], "ok": not r["cached"],
+                                "url": f"GET {url}",
                                 "note": (f"tersimpan di cache browser (Chromium, fetch "
                                          f"only-if-cached berhasil); Cache-Control: '{cc}'")
                                         if r["cached"] else ""})
@@ -202,7 +203,7 @@ def check_js(s, base, js_urls, internal_hints):
             body = r.text
         except Exception as exc:  # noqa: BLE001
             out.append({"kind": "js", "label": f"ambil {url}", "status": -1,
-                        "ok": False, "note": f"galat: {exc}"})
+                        "ok": False, "note": f"galat: {exc}", "url": f"GET {url}"})
             continue
         name = urlparse(url).path.rsplit("/", 1)[-1]
 
@@ -210,13 +211,14 @@ def check_js(s, base, js_urls, internal_hints):
         for label, pat in SECRET_PATTERNS:
             if pat.search(body):
                 out.append({"kind": "js", "label": f"Rahasia di {name}: {label}",
-                            "status": r.status_code, "ok": False,
+                            "status": r.status_code, "ok": False, "url": f"GET {url}",
                             "note": "pola rahasia ditemukan dalam bundle JS — verifikasi"})
 
         # Endpoint internal/admin (dari petunjuk konfigurasi).
         for hint in internal_hints:
             if hint and hint in body:
                 out.append({"kind": "js", "label": f"Endpoint '{hint}' tersingkap di {name}",
+                            "url": f"GET {url}",
                             "status": r.status_code, "ok": False,
                             "note": "endpoint internal/admin tertera di JS klien"})
 
@@ -233,6 +235,7 @@ def check_js(s, base, js_urls, internal_hints):
             out.append({"kind": "js",
                         "label": f"Source map di {name}",
                         "status": r.status_code, "ok": not accessible,
+                        "url": f"GET {map_url}",
                         "note": f"{map_url} dapat diakses publik" if accessible
                                 else f"referensi {m.group(1)} (map tak terakses)"})
     return out
@@ -257,20 +260,20 @@ def check_html(s, base, paths, internal_hints):
             if COMMENT_SENSITIVE_RE.search(c):
                 snippet = " ".join(c.split())[:80]
                 out.append({"kind": "html", "label": f"Komentar HTML sensitif di {name}",
-                            "status": r.status_code, "ok": False,
+                            "status": r.status_code, "ok": False, "url": f"GET {url}",
                             "note": f"'{snippet}' — tinjau sebelum rilis"})
                 break
         # Rahasia inline (mis. config di <script>window.__CONFIG__=...).
         for label, pat in SECRET_PATTERNS:
             if pat.search(body):
                 out.append({"kind": "html", "label": f"Rahasia inline di {name}: {label}",
-                            "status": r.status_code, "ok": False,
+                            "status": r.status_code, "ok": False, "url": f"GET {url}",
                             "note": "pola rahasia di HTML — verifikasi"})
         # Endpoint internal tertera di HTML.
         for hint in internal_hints:
             if hint and hint in body:
                 out.append({"kind": "html", "label": f"Endpoint '{hint}' tersingkap di {name}",
-                            "status": r.status_code, "ok": False,
+                            "status": r.status_code, "ok": False, "url": f"GET {url}",
                             "note": "endpoint internal/admin tertera di HTML"})
     return out
 
@@ -289,7 +292,7 @@ def check_files(s, base, files):
                    and "html" not in r.headers.get("Content-Type", "").lower())
         if exposed:
             out.append({"kind": "file", "label": f"File terekspos: {rel}",
-                        "status": r.status_code, "ok": False,
+                        "status": r.status_code, "ok": False, "url": f"GET {url}",
                         "note": f"{len(r.content)} byte dapat diunduh publik"})
         else:
             out.append({"kind": "file", "label": f"File {rel}",
