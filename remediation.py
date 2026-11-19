@@ -344,6 +344,74 @@ KB = {
         ],
         "referensi": ["OWASP ZAP", "OWASP Top 10 2021"],
     },
+    "auth-coverage-gap": {
+        "deskripsi": "Endpoint yang menurut spesifikasi OpenAPI wajib autentikasi ternyata "
+                     "dapat diakses tanpa kredensial (penegakan autentikasi tidak sesuai desain).",
+        "dampak": "Siapa pun tanpa login dapat membaca (atau memicu) fungsi yang dianggap "
+                  "terlindungi — akses data tanpa otorisasi.",
+        "severity": "High",
+        "severity_dasar": "Likelihood tinggi (tanpa prasyarat, cukup memanggil URL) x Impact "
+                          "tinggi (data/fungsi terlindungi terbuka).",
+        "rekomendasi": [
+            "Pasang middleware autentikasi pada route tersebut, atau kelompokkan route "
+            "terlindungi dalam satu grup auth sehingga default-nya terkunci.",
+            "Contoh Laravel:",
+            "    Route::middleware('auth:sanctum')->group(function () {\n"
+            "        Route::get('/laporan', [LaporanController::class, 'index']);\n"
+            "    });",
+            "Terapkan 'default deny': route baru otomatis butuh auth kecuali dikecualikan eksplisit.",
+            "Selaraskan spesifikasi OpenAPI dengan perilaku nyata, lalu jadikan uji ini bagian CI.",
+        ],
+        "referensi": ["OWASP API2:2023 Broken Authentication",
+                      "OWASP API5:2023 Broken Function Level Authorization",
+                      "OWASP A01:2021 Broken Access Control", "CWE-306"],
+    },
+    "unauthenticated-endpoint": {
+        "deskripsi": "Endpoint tidak mendeklarasikan autentikasi, tidak termasuk daftar publik "
+                     "yang diizinkan, namun dapat diakses tanpa kredensial.",
+        "dampak": "Bila endpoint seharusnya privat, data atau fungsi terbuka bagi publik; bila "
+                  "memang publik, daftar allowlist/spesifikasi perlu dilengkapi.",
+        "severity": "Medium",
+        "severity_dasar": "Perlu tinjauan: dampak bergantung apakah endpoint memang publik.",
+        "rekomendasi": [
+            "Tinjau tiap endpoint: bila privat, tambahkan autentikasi; bila publik, "
+            "daftarkan di allowlist dan deklarasikan `security: []` di spesifikasi.",
+            "Pastikan endpoint publik tidak mengembalikan data sensitif atau internal.",
+        ],
+        "referensi": ["OWASP API2:2023 Broken Authentication", "OWASP A01:2021", "CWE-306"],
+    },
+    "anon-server-error": {
+        "deskripsi": "Request anonim (tanpa autentikasi) memicu galat server 5xx, menandakan "
+                     "validasi atau penanganan galat belum dilakukan sebelum autentikasi.",
+        "dampak": "Galat tak tertangani dapat membocorkan detail internal, mengindikasikan "
+                  "bug yang bisa dipicu tanpa login, dan menjadi vektor gangguan layanan.",
+        "severity": "Low",
+        "severity_dasar": "Dapat dipicu tanpa prasyarat, tetapi dampak langsung terbatas "
+                          "(ketersediaan/informasi).",
+        "rekomendasi": [
+            "Pastikan autentikasi dan validasi input berjalan lebih dulu dan menolak dengan "
+            "401/403/422, bukan 500.",
+            "Tangani exception di lapisan global dan kembalikan respons generik.",
+            "Periksa log server untuk penyebab 500 dan tambahkan uji regresinya.",
+        ],
+        "referensi": ["OWASP API8:2023 Security Misconfiguration", "CWE-755, CWE-209"],
+    },
+    "spec-mismatch": {
+        "deskripsi": "Spesifikasi OpenAPI tidak akurat terhadap perilaku nyata: operasi tidak "
+                     "mendeklarasikan `security` padahal sebenarnya menolak akses anonim.",
+        "dampak": "Dokumentasi menyesatkan; klien dan uji otomatis tidak dapat memercayai "
+                  "spesifikasi, sehingga celah autentikasi sulit terdeteksi.",
+        "severity": "Low",
+        "severity_dasar": "Masalah kualitas dokumentasi; tidak membuka akses langsung.",
+        "rekomendasi": [
+            "Deklarasikan skema keamanan global dan `security` per operasi pada spesifikasi.",
+            "Contoh (OpenAPI): components.securitySchemes + security: [{ cookieAuth: [] }]; "
+            "tandai endpoint publik dengan `security: []`.",
+            "Generate spesifikasi dari kode (mis. Scramble) dengan konfigurasi security yang benar.",
+        ],
+        "referensi": ["OpenAPI 3.x Security Requirement Object",
+                      "OWASP API9:2023 Improper Inventory Management"],
+    },
     "sensitive-data-exposure": {
         "deskripsi": "Respons API memuat data sensitif (sandi/hash, secret, token, kunci "
                      "pribadi, atau data rahasia lain) yang seharusnya tidak dikirim ke klien.",
@@ -533,6 +601,14 @@ def classify(modul: str, judul: str) -> str:
         return "open-redirect"
     if modul == "cookie-flags":
         return "cookie-flags"
+    if modul == "openapi-coverage":
+        if "galat server" in j:
+            return "anon-server-error"
+        if "tak akurat" in j or "spesifikasi" in j and "dilindungi" not in j:
+            return "spec-mismatch"
+        if "terbuka tanpa" in j:
+            return "unauthenticated-endpoint"
+        return "auth-coverage-gap"
     if modul == "response-leak":
         if "debug" in j or "verbose" in j:
             return "verbose-error"

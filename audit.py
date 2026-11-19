@@ -323,7 +323,7 @@ def main():
     ap.add_argument("module", choices=["all", "zap", "tls", "headers", "deps",
                                        "authz", "upload", "auth-policy", "clientleak",
                                        "cors", "open-redirect", "mass-assignment",
-                                       "webstack", "injection", "cookie-flags", "response-leak", "recon", "rollback", "report"])
+                                       "webstack", "injection", "cookie-flags", "response-leak", "openapi-coverage", "recon", "rollback", "report"])
     ap.add_argument("sub", nargs="?", default="baseline",
                     help="subperintah untuk 'zap': baseline|api|full")
     args = ap.parse_args()
@@ -377,6 +377,12 @@ def main():
                     ROOT / "tests" / "injection" / "injection.yml", "injection.json")
         mod_report()
         return rc
+    if args.module == "openapi-coverage":
+        rc = mod_py(ROOT / "tests" / "openapi-coverage" / "run_openapi_coverage.py",
+                    ROOT / "tests" / "openapi-coverage" / "openapi_coverage.yml",
+                    "openapi_coverage.json")
+        mod_report()
+        return rc
     if args.module == "response-leak":
         rc = mod_py(ROOT / "tests" / "response-leak" / "run_response_leak.py",
                     ROOT / "tests" / "response-leak" / "response_leak.yml", "response_leak.json")
@@ -415,6 +421,7 @@ def main():
             (ROOT / "tests/injection/run_injection.py", ROOT / "tests/injection/injection.yml", "injection.json"),
             (ROOT / "tests/cookie-flags/run_cookie_flags.py", ROOT / "tests/cookie-flags/cookie_flags.yml", "cookie_flags.json"),
             (ROOT / "tests/response-leak/run_response_leak.py", ROOT / "tests/response-leak/response_leak.yml", "response_leak.json"),
+            (ROOT / "tests/openapi-coverage/run_openapi_coverage.py", ROOT / "tests/openapi-coverage/openapi_coverage.yml", "openapi_coverage.json"),
             (ROOT / "tests/mass-assignment/run_mass_assignment.py", ROOT / "tests/mass-assignment/mass_assignment.yml", "mass_assignment.json"),
             (ROOT / "tests/recon/run_recon.py", ROOT / "tests/recon/recon.yml", "recon.json"),
         ):
