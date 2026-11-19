@@ -143,16 +143,18 @@ def summarize(findings):
 
 
 METODOLOGI = (
-    "Testing dijalankan otomatis dan non-destruktif ke target yang berwenang diuji. "
-    "Acuannya OWASP Top 10 2021, OWASP ASVS, dan OWASP Risk Rating Methodology "
-    "(severity = Likelihood x Impact). Tooling-nya OWASP ZAP, Trivy, dan testssl.sh, "
-    "ditambah rangkaian regression test buat access control, upload, dan password policy."
+    "Pengujian dijalankan secara otomatis dan non-destruktif terhadap target yang "
+    "berwenang diuji. Acuannya OWASP Top 10 2021, OWASP ASVS, dan OWASP Risk Rating "
+    "Methodology (severity = Likelihood x Impact). Tooling yang digunakan OWASP ZAP, "
+    "Trivy, dan testssl.sh, ditambah rangkaian regression test untuk access control, "
+    "upload, dan password policy."
 )
 BATASAN = (
-    "Laporan ini hasil automation, bukan pengganti pentest manual. Temuan scanner "
-    "(misalnya ZAP) bisa false positive dan wajib diverifikasi sebelum severity final "
-    "dikunci. Celah logika bisnis cuma ketangkep kalau test-nya ditulis khusus. "
-    "Cakupannya sebatas target & endpoint yang di-config pas dijalanin. "
+    "Laporan ini merupakan hasil automation, bukan pengganti pentest manual. Temuan "
+    "scanner (misalnya ZAP) dapat berupa false positive dan wajib diverifikasi sebelum "
+    "severity final ditetapkan. Celah logika bisnis hanya terdeteksi apabila test-nya "
+    "ditulis secara khusus. Cakupan pengujian terbatas pada target dan endpoint yang "
+    "dikonfigurasi saat dijalankan. "
     "Uji destruktif (mis. mass-assignment) menulis ke target lalu DIPULIHKAN otomatis "
     "ke keadaan semula sebagai fase terakhir setelah laporan ini dibuat; log pemulihan "
     "ada di reports/rollback.json, dan `python audit.py rollback` memulihkan ulang bila perlu."

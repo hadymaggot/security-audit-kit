@@ -1,12 +1,12 @@
-# Salin ke cors.yml. Non-destruktif (cuma GET dengan header Origin uji).
+# Salin ke cors.yml. Non-destruktif (hanya GET dengan header Origin uji).
 base_url: "${TARGET_BASE_URL}"
 
-# Sertakan auth biar endpoint berkredensial ikut dites (opsional).
+# Sertakan auth agar endpoint berkredensial ikut diuji (opsional).
 auth:
   header: "Authorization"
   value: "${CORS_TOKEN}"          # mis. "Bearer xxx"
 
-# Origin asing buat nguji pantulan. Ganti kalau mau.
+# Origin asing untuk menguji pantulan. Ganti bila perlu.
 evil_origin: "https://evil.example"
 
 # Endpoint yang dicek — utamakan API yang mengembalikan data.

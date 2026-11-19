@@ -13,7 +13,7 @@ sensitive_paths:
   - "/dashboard"
 
 # A2. (Opsional) Konfirmasi lewat browser sungguhan bahwa respons di sensitive_paths
-#     benar-benar tersimpan di cache browser (bukan cuma dibaca dari header).
+#     benar-benar tersimpan di cache browser (bukan hanya dibaca dari header).
 #     Butuh: pip install playwright && python -m playwright install chromium
 #     Bila tak terpasang, cek ini di-skip (bukan temuan).
 browser_cache:

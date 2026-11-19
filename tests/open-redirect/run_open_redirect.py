@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deteksi open redirect (non-destruktif, cuma GET tanpa mengikuti redirect).
+"""Deteksi open redirect (non-destruktif, hanya GET tanpa mengikuti redirect).
 
 Buat tiap path x nama parameter pengalih, kirim GET dengan nilai parameter = tujuan
 eksternal uji, lalu baca header Location TANPA mengikutinya. Ditandai kalau Location

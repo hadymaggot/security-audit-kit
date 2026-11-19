@@ -1,6 +1,6 @@
 # Matriks kontrol akses — inti dari kit ini.
 # Salin ke authz_matrix.yml lalu sesuaikan. Jangan taruh kredensial di sini;
-# pakai ${ENV_VAR} yang dibaca dari environment.
+# gunakan ${ENV_VAR} yang dibaca dari environment.
 #
 # Ide: untuk tiap endpoint, nyatakan peran mana yang BOLEH (expect allow) dan mana
 # yang HARUS DITOLAK (expect deny). Runner login sebagai tiap peran lalu memastikan
@@ -11,7 +11,7 @@ base_url: "${TARGET_BASE_URL}"
 # Cara login tiap peran dan cara mengambil token/sesi.
 auth:
   # Mode: "session_cookie" (simpan cookie dari respons login) atau
-  #       "bearer" (ambil token dari JSON respons, kirim sbagai Authorization: Bearer).
+  #       "bearer" (ambil token dari JSON respons, kirim sebagai Authorization: Bearer).
   mode: bearer
 
   login:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deteksi CORS misconfiguration (non-destruktif, cuma GET dengan header Origin).
+"""Deteksi CORS misconfiguration (non-destruktif, hanya GET dengan header Origin).
 
 Buat tiap path, kirim request dengan Origin uji lalu baca Access-Control-Allow-Origin
 (ACAO) dan Access-Control-Allow-Credentials (ACAC). Ditandai kalau:
