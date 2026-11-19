@@ -156,6 +156,27 @@ KB = {
         "referensi": ["OWASP API3:2023 Broken Object Property Level Authorization",
                       "CWE-915 Improperly Controlled Modification of Object Attributes"],
     },
+    "server-vuln": {
+        "deskripsi": "Versi web server/komponen yang terdeteksi dari banner cocok dengan "
+                     "kerentanan yang telah terdaftar (CVE), mis. Apache mod_http2 atau "
+                     "NGINX HTTP/2.",
+        "dampak": "Bergantung CVE-nya, berpotensi remote code execution, DoS, atau "
+                  "memory corruption pada server yang terekspos.",
+        "severity": "High",
+        "severity_dasar": "Likelihood sedang (eksploit publik untuk CVE yang aktif) x "
+                          "Impact tinggi (RCE/DoS). Deteksi berbasis banner — keyakinan "
+                          "sedang, wajib dikonfirmasi ke advisory vendor.",
+        "rekomendasi": [
+            "Update ke versi yang sudah diperbaiki sesuai advisory vendor (mis. Apache "
+            "httpd 2.4.71+, NGINX 1.30.7+/1.31.9+).",
+            "Batasi exposure komponen yang rentan; terapkan mitigasi sementara (mis. WAF, "
+            "nonaktifkan modul/fitur terkait bila memungkinkan).",
+            "Kosongkan banner versi (ServerTokens Prod / server_tokens off) agar tidak "
+            "memudahkan fingerprint.",
+        ],
+        "referensi": ["OWASP A06:2021 Vulnerable and Outdated Components",
+                      "CISA Known Exploited Vulnerabilities (KEV)"],
+    },
     "tls-weak": {
         "deskripsi": "Server menerima protokol/cipher TLS usang.",
         "dampak": "Komunikasi berpotensi didekripsi (downgrade/known attacks).",
@@ -330,6 +351,8 @@ def classify(modul: str, judul: str) -> str:
         return "upload-accepted"
     if modul == "mass-assignment":
         return "mass-assignment"
+    if modul == "webstack":
+        return "server-vuln" if j.startswith("versi rentan") else "missing-header"
     if modul == "auth-policy":
         if "captcha" in j:
             return "captcha-static"

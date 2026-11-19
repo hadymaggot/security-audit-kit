@@ -1,0 +1,23 @@
+# Salin ke webstack.yml. Non-destruktif: hanya membaca banner Server/X-Powered-By
+# dan menegosiasi HTTP/2 (ALPN). Tidak mengirim payload exploit.
+base_url: "${TARGET_BASE_URL}"
+
+# Host/port tambahan yang diperiksa langsung (opsional), mis. port service di balik gateway.
+extra_targets: []
+#   - "http://localhost:8080"
+
+# Autentikasi opsional (umumnya tidak diperlukan untuk membaca banner).
+# auth: { header: "Authorization", value: "${TOKEN}" }
+
+# Daftar versi rentan. 'server' dicocokkan sebagai substring (case-insensitive) pada
+# banner 'Server'; versi di bawah 'max_version' dianggap rentan. Perbarui dari advisory
+# vendor saat ada CVE baru.
+known_vulnerable:
+  - server: "apache"
+    max_version: "2.4.71"          # perbaikan mod_http2
+    cve: "CVE-2026-119618"
+    catatan: "Apache mod_http2 unauthenticated RCE (aktif dieksploitasi 2026)"
+  - server: "nginx"
+    max_version: "1.30.7"          # perbaikan HTTP/2 (stable)
+    cve: "CVE-2026-123633"
+    catatan: "NGINX HTTP/2 memory corruption / RCE (CVSS 9.2)"

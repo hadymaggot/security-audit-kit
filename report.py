@@ -65,6 +65,7 @@ def collect(d: Path):
                         ("client_leak.json", "client-leak"),
                         ("cors.json", "cors"),
                         ("open_redirect.json", "open-redirect"),
+                        ("webstack.json", "webstack"),
                         ("headers.json", "headers")):
         data = load(d / name)
         if not data:
@@ -181,6 +182,7 @@ KIND_LABEL = {
     "captcha-static": "Captcha tidak regenerasi",
     "missing-header": "Header keamanan tidak diset",
     "tls-weak": "Konfigurasi TLS lemah",
+    "server-vuln": "Web server versi rentan (CVE diketahui)",
     "vuln-dependency": "Dependensi dengan kerentanan (CVE)",
     "cors-misconfig": "CORS salah konfigurasi",
     "open-redirect": "Open redirect",

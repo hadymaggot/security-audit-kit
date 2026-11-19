@@ -7,6 +7,7 @@ tests/*/client_leak.yml
 tests/*/cors.yml
 tests/*/open_redirect.yml
 tests/*/mass_assignment.yml
+tests/*/webstack.yml
 # Hasil pindai
 reports/
 # Python
