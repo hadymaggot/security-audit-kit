@@ -257,6 +257,35 @@ def test_url_appears_as_instance_evidence(tmp_path):
     assert "Endpoint diuji" in h and "http://t:18008/api/activity-logs" in h
 
 
+def test_screenshot_embedded_in_all_formats(tmp_path):
+    (tmp_path / "client_leak.json").write_text(json.dumps({"results": [
+        {"kind": "cache", "label": "cache respons /akun", "status": 200, "ok": False,
+         "note": "ter-cache", "url": "GET http://t/akun",
+         "screenshot": "evidence/cache_akun.png"},
+    ]}), encoding="utf-8")
+    findings = RP.collect(tmp_path)
+    assert findings[0]["screenshot"] == "evidence/cache_akun.png"
+    counts = RP.summarize(findings)
+    RP.write_md(tmp_path / "m.md", findings, counts, "2026-01-01", [])
+    RP.write_html(tmp_path / "m.html", findings, counts, "2026-01-01", [])
+    RP.write_slides(tmp_path / "s.html", findings, counts, "2026-01-01", [])
+    md = (tmp_path / "m.md").read_text(encoding="utf-8")
+    h = (tmp_path / "m.html").read_text(encoding="utf-8")
+    s = (tmp_path / "s.html").read_text(encoding="utf-8")
+    assert "![bukti](evidence/cache_akun.png)" in md                 # MD: image link
+    assert "<img class='shot' src='evidence/cache_akun.png'" in h    # HTML: thumbnail
+    assert "evidence/cache_akun.png" in s                            # slide: gambar
+
+
+def test_no_screenshot_no_img(tmp_path):
+    (tmp_path / "headers.json").write_text(json.dumps({"results": [
+        {"label": "CSP", "status": 200, "ok": False, "note": "x", "url": "GET http://t/"},
+    ]}), encoding="utf-8")
+    findings = RP.collect(tmp_path)
+    RP.write_html(tmp_path / "m.html", findings, RP.summarize(findings), "2026-01-01", [])
+    assert "class='shot'" not in (tmp_path / "m.html").read_text(encoding="utf-8")
+
+
 def test_missing_url_renders_dash(tmp_path):
     (tmp_path / "headers.json").write_text(json.dumps({"results": [
         {"label": "Content-Security-Policy", "status": 200, "ok": False, "note": "x"},
@@ -389,6 +418,53 @@ class _LeakSess:
 
 def _leak():
     return _load("run_client_leak", ROOT / "tests" / "client-leak" / "run_client_leak.py")
+
+
+class _FakePage:
+    def __init__(self):
+        self.calls = []
+
+    def screenshot(self, path=None, full_page=None, clip=None):
+        self.calls.append(("page", full_page, clip))
+        Path(path).write_bytes(b"\x89PNG")
+
+    def locator(self, sel):
+        page = self
+
+        class _L:
+            @property
+            def first(self):
+                class _E:
+                    def screenshot(self, path=None):
+                        page.calls.append(("elem", sel))
+                        Path(path).write_bytes(b"\x89PNG")
+                return _E()
+        return _L()
+
+
+def test_capture_shot_viewport_default(tmp_path):
+    cl = _leak()
+    page = _FakePage()
+    rel = cl._capture_shot(page, {}, tmp_path, "/akun")
+    assert rel == "evidence/cache_akun.png"
+    assert (tmp_path / "evidence" / "cache_akun.png").exists()
+    assert page.calls == [("page", False, None)]          # viewport (full_page=False)
+
+
+def test_capture_shot_selector_and_clip(tmp_path):
+    cl = _leak()
+    p1 = _FakePage()
+    cl._capture_shot(p1, {"selector": ".panel"}, tmp_path, "/x")
+    assert p1.calls == [("elem", ".panel")]               # crop ke elemen
+    p2 = _FakePage()
+    cl._capture_shot(p2, {"clip": {"x": 0, "y": 0, "width": 10, "height": 10}}, tmp_path, "/y")
+    assert p2.calls[0][0] == "page" and p2.calls[0][2]["width"] == 10   # crop region
+
+
+def test_capture_shot_disabled_or_no_dir(tmp_path):
+    cl = _leak()
+    assert cl._capture_shot(_FakePage(), {"screenshot": False}, tmp_path, "/x") == ""
+    assert cl._capture_shot(_FakePage(), {}, None, "/x") == ""
 
 
 def test_cache_timeout_is_skipped_not_finding():

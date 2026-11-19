@@ -26,6 +26,7 @@ import json
 import os
 import re
 import sys
+from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
 import requests
@@ -117,7 +118,29 @@ BROWSER_PROBE_JS = """async (u) => {
 }"""
 
 
-def check_browser_cache(cfg, base, paths):
+def _capture_shot(page, bc, reports_dir, p):
+    """Tangkap screenshot bukti (default viewport; crop opsional via selector/clip/
+    full_page). Kembalikan path relatif terhadap reports_dir, atau '' bila gagal."""
+    if not reports_dir or not bc.get("screenshot", True):
+        return ""
+    try:
+        ssdir = Path(reports_dir) / "evidence"
+        ssdir.mkdir(parents=True, exist_ok=True)
+        fn = "cache_" + (re.sub(r"[^A-Za-z0-9]+", "_", p).strip("_")[:40] or "root") + ".png"
+        fpath = ssdir / fn
+        sel = bc.get("selector")
+        if sel:                                   # crop ke elemen tertentu
+            page.locator(sel).first.screenshot(path=str(fpath))
+        elif bc.get("clip"):                      # crop ke region x/y/width/height
+            page.screenshot(path=str(fpath), clip=bc["clip"])
+        else:                                     # viewport (default) atau full_page
+            page.screenshot(path=str(fpath), full_page=bool(bc.get("full_page")))
+        return "evidence/" + fn
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+def check_browser_cache(cfg, base, paths, reports_dir=None):
     """Konfirmasi via browser sungguhan (Playwright/Chromium) bahwa respons sensitif
     benar-benar tersimpan di cache browser — cek header saja belum membuktikannya.
 
@@ -167,12 +190,22 @@ def check_browser_cache(cfg, base, paths):
                                     "status": -1, "ok": True, "note": f"skip: {r['err']}"})
                         continue
                     cc = r["cc"] or "(kosong)"
-                    out.append({"kind": "browser-cache", "label": f"cache browser {p}",
-                                "status": r["status"], "ok": not r["cached"],
-                                "url": f"GET {url}",
-                                "note": (f"tersimpan di cache browser (Chromium, fetch "
-                                         f"only-if-cached berhasil); Cache-Control: '{cc}'")
-                                        if r["cached"] else ""})
+                    row = {"kind": "browser-cache", "label": f"cache browser {p}",
+                           "status": r["status"], "ok": not r["cached"],
+                           "url": f"GET {url}",
+                           "note": (f"tersimpan di cache browser (Chromium, fetch "
+                                    f"only-if-cached berhasil); Cache-Control: '{cc}'")
+                                   if r["cached"] else ""}
+                    # Bukti: tangkap screenshot halaman sensitif hanya saat jadi temuan.
+                    if r["cached"]:
+                        try:
+                            page.goto(url, timeout=20000)
+                        except Exception:  # noqa: BLE001
+                            pass
+                        shot = _capture_shot(page, bc, reports_dir, p)
+                        if shot:
+                            row["screenshot"] = shot
+                    out.append(row)
             finally:
                 browser.close()
     except Exception as exc:  # noqa: BLE001
@@ -310,11 +343,13 @@ def main():
 
     base = cfg["base_url"].rstrip("/")
     s = session_with_auth(cfg)
+    reports_dir = Path(args.json).parent if args.json else None
 
     results = []
     results += check_cache(s, base, cfg.get("sensitive_paths", []))
     if (cfg.get("browser_cache") or {}).get("enabled"):
-        results += check_browser_cache(cfg, base, cfg.get("sensitive_paths", []))
+        results += check_browser_cache(cfg, base, cfg.get("sensitive_paths", []),
+                                       reports_dir=reports_dir)
 
     js_urls = list(cfg.get("js_assets", []))
     if cfg.get("auto_discover_js", True):
