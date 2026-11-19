@@ -94,6 +94,9 @@ def collect(d: Path):
                         ("cookie_flags.json", "cookie-flags"),
                         ("response_leak.json", "response-leak"),
                         ("openapi_coverage.json", "openapi-coverage"),
+                        ("ratelimit.json", "ratelimit"),
+                        ("session_mgmt.json", "session-mgmt"),
+                        ("captcha.json", "captcha"),
                         ("headers.json", "headers")):
         data = load(d / name)
         if not data:
@@ -110,7 +113,8 @@ def collect(d: Path):
             hint = None
             if modul == "client-leak":
                 hint = CLIENT_LEAK_KIND.get(r.get("kind"))
-            elif modul in ("response-leak", "openapi-coverage"):
+            elif modul in ("response-leak", "openapi-coverage", "ratelimit", "session-mgmt",
+                           "captcha"):
                 hint = r.get("kind")
             elif modul == "headers":
                 hint = "missing-header"
@@ -232,6 +236,14 @@ KIND_LABEL = {
     "cors-misconfig": "CORS salah konfigurasi",
     "open-redirect": "Open redirect",
     "cookie-flags": "Atribut keamanan cookie tidak lengkap",
+    "captcha-answer-leak": "Captcha membocorkan jawabannya di respons",
+    "session-not-revoked": "Sesi lain tidak dicabut setelah ganti sandi",
+    "logout-no-invalidate": "Logout tidak mencabut sesi di server",
+    "old-password-accepted": "Sandi lama masih diterima setelah penggantian",
+    "no-rate-limit": "Tidak ada pembatasan laju pada endpoint sensitif",
+    "weak-lockout": "Penguncian akun tidak sesuai kebijakan",
+    "lockout-bypass": "Penguncian akun dapat dilewati dengan sandi benar",
+    "user-enumeration": "Akun terdaftar dapat dibedakan dari respons (enumerasi akun)",
     "auth-coverage-gap": "Endpoint terlindungi menurut spesifikasi namun terbuka tanpa login",
     "unauthenticated-endpoint": "Endpoint terbuka tanpa autentikasi (perlu ditinjau)",
     "spec-mismatch": "Spesifikasi OpenAPI tidak akurat terhadap perilaku nyata",
@@ -309,6 +321,14 @@ KIND_CVSS = {
     "recon-subdomain": (5.3, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"),
     "client-cache": (4.3, "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:L/I:N/A:N"),
     "cookie-flags": (4.2, "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:L/I:L/A:N"),
+    "captcha-answer-leak": (5.3, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N"),
+    "session-not-revoked": (6.8, "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N"),
+    "logout-no-invalidate": (6.8, "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N"),
+    "old-password-accepted": (8.1, "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H"),
+    "no-rate-limit": (5.3, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"),
+    "weak-lockout": (5.3, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"),
+    "lockout-bypass": (7.5, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"),
+    "user-enumeration": (5.3, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"),
     "auth-coverage-gap": (7.5, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"),
     "unauthenticated-endpoint": (5.3, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"),
     "spec-mismatch": (3.7, "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N"),

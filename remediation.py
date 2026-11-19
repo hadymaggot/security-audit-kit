@@ -344,6 +344,128 @@ KB = {
         ],
         "referensi": ["OWASP ZAP", "OWASP Top 10 2021"],
     },
+    "captcha-answer-leak": {
+        "deskripsi": "Respons tantangan captcha membocorkan jawabannya (kunci jawaban, atau offset "
+                     "posisi pada SVG/gambar), sehingga captcha dapat dilewati secara otomatis "
+                     "tanpa memecahkannya.",
+        "dampak": "Captcha sebagai kontrol anti-otomatisasi (brute-force login, spam, pendaftaran "
+                  "massal) menjadi tidak efektif; bot dapat melewatinya dengan membaca respons.",
+        "severity": "Medium",
+        "severity_dasar": "Likelihood tinggi (cukup mem-parsing respons) x Impact sedang (kontrol "
+                          "anti-otomatisasi gugur, namun rate limit/lockout dapat meredam).",
+        "rekomendasi": [
+            "Jangan mengirim posisi/jawaban ke klien: simpan target di server dan validasi "
+            "jawaban di sisi server.",
+            "Untuk captcha slider: render lubang DAN potongan puzzle sebagai bitmap yang "
+            "tidak memuat koordinat target; jangan sertakan offset translate/clip yang setara posisi target.",
+            "Pertimbangkan captcha yang terbukti (Cloudflare Turnstile, hCaptcha, reCAPTCHA) "
+            "ketimbang implementasi sendiri.",
+            "Pertahankan lapisan lain: rate limit, lockout akun, dan deteksi anomali.",
+        ],
+        "referensi": ["OWASP ASVS V2.2.3 / V11.1 Anti-automation",
+                      "OWASP Automated Threats (OAT-009 CAPTCHA Defeat)", "CWE-804, CWE-602"],
+    },
+    "session-not-revoked": {
+        "deskripsi": "Setelah sandi diganti, sesi lain milik akun yang sama tetap berlaku "
+                     "(sesi tidak dicabut di server).",
+        "dampak": "Sesi yang telah dicuri (malware, jaringan tak aman, perangkat hilang) tetap "
+                  "dapat dipakai penyerang walau korban sudah mengganti sandi.",
+        "severity": "Medium",
+        "severity_dasar": "Likelihood sedang (butuh pencurian sesi sebelumnya) x Impact tinggi "
+                          "(akses akun berlanjut).",
+        "rekomendasi": [
+            "Cabut semua sesi lain saat sandi berubah (pertahankan sesi yang mengganti, bila perlu).",
+            "Contoh Laravel: Auth::logoutOtherDevices($newPassword) + hapus record sesi/perangkat "
+            "milik user (mis. DeviceSession) dan sesi di Redis.",
+            "Kirim notifikasi keamanan dan tawarkan 'keluar dari semua perangkat'.",
+        ],
+        "referensi": ["OWASP ASVS V3.3.3 Session Termination",
+                      "OWASP Session Management Cheat Sheet", "CWE-613"],
+    },
+    "logout-no-invalidate": {
+        "deskripsi": "Logout tidak mencabut sesi di server: cookie sesi lama masih diterima "
+                     "setelah logout.",
+        "dampak": "Cookie sesi yang pernah bocor tetap dapat dipakai (replay) walau pengguna "
+                  "sudah logout.",
+        "severity": "Medium",
+        "severity_dasar": "Likelihood sedang x Impact tinggi (pembajakan sesi).",
+        "rekomendasi": [
+            "Hapus/invalidasi sesi di penyimpanan server saat logout, bukan hanya cookie klien.",
+            "Contoh Laravel: Auth::logout(); $request->session()->invalidate(); "
+            "$request->session()->regenerateToken();",
+        ],
+        "referensi": ["OWASP ASVS V3.3.1", "OWASP Session Management Cheat Sheet", "CWE-613"],
+    },
+    "old-password-accepted": {
+        "deskripsi": "Sandi lama masih diterima setelah sandi diganti, atau sandi baru tidak "
+                     "berlaku.",
+        "dampak": "Penggantian sandi tidak memutus akses pihak yang mengetahui sandi lama.",
+        "severity": "High",
+        "severity_dasar": "Likelihood tinggi x Impact tinggi (kredensial lama tetap sah).",
+        "rekomendasi": [
+            "Pastikan hash sandi diganti secara atomik dan sandi lama langsung tidak valid.",
+            "Periksa cache/replika yang masih menyimpan kredensial lama.",
+        ],
+        "referensi": ["OWASP ASVS V2.1", "CWE-620, CWE-613"],
+    },
+    "no-rate-limit": {
+        "deskripsi": "Endpoint sensitif (mis. login) tidak membatasi laju request, sehingga "
+                     "percobaan kredensial dapat diulang tanpa batas.",
+        "dampak": "Brute-force dan credential stuffing dapat dijalankan pada kecepatan penuh "
+                  "hingga kredensial valid ditemukan.",
+        "severity": "Medium",
+        "severity_dasar": "Likelihood tinggi (tanpa prasyarat) x Impact sedang-tinggi "
+                          "(pengambilalihan akun), diredam bila ada kontrol lain (captcha, MFA).",
+        "rekomendasi": [
+            "Terapkan rate limit per IP dan per akun pada endpoint login, reset sandi, dan OTP.",
+            "Contoh Laravel (routes/api.php):",
+            "    Route::post('/login', [LoginController::class, 'login'])\n"
+            "        ->middleware('throttle:5,1');   // 5 percobaan per menit",
+            "Tambahkan rate limit di gateway/WAF sebagai lapisan kedua; kembalikan 429 + Retry-After.",
+        ],
+        "referensi": ["OWASP API4:2023 Unrestricted Resource Consumption",
+                      "OWASP ASVS V2.2 Anti-automation", "CWE-307"],
+    },
+    "weak-lockout": {
+        "deskripsi": "Penguncian akun setelah sandi salah berulang tidak ditegakkan sesuai "
+                     "kebijakan (tidak terkunci, terlalu lambat, atau durasi tidak wajar).",
+        "dampak": "Penyerang dapat menebak sandi tanpa dihentikan; atau kunci tak berbatas "
+                  "dapat dipakai untuk mengunci akun korban (denial of service).",
+        "severity": "Medium",
+        "severity_dasar": "Likelihood sedang (kontrol lain mungkin meredam) x Impact sedang.",
+        "rekomendasi": [
+            "Kunci akun sementara (mis. 15 menit) setelah N sandi salah (mis. 5) dan reset "
+            "penghitung saat login berhasil.",
+            "Pastikan kunci bersifat sementara agar tidak menjadi vektor penguncian akun korban.",
+            "Kombinasikan dengan rate limit per IP dan captcha/MFA.",
+        ],
+        "referensi": ["OWASP ASVS V2.2.1", "OWASP Authentication Cheat Sheet", "CWE-307"],
+    },
+    "lockout-bypass": {
+        "deskripsi": "Login dengan sandi benar berhasil walaupun akun berstatus terkunci.",
+        "dampak": "Penguncian akun tidak melindungi; penyerang yang menebak sandi tetap berhasil "
+                  "masuk di tengah masa kunci.",
+        "severity": "High",
+        "severity_dasar": "Likelihood tinggi x Impact tinggi (kontrol anti brute-force tidak efektif).",
+        "rekomendasi": [
+            "Periksa status kunci SEBELUM memverifikasi sandi dan tolak (423) selama masa kunci.",
+            "Contoh pola: if ($user->isLocked()) return response()->json([...], 423);",
+        ],
+        "referensi": ["OWASP ASVS V2.2.1", "CWE-307, CWE-287"],
+    },
+    "user-enumeration": {
+        "deskripsi": "Respons autentikasi berbeda untuk akun terdaftar dan tidak terdaftar "
+                     "(status, pesan, atau perilaku penguncian), sehingga keberadaan akun dapat ditebak.",
+        "dampak": "Penyerang dapat menyusun daftar akun valid untuk serangan sandi/phishing yang terarah.",
+        "severity": "Low",
+        "severity_dasar": "Informasi pendukung serangan lanjutan; dampak langsung rendah.",
+        "rekomendasi": [
+            "Kembalikan respons generik yang identik (status + pesan) untuk akun terdaftar dan tidak.",
+            "Terapkan penghitung gagal/penguncian secara seragam, atau jangan membedakan respons "
+            "penguncian (mis. selalu 401 dengan pesan sama) dan beri tahu pemilik akun lewat email.",
+        ],
+        "referensi": ["OWASP ASVS V2.2.1 / V3.2", "OWASP Authentication Cheat Sheet", "CWE-204"],
+    },
     "auth-coverage-gap": {
         "deskripsi": "Endpoint yang menurut spesifikasi OpenAPI wajib autentikasi ternyata "
                      "dapat diakses tanpa kredensial (penegakan autentikasi tidak sesuai desain).",
@@ -601,6 +723,22 @@ def classify(modul: str, judul: str) -> str:
         return "open-redirect"
     if modul == "cookie-flags":
         return "cookie-flags"
+    if modul == "captcha":
+        return "captcha-answer-leak"
+    if modul == "session-mgmt":
+        if j.startswith("logout"):
+            return "logout-no-invalidate"
+        if "sandi lama" in j or "sandi baru" in j:
+            return "old-password-accepted"
+        return "session-not-revoked"
+    if modul == "ratelimit":
+        if "enumerasi" in j:
+            return "user-enumeration"
+        if "sandi benar" in j:
+            return "lockout-bypass"
+        if j.startswith("laju"):
+            return "no-rate-limit"
+        return "weak-lockout"
     if modul == "openapi-coverage":
         if "galat server" in j:
             return "anon-server-error"

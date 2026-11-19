@@ -24,3 +24,6 @@ tests/*/recon.yml
 tests/*/cookie_flags.yml
 tests/*/response_leak.yml
 tests/*/openapi_coverage.yml
+tests/*/ratelimit.yml
+tests/*/session_mgmt.yml
+tests/*/captcha.yml

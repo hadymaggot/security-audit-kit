@@ -272,36 +272,44 @@ def mod_rollback():
     import importlib.util
 
     sys.path.insert(0, str(ROOT / "tests"))
+    import _fixture  # noqa: E402
     import _rollback  # noqa: E402
     import _sanctum  # noqa: E402
 
     reports = reports_dir()
     if not _rollback.pending(reports):
         return 0
-    # Auth memakai config modul destruktif (mass-assignment satu-satunya saat ini).
-    cfg_path = ROOT / "tests" / "mass-assignment" / "mass_assignment.yml"
-    if not cfg_path.exists():
-        print("Jurnal rollback ada tapi config auth tak ditemukan — pulihkan manual.",
-              file=sys.stderr)
-        return 2
-    spec = importlib.util.spec_from_file_location(
-        "run_mass_assignment", ROOT / "tests" / "mass-assignment" / "run_mass_assignment.py")
-    ma = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(ma)
-    import yaml
-    with open(cfg_path, encoding="utf-8") as f:
-        cfg = ma.expand(yaml.safe_load(f))
-    base = cfg["base_url"].rstrip("/")
-    sess, sanctum = ma.build_session(base, cfg.get("auth") or {})
+    ctx = {}
 
-    def headers():
-        return _sanctum.auth_headers(sess, sanctum.get("origin")) if sanctum else {}
+    def ma_ctx():
+        """Sesi auth dari config mass-assignment (dibuat malas — hanya bila entri butuh)."""
+        if ctx:
+            return ctx
+        cfg_path = ROOT / "tests" / "mass-assignment" / "mass_assignment.yml"
+        if not cfg_path.exists():
+            raise RuntimeError("config auth mass-assignment tak ditemukan — pulihkan manual")
+        spec = importlib.util.spec_from_file_location(
+            "run_mass_assignment", ROOT / "tests" / "mass-assignment" / "run_mass_assignment.py")
+        ma = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(ma)
+        import yaml
+        with open(cfg_path, encoding="utf-8") as f:
+            cfg = ma.expand(yaml.safe_load(f))
+        base = cfg["base_url"].rstrip("/")
+        sess, sanctum = ma.build_session(base, cfg.get("auth") or {})
+        ctx.update(base=base, sess=sess, sanctum=sanctum)
+        return ctx
 
     def do_restore(entry):
         a = entry["action"]
-        url = (a.get("base_url") or base).rstrip("/") + a["path"]
-        r = sess.request(a.get("method", "PATCH"), url, json=a.get("json"),
-                         headers=headers(), timeout=20)
+        if a.get("fixture_config"):               # akun uji sekali pakai -> hapus pakai sesi admin
+            return _fixture.restore_entry(entry)
+        c = ma_ctx()
+        url = (a.get("base_url") or c["base"]).rstrip("/") + a["path"]
+        hdr = (_sanctum.auth_headers(c["sess"], c["sanctum"].get("origin"))
+               if c["sanctum"] else {})
+        r = c["sess"].request(a.get("method", "PATCH"), url, json=a.get("json"),
+                              headers=hdr, timeout=20)
         ok = 200 <= r.status_code < 400
         return ok, ("dipulihkan" if ok else f"HTTP {r.status_code} — pulihkan manual")
 
@@ -323,7 +331,7 @@ def main():
     ap.add_argument("module", choices=["all", "zap", "tls", "headers", "deps",
                                        "authz", "upload", "auth-policy", "clientleak",
                                        "cors", "open-redirect", "mass-assignment",
-                                       "webstack", "injection", "cookie-flags", "response-leak", "openapi-coverage", "recon", "rollback", "report"])
+                                       "webstack", "injection", "cookie-flags", "response-leak", "openapi-coverage", "ratelimit", "session-mgmt", "captcha", "recon", "rollback", "report"])
     ap.add_argument("sub", nargs="?", default="baseline",
                     help="subperintah untuk 'zap': baseline|api|full")
     args = ap.parse_args()
@@ -377,6 +385,23 @@ def main():
                     ROOT / "tests" / "injection" / "injection.yml", "injection.json")
         mod_report()
         return rc
+    if args.module == "captcha":
+        rc = mod_py(ROOT / "tests" / "captcha" / "run_captcha.py",
+                    ROOT / "tests" / "captcha" / "captcha.yml", "captcha.json")
+        mod_report()
+        return rc
+    if args.module == "session-mgmt":
+        rc = mod_py(ROOT / "tests" / "session-mgmt" / "run_session_mgmt.py",
+                    ROOT / "tests" / "session-mgmt" / "session_mgmt.yml", "session_mgmt.json")
+        mod_report()
+        mod_rollback()          # bersihkan sisa akun uji bila proses terputus di tengah.
+        return rc
+    if args.module == "ratelimit":
+        rc = mod_py(ROOT / "tests" / "ratelimit" / "run_ratelimit.py",
+                    ROOT / "tests" / "ratelimit" / "ratelimit.yml", "ratelimit.json")
+        mod_report()
+        mod_rollback()          # bersihkan sisa akun uji bila proses terputus di tengah.
+        return rc
     if args.module == "openapi-coverage":
         rc = mod_py(ROOT / "tests" / "openapi-coverage" / "run_openapi_coverage.py",
                     ROOT / "tests" / "openapi-coverage" / "openapi_coverage.yml",
@@ -422,6 +447,9 @@ def main():
             (ROOT / "tests/cookie-flags/run_cookie_flags.py", ROOT / "tests/cookie-flags/cookie_flags.yml", "cookie_flags.json"),
             (ROOT / "tests/response-leak/run_response_leak.py", ROOT / "tests/response-leak/response_leak.yml", "response_leak.json"),
             (ROOT / "tests/openapi-coverage/run_openapi_coverage.py", ROOT / "tests/openapi-coverage/openapi_coverage.yml", "openapi_coverage.json"),
+            (ROOT / "tests/ratelimit/run_ratelimit.py", ROOT / "tests/ratelimit/ratelimit.yml", "ratelimit.json"),
+            (ROOT / "tests/session-mgmt/run_session_mgmt.py", ROOT / "tests/session-mgmt/session_mgmt.yml", "session_mgmt.json"),
+            (ROOT / "tests/captcha/run_captcha.py", ROOT / "tests/captcha/captcha.yml", "captcha.json"),
             (ROOT / "tests/mass-assignment/run_mass_assignment.py", ROOT / "tests/mass-assignment/mass_assignment.yml", "mass_assignment.json"),
             (ROOT / "tests/recon/run_recon.py", ROOT / "tests/recon/recon.yml", "recon.json"),
         ):
