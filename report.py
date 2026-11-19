@@ -19,9 +19,28 @@ import argparse
 import datetime as dt
 import html
 import json
+import re
 from pathlib import Path
 
 import remediation as R
+
+_TAG_RE = re.compile(r"</?[A-Za-z][^>]*>")
+
+
+def plain_text(s, limit=None):
+    """Teks polos dari string yang bisa berisi entity/tag HTML (mis. deskripsi alert ZAP
+    '&lt;p&gt;...&lt;/p&gt;'). Unescape -> buang tag -> rapikan spasi, agar tag tidak bocor
+    sebagai teks mentah di laporan Markdown/HTML/slide."""
+    t = str(s or "")
+    for _ in range(3):                        # entity ganda (&amp;lt;) -> sampai stabil
+        u = html.unescape(t)
+        if u == t:
+            break
+        t = u
+    t = _TAG_RE.sub(" ", t)
+    t = re.sub(r"\s+", " ", t).strip()
+    return t[:limit] if limit else t
+
 
 SEV_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4, "lulus": 5}
 SEV_COLOR = {"critical": "#c0392b", "high": "#e8710a", "medium": "#d4a017",
@@ -103,10 +122,10 @@ def collect(d: Path):
             for alert in site.get("alerts", []):
                 risk = (alert.get("riskdesc", "info").split(" ")[0] or "info").lower()
                 inst = alert.get("instances", [])
-                ev = f"{len(inst)} instance. " + html.unescape(alert.get("desc", ""))[:300]
+                ev = f"{len(inst)} instance. " + plain_text(alert.get("desc", ""), 300)
                 cwe = alert.get("cweid")
                 uri = inst[0].get("uri") if inst and isinstance(inst[0], dict) else None
-                findings.append(norm("zap", alert.get("alert", "?"), None, ev,
+                findings.append(norm("zap", plain_text(alert.get("alert", "?")), None, ev,
                                      lulus=False,
                                      override_sev=risk if risk in SEV_ORDER else "info",
                                      cve=[f"CWE-{cwe}"] if cwe and cwe != "-1" else [],
@@ -123,7 +142,7 @@ def collect(d: Path):
                 pkg = v.get("PkgName", "?")
                 fixed = v.get("FixedVersion") or "belum ada perbaikan"
                 ev = (f"Paket {pkg} {v.get('InstalledVersion','?')} di {tgt}. "
-                      f"Perbaikan: {fixed}. {html.unescape(v.get('Title',''))[:200]}")
+                      f"Perbaikan: {fixed}. {plain_text(v.get('Title',''), 200)}")
                 findings.append(norm("trivy-cve", f"{v.get('VulnerabilityID')} — {pkg}",
                                      None, ev, lulus=False, override_sev=sev,
                                      cve=[v.get("VulnerabilityID")]))
@@ -137,7 +156,7 @@ def collect(d: Path):
                 continue
             cve = item.get("cve") or ""
             findings.append(norm("testssl", item.get("id", "TLS"), None,
-                                 html.unescape(str(item.get("finding", "")))[:200],
+                                 plain_text(item.get("finding", ""), 200),
                                  lulus=False, override_sev=sev,
                                  cve=[c for c in cve.split() if c.startswith("CVE")]))
 
