@@ -435,7 +435,12 @@ def main():
     args = ap.parse_args()
     d = Path(args.dir)
     d.mkdir(exist_ok=True)
-    when = dt.datetime.now().strftime("%Y-%m-%d %H:%M")
+    # Sertakan zona waktu (offset UTC) agar waktu laporan tak ambigu lintas-wilayah.
+    now = dt.datetime.now().astimezone()
+    off = now.strftime("%z")                     # mis. +0700
+    off_fmt = f"UTC{off[:3]}:{off[3:]}" if off else "UTC"
+    tzname = now.strftime("%Z")
+    when = now.strftime("%Y-%m-%d %H:%M") + f" ({off_fmt}" + (f" {tzname}" if tzname else "") + ")"
 
     findings = collect(d)
     counts = summarize(findings)
