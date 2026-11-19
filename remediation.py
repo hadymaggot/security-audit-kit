@@ -344,6 +344,56 @@ KB = {
         ],
         "referensi": ["OWASP ZAP", "OWASP Top 10 2021"],
     },
+    "recon-subdomain": {
+        "deskripsi": "Aset/subdomain yang dapat ditemukan publik melalui OSINT "
+                     "(subfinder/httpx), memperluas attack surface.",
+        "dampak": "Subdomain lupa (dangling), staging terbuka, atau panel admin "
+                  "terekspos dapat menjadi titik masuk awal.",
+        "severity": "Info",
+        "severity_dasar": "Informatif — inventaris aset; severity naik bila host "
+                          "membuka layanan/panel sensitif (lihat temuan terkait).",
+        "rekomendasi": [
+            "Inventarisasi seluruh subdomain; matikan/arsipkan yang tidak dipakai.",
+            "Pastikan tidak ada subdomain dangling (DNS menunjuk ke resource terhapus) "
+            "untuk mencegah subdomain takeover.",
+            "Batasi akses environment non-produksi (staging/dev) dengan allowlist/VPN.",
+        ],
+        "referensi": ["OWASP WSTG-INFO", "OWASP ASM (Attack Surface Management)",
+                      "MITRE ATT&CK T1595 Active Scanning"],
+    },
+    "exposed-service": {
+        "deskripsi": "Port/layanan terbuka ke internet (mis. SSH, database, Redis, "
+                     "Elasticsearch) yang seharusnya dibatasi.",
+        "dampak": "Layanan admin/datastore yang terekspos memudahkan brute-force, "
+                  "akses tanpa autentikasi, atau eksploitasi CVE layanan.",
+        "severity": "Medium",
+        "severity_dasar": "Likelihood sedang–tinggi (terindeks pemindai massal) x Impact "
+                          "bergantung layanan; datastore tanpa auth = tinggi.",
+        "rekomendasi": [
+            "Tutup port yang tidak perlu; terapkan default-deny pada firewall/security group.",
+            "Batasi akses manajemen (SSH/RDP/DB) ke IP tepercaya atau via VPN/bastion.",
+            "Wajibkan autentikasi kuat pada datastore (Redis/Elasticsearch/Mongo) dan "
+            "jangan paparkan ke 0.0.0.0.",
+        ],
+        "referensi": ["OWASP A05:2021 Security Misconfiguration",
+                      "NIST SP 800-115", "CIS Controls v8 4.x"],
+    },
+    "recon-finding": {
+        "deskripsi": "Temuan dari pemindaian vuln aktif (nuclei) terhadap aset hidup. "
+                     "Severity dibawa langsung dari template nuclei yang cocok.",
+        "dampak": "Bergantung template; dapat mencakup CVE, misconfiguration, "
+                  "exposure, atau default-login yang dapat dieksploitasi.",
+        "severity": "Medium",
+        "severity_dasar": "Mengikuti severity template nuclei (CVSS/komunitas); "
+                          "verifikasi true-positive sebelum eskalasi.",
+        "rekomendasi": [
+            "Verifikasi tiap temuan (true/false positive) pada target yang berwenang.",
+            "Patch komponen rentan sesuai CVE/CWE yang tertera; cek ketersediaan versi fix.",
+            "Perbaiki misconfiguration (header, CORS, panel terekspos) sesuai kategori tag.",
+        ],
+        "referensi": ["OWASP Top 10 2021", "nuclei templates (ProjectDiscovery)",
+                      "CVSS v3.1"],
+    },
 }
 
 # Pemetaan nama alert ZAP → kind yang lebih spesifik bila dikenali.
@@ -391,6 +441,12 @@ def classify(modul: str, judul: str) -> str:
         return "cors-misconfig"
     if modul == "open-redirect":
         return "open-redirect"
+    if modul == "recon":
+        if j.startswith("subdomain") or j.startswith("host aktif"):
+            return "recon-subdomain"
+        if j.startswith("port") or "layanan" in j:
+            return "exposed-service"
+        return "recon-finding"
     if modul == "trivy-cve":
         return "vuln-dependency"
     if modul == "testssl":

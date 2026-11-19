@@ -140,6 +140,19 @@ def collect(d: Path):
                                  html.unescape(str(item.get("finding", "")))[:200],
                                  lulus=False, override_sev=sev,
                                  cve=[c for c in cve.split() if c.startswith("CVE")]))
+
+    # --- recon (OSINT/infra/vuln; severity dibawa per-baris) ---
+    data = load(d / "recon.json")
+    if data:
+        for r in data.get("results", data) if isinstance(data, dict) else data:
+            ok = r.get("ok", True)
+            sev = (r.get("severity", "info") or "info").lower()
+            sev = sev if sev in SEV_ORDER else "info"
+            findings.append(norm("recon", r.get("check") or r.get("label") or "?",
+                                 r.get("status"), (r.get("note") or "").strip(), ok,
+                                 override_sev=None if ok else sev,
+                                 cve=r.get("cve") or [], kind_hint=r.get("kind"),
+                                 url=r.get("url")))
     return findings
 
 
@@ -194,6 +207,9 @@ KIND_LABEL = {
     "vuln-dependency": "Dependensi dengan kerentanan (CVE)",
     "cors-misconfig": "CORS salah konfigurasi",
     "open-redirect": "Open redirect",
+    "recon-subdomain": "Aset/subdomain terpetakan (recon)",
+    "exposed-service": "Port/layanan terekspos ke publik",
+    "recon-finding": "Temuan recon aktif (nuclei)",
     "zap-generic": "Temuan pemindai pasif (ZAP)",
 }
 

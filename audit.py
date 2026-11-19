@@ -227,6 +227,20 @@ def mod_py(script: Path, config: Path, json_name: str | None = None):
     return run(cmd)
 
 
+def mod_recon(extra):
+    """Recon orchestrator. Meneruskan argumen bebas (target, -d, -m, --active) ke
+    runner. Config opsional: tests/recon/recon.yml (salin dari .example-nya)."""
+    script = ROOT / "tests" / "recon" / "run_recon.py"
+    cfg = ROOT / "tests" / "recon" / "recon.yml"
+    cmd = [sys.executable, str(script), "--json", str(reports_dir() / "recon.json")]
+    if cfg.exists():
+        cmd += ["--config", str(cfg)]
+    cmd += list(extra)
+    rc = run(cmd)
+    mod_report()
+    return rc
+
+
 def mod_report():
     """Gabungkan semua JSON di reports/ jadi satu laporan HTML + Markdown."""
     return run([sys.executable, str(ROOT / "report.py")])
@@ -285,11 +299,15 @@ def mod_rollback():
 
 
 def main():
+    # 'recon' meneruskan argumen bebas (target, -d, -m, --active) ke runner-nya,
+    # jadi di-intercept sebelum argparse yang ketat.
+    if len(sys.argv) > 1 and sys.argv[1] == "recon":
+        return mod_recon(sys.argv[2:])
     ap = argparse.ArgumentParser(description="Security Audit Kit — lintas-platform")
     ap.add_argument("module", choices=["all", "zap", "tls", "headers", "deps",
                                        "authz", "upload", "auth-policy", "clientleak",
                                        "cors", "open-redirect", "mass-assignment",
-                                       "webstack", "injection", "rollback", "report"])
+                                       "webstack", "injection", "recon", "rollback", "report"])
     ap.add_argument("sub", nargs="?", default="baseline",
                     help="subperintah untuk 'zap': baseline|api|full")
     args = ap.parse_args()
@@ -370,6 +388,7 @@ def main():
             (ROOT / "tests/webstack/run_webstack.py", ROOT / "tests/webstack/webstack.yml", "webstack.json"),
             (ROOT / "tests/injection/run_injection.py", ROOT / "tests/injection/injection.yml", "injection.json"),
             (ROOT / "tests/mass-assignment/run_mass_assignment.py", ROOT / "tests/mass-assignment/mass_assignment.yml", "mass_assignment.json"),
+            (ROOT / "tests/recon/run_recon.py", ROOT / "tests/recon/recon.yml", "recon.json"),
         ):
             if cfg.exists():
                 rc |= mod_py(script, cfg, jn)

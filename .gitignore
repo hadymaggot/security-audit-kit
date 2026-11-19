@@ -20,3 +20,4 @@ __pycache__/
 node_modules/
 worker/node_modules/
 .wrangler/
+tests/*/recon.yml
