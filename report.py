@@ -91,6 +91,7 @@ def collect(d: Path):
                         ("open_redirect.json", "open-redirect"),
                         ("webstack.json", "webstack"),
                         ("injection.json", "injection"),
+                        ("cookie_flags.json", "cookie-flags"),
                         ("headers.json", "headers")):
         data = load(d / name)
         if not data:
@@ -226,6 +227,7 @@ KIND_LABEL = {
     "vuln-dependency": "Dependensi dengan kerentanan (CVE)",
     "cors-misconfig": "CORS salah konfigurasi",
     "open-redirect": "Open redirect",
+    "cookie-flags": "Atribut keamanan cookie tidak lengkap",
     "recon-subdomain": "Aset/subdomain terpetakan (recon)",
     "exposed-service": "Port/layanan terekspos ke publik",
     "leaked-secret": "Kredensial/secret bocor di source/aset",
@@ -295,6 +297,7 @@ KIND_CVSS = {
     "js-leak": (5.3, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"),
     "recon-subdomain": (5.3, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"),
     "client-cache": (4.3, "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:L/I:N/A:N"),
+    "cookie-flags": (4.2, "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:L/I:L/A:N"),
     "missing-header": (3.7, "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N"),
     "captcha-static": (3.7, "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:L/A:N"),
 }

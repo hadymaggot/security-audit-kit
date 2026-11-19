@@ -1,0 +1,21 @@
+# Salin ke cookie_flags.yml. PASIF & non-destruktif: hanya membaca header Set-Cookie
+# (GET halaman, endpoint CSRF Sanctum, dan satu login bila dikonfigurasi).
+base_url: "${TARGET_BASE_URL}"
+
+# Path yang di-GET untuk menangkap cookie.
+probe_paths: ["/"]
+
+# Opsional — login agar cookie SESI (terbit saat autentikasi) ikut diperiksa.
+# Kredensial lewat environment variable, jangan ditulis di file.
+# auth:
+#   sanctum: { enabled: true, csrf_path: "/sanctum/csrf-cookie", origin: "${TARGET_BASE_URL}" }
+#   login: { method: POST, path: "/api/login", body: { email: "${CK_USER}", password: "${CK_PASS}" } }
+
+# Cookie yang memang harus dibaca JavaScript (tak wajib HttpOnly).
+httponly_exempt: ["XSRF-TOKEN"]
+
+# Wajibkan atribut Secure. Default: otomatis (aktif bila base_url HTTPS).
+# require_secure: true
+
+# Batas masa berlaku cookie sesi/autentikasi (hari).
+max_session_days: 30
