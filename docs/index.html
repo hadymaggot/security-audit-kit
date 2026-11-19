@@ -111,8 +111,8 @@
  #log .ln{margin:1px 0} #log .ok{color:var(--primary)} #log .bad{color:#ff8a3d} #log .mut{color:rgba(255,255,255,.6)} #log a{color:var(--secondary);cursor:pointer;text-decoration:underline}
  /* prompt elegan + input mengalir di dalam log (seperti terminal sungguhan) */
  .cliln{display:flex;align-items:baseline;margin:5px 0 0}
- .cli{width:1ch;min-width:1ch;background:transparent;border:0;outline:0;color:var(--text);font-family:var(--mono);font-size:12.5px;caret-color:transparent;padding:0;margin-left:.6ch;white-space:pre}
- .blockcur{display:inline-block;width:.55ch;height:1.1em;background:var(--primary);vertical-align:-.18em;margin-left:0;flex:0 0 auto;animation:tblink 1.05s step-end infinite}
+ .cli{width:1ch;min-width:0;background:transparent;border:0;outline:0;color:var(--text);font-family:var(--mono);font-size:12.5px;caret-color:transparent;padding:0;margin-left:2ch;white-space:pre}
+ .blockcur{display:inline-block;width:1ch;height:1.15em;background:var(--primary);vertical-align:-.2em;margin-left:0;flex:0 0 auto;animation:tblink 1s step-end infinite}
  @keyframes tblink{0%,100%{opacity:1}50%{opacity:0}}
  #meas{position:absolute;left:-9999px;top:0;visibility:hidden;white-space:pre;font-family:var(--mono);font-size:12.5px}
  .pr{white-space:nowrap} .pr .pu{color:var(--primary);font-weight:700} .pr .pd{color:rgba(255,255,255,.38)} .pr .pp{color:var(--secondary)} .pr .pa{color:var(--primary);font-weight:700}
@@ -368,7 +368,7 @@ python audit.py all                                # scan + laporan</code></pre>
  document.addEventListener("keydown",function(e){if(e.key==="Escape")closeScan()});
 
  // ---- prompt elegan + input mengalir di dalam log (seperti terminal) ----
- function promptEl(){ return "<span class='pr'><span class='pu'>me</span><span class='pd'>@ahadizapto</span> <span class='pp'>~</span> <span class='pa'>❯</span></span>"; }
+ function promptEl(){ return "<span class='pr'><span class='pu'>me</span><span class='pd'>@ahadizapto</span><span class='pa'>#</span></span>"; }
  var _meas=null;
  function fitCli(inp){ if(!_meas){_meas=document.createElement("span");_meas.id="meas";document.body.appendChild(_meas);} _meas.textContent=inp.value||""; inp.style.width=Math.max(1,_meas.offsetWidth+1)+"px"; }
  function addPrompt(){
@@ -401,7 +401,7 @@ python audit.py all                                # scan + laporan</code></pre>
  var pendingActive=null; // url yang menunggu konfirmasi scan aktif
  function submitCmd(inp){
    var v=inp.value, line=inp.closest(".cliln");
-   line.className="ln"; line.innerHTML=promptEl()+" "+esc(v); // echo jadi statis
+   line.className="ln"; line.innerHTML=promptEl()+"  "+esc(v); // echo jadi statis (2 spasi)
    if(pendingActive!==null){ answerActive(v); ensurePrompt(); return; }
    var pending=run(v);
    if(!pending) ensurePrompt();
