@@ -344,6 +344,53 @@ KB = {
         ],
         "referensi": ["OWASP ZAP", "OWASP Top 10 2021"],
     },
+    "jwt-forgery": {
+        "deskripsi": "Server menerima JWT yang dipalsukan: tanpa tanda tangan (alg=none), dengan "
+                     "tanda tangan dibuang, atau dengan payload yang diubah.",
+        "dampak": "Siapa pun dapat membuat token sah untuk identitas/peran apa pun — "
+                  "pengambilalihan akun dan eskalasi hak akses total.",
+        "severity": "Critical",
+        "severity_dasar": "Likelihood tinggi (tanpa prasyarat) x Impact kritikal (bypass "
+                          "autentikasi penuh).",
+        "rekomendasi": [
+            "Selalu verifikasi tanda tangan dan WAJIBKAN algoritma yang diizinkan (whitelist); "
+            "tolak alg=none.",
+            "Jangan percaya header 'alg' dari token: tentukan algoritma di sisi server.",
+            "Contoh (jsonwebtoken/Node): jwt.verify(token, key, { algorithms: ['HS256'] });",
+            "Perbarui pustaka JWT ke versi terbaru dan tambahkan uji regresi untuk token palsu.",
+        ],
+        "referensi": ["OWASP API2:2023 Broken Authentication", "OWASP JWT Cheat Sheet",
+                      "CWE-347, CWE-287"],
+    },
+    "jwt-weak-secret": {
+        "deskripsi": "Token JWT bertanda tangan HMAC memakai secret yang lemah/umum sehingga "
+                     "dapat ditebak lewat kamus.",
+        "dampak": "Penyerang yang mengetahui secret dapat menerbitkan token sah untuk identitas apa pun.",
+        "severity": "Critical",
+        "severity_dasar": "Likelihood tinggi (kamus kecil cukup) x Impact kritikal.",
+        "rekomendasi": [
+            "Ganti secret dengan nilai acak minimal 256 bit dari CSPRNG dan putar (rotate) segera; "
+            "cabut seluruh token lama.",
+            "Pertimbangkan algoritma asimetris (RS256/ES256) agar kunci penandatanganan tak dibagi.",
+            "Simpan secret di secret manager/environment variable, bukan di kode.",
+        ],
+        "referensi": ["OWASP JWT Cheat Sheet", "RFC 8725 JWT Best Current Practices",
+                      "CWE-521, CWE-798"],
+    },
+    "jwt-weak-config": {
+        "deskripsi": "Konfigurasi JWT tidak mengikuti praktik baik: tanpa/exp terlalu panjang, "
+                     "klaim sensitif di payload, alg=none, atau header kunci (kid/jku) berisiko.",
+        "dampak": "Token curian berlaku lama; data sensitif terbaca dari payload (hanya di-encode); "
+                  "header kunci dapat disalahgunakan bila tidak divalidasi.",
+        "severity": "Medium",
+        "severity_dasar": "Likelihood sedang x Impact sedang (memperbesar dampak pencurian token).",
+        "rekomendasi": [
+            "Set exp pendek (menit-jam) dengan refresh token dan kemampuan pencabutan.",
+            "Jangan menaruh data sensitif di payload (JWT hanya di-encode, tidak dienkripsi).",
+            "Validasi/whitelist kid, jku, x5u, dan jwk; jangan mengambil kunci dari URL token.",
+        ],
+        "referensi": ["RFC 8725 JWT Best Current Practices", "OWASP JWT Cheat Sheet", "CWE-613"],
+    },
     "captcha-answer-leak": {
         "deskripsi": "Respons tantangan captcha membocorkan jawabannya (kunci jawaban, atau offset "
                      "posisi pada SVG/gambar), sehingga captcha dapat dilewati secara otomatis "
@@ -723,6 +770,12 @@ def classify(modul: str, judul: str) -> str:
         return "open-redirect"
     if modul == "cookie-flags":
         return "cookie-flags"
+    if modul == "jwt":
+        if "secret" in j:
+            return "jwt-weak-secret"
+        if "pemalsuan" in j:
+            return "jwt-forgery"
+        return "jwt-weak-config"
     if modul == "captcha":
         return "captcha-answer-leak"
     if modul == "session-mgmt":

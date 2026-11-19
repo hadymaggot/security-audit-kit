@@ -97,6 +97,7 @@ def collect(d: Path):
                         ("ratelimit.json", "ratelimit"),
                         ("session_mgmt.json", "session-mgmt"),
                         ("captcha.json", "captcha"),
+                        ("jwt.json", "jwt"),
                         ("headers.json", "headers")):
         data = load(d / name)
         if not data:
@@ -114,7 +115,7 @@ def collect(d: Path):
             if modul == "client-leak":
                 hint = CLIENT_LEAK_KIND.get(r.get("kind"))
             elif modul in ("response-leak", "openapi-coverage", "ratelimit", "session-mgmt",
-                           "captcha"):
+                           "captcha", "jwt"):
                 hint = r.get("kind")
             elif modul == "headers":
                 hint = "missing-header"
@@ -236,6 +237,9 @@ KIND_LABEL = {
     "cors-misconfig": "CORS salah konfigurasi",
     "open-redirect": "Open redirect",
     "cookie-flags": "Atribut keamanan cookie tidak lengkap",
+    "jwt-forgery": "Server menerima JWT yang dipalsukan",
+    "jwt-weak-secret": "Secret JWT lemah dapat ditebak",
+    "jwt-weak-config": "Konfigurasi JWT tidak aman",
     "captcha-answer-leak": "Captcha membocorkan jawabannya di respons",
     "session-not-revoked": "Sesi lain tidak dicabut setelah ganti sandi",
     "logout-no-invalidate": "Logout tidak mencabut sesi di server",
@@ -321,6 +325,9 @@ KIND_CVSS = {
     "recon-subdomain": (5.3, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"),
     "client-cache": (4.3, "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:L/I:N/A:N"),
     "cookie-flags": (4.2, "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:L/I:L/A:N"),
+    "jwt-forgery": (9.8, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"),
+    "jwt-weak-secret": (9.8, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"),
+    "jwt-weak-config": (5.3, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"),
     "captcha-answer-leak": (5.3, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N"),
     "session-not-revoked": (6.8, "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N"),
     "logout-no-invalidate": (6.8, "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N"),
