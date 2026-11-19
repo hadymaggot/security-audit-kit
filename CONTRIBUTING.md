@@ -1,3 +1,5 @@
+**🇮🇩 Indonesia** · [🇬🇧 English](CONTRIBUTING.en.md) · [🇩🇪 Deutsch](CONTRIBUTING.de.md)
+
 # Berkontribusi
 
 Terima kasih sudah mau membantu. Toolkit ini digunakan ulang lintas project, jadi yang

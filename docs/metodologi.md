@@ -1,3 +1,5 @@
+**🇮🇩 Indonesia** · [🇬🇧 English](metodologi.en.md) · [🇩🇪 Deutsch](metodologi.de.md)
+
 # Metodologi
 
 Kit ini mengadaptasi alur pentest berbasis OWASP menjadi automated regression testing.
