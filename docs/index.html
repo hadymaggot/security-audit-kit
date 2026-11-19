@@ -391,9 +391,11 @@ python audit.py all                                # scan + laporan</code></pre>
    if(opts.length===1){ parts[parts.length-1]=opts[0]; var trail=(parts.length<=1&&opts[0]!=="https://")?" ":""; setInput(inp, parts.join(" ")+trail); }
    else if(opts.length>1){ hintLine(opts.join("   ")); }
  }
- function addPrompt(){
+ var curLabel=null; // label prompt aktif (prompt shell biasa, atau 'lanjutkan? [y/N]')
+ function addPrompt(label){
+   var lbl=label||promptEl(); curLabel=lbl;
    var d=document.createElement("div"); d.className="ln cliln";
-   d.innerHTML=promptEl()+"<input class='cli' autocomplete='off' autocorrect='off' autocapitalize='off' spellcheck='false' aria-label='perintah scanner'><span class='blockcur'></span>";
+   d.innerHTML=lbl+"<input class='cli' autocomplete='off' autocorrect='off' autocapitalize='off' spellcheck='false' aria-label='perintah scanner'><span class='blockcur'></span>";
    logEl().appendChild(d);
    var inp=d.querySelector(".cli");
    inp.addEventListener("keydown",function(e){
@@ -429,7 +431,7 @@ python audit.py all                                # scan + laporan</code></pre>
  var pendingActive=null; // url yang menunggu konfirmasi scan aktif
  function submitCmd(inp){
    var v=inp.value, line=inp.closest(".cliln");
-   line.className="ln"; line.innerHTML=promptEl()+" "+esc(v); // echo jadi statis (1 spasi)
+   line.className="ln"; line.innerHTML=(curLabel||promptEl())+" "+esc(v); // echo pakai label prompt aktif
    if(pendingActive!==null){ answerActive(v); ensurePrompt(); return; }
    if(v.trim()&&cmdHist[cmdHist.length-1]!==v) cmdHist.push(v); // simpan ke riwayat
    histPos=cmdHist.length;
@@ -450,14 +452,15 @@ python audit.py all                                # scan + laporan</code></pre>
    var toks=c.split(/\s+/), url=toks[0];
    var active=toks.slice(1).some(function(x){return x==="--active"||x==="-a"||x==="--aktif";});
    if(!/^https?:\/\//.test(url)){out("URL harus diawali http(s)://","bad");return false;}
-   if(active){ askActive(url); return false; } // konfirmasi dulu
+   if(active){ askActive(url); return true; } // konfirmasi dulu (prompt [y/N] dibuat askActive)
    if(!api){out("backend tidak tersedia.","bad");return false;}
    scan(url); return true; // async: prompt baru ditambah setelah scan selesai
  }
  function askActive(url){
    pendingActive=url;
    out("<span class='bad'>! scan AKTIF/intrusif</span> pada <span style='color:var(--secondary)'>"+esc(url)+"</span>");
-   out("hanya untuk target yang Anda miliki/berwenang uji. lanjutkan? [y/N]","mut");
+   out("hanya untuk target yang Anda miliki/berwenang uji.","mut");
+   addPrompt("<span class='pr' style='color:var(--secondary)'>lanjutkan? [y/N]</span>"); // input y/n tepat di sini
  }
  function activeInstructions(url){
    out("scan aktif tidak dijalankan via demo publik ini (mencegah penyalahgunaan).","mut");
