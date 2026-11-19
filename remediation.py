@@ -378,6 +378,23 @@ KB = {
         "referensi": ["OWASP A05:2021 Security Misconfiguration",
                       "NIST SP 800-115", "CIS Controls v8 4.x"],
     },
+    "leaked-secret": {
+        "deskripsi": "Kredensial/secret (API key, token, password) terdeteksi di source "
+                     "atau aset (trufflehog), berpotensi ter-commit ke repository.",
+        "dampak": "Secret yang bocor dapat dipakai menyalahgunakan layanan pihak ketiga, "
+                  "mengakses data, atau pivot ke sistem internal.",
+        "severity": "High",
+        "severity_dasar": "Likelihood tinggi (mudah ditemukan via scanner otomatis) x "
+                          "Impact tinggi (akses langsung ke layanan/data). Terverifikasi = High.",
+        "rekomendasi": [
+            "Cabut (revoke) dan rotasi segera secret yang bocor; anggap sudah terkompromi.",
+            "Hapus secret dari riwayat git (git filter-repo/BFG), bukan hanya commit terbaru.",
+            "Pindahkan secret ke environment variable / secret manager; jangan commit ke repo.",
+            "Pasang pre-commit hook (gitleaks/trufflehog) untuk mencegah kebocoran berulang.",
+        ],
+        "referensi": ["OWASP A07:2021 Identification and Authentication Failures",
+                      "CWE-798 Use of Hard-coded Credentials", "OWASP ASVS V2.10"],
+    },
     "recon-finding": {
         "deskripsi": "Temuan dari pemindaian vuln aktif (nuclei) terhadap aset hidup. "
                      "Severity dibawa langsung dari template nuclei yang cocok.",
@@ -442,9 +459,12 @@ def classify(modul: str, judul: str) -> str:
     if modul == "open-redirect":
         return "open-redirect"
     if modul == "recon":
-        if j.startswith("subdomain") or j.startswith("host aktif"):
+        if j.startswith("secret"):
+            return "leaked-secret"
+        if j.startswith("subdomain") or j.startswith("host aktif") \
+                or j.startswith("url historis") or j.startswith("crawl"):
             return "recon-subdomain"
-        if j.startswith("port") or "layanan" in j:
+        if j.startswith("port") or j.startswith("path") or "layanan" in j:
             return "exposed-service"
         return "recon-finding"
     if modul == "trivy-cve":

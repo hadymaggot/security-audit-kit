@@ -209,6 +209,7 @@ KIND_LABEL = {
     "open-redirect": "Open redirect",
     "recon-subdomain": "Aset/subdomain terpetakan (recon)",
     "exposed-service": "Port/layanan terekspos ke publik",
+    "leaked-secret": "Kredensial/secret bocor di source/aset",
     "recon-finding": "Temuan recon aktif (nuclei)",
     "zap-generic": "Temuan pemindai pasif (ZAP)",
 }

@@ -99,6 +99,10 @@ def _jsonl(text):
             continue
 
 
+def _lines(text):
+    return [l.strip() for l in (text or "").splitlines() if l.strip()]
+
+
 def phase_osint(cfg, run_tool, whicher=shutil.which):
     """Enumerasi subdomain + resolve + probe HTTP. Non-intrusif.
 
@@ -107,21 +111,31 @@ def phase_osint(cfg, run_tool, whicher=shutil.which):
     target = cfg["target"]
     tools = cfg.get("tools", {})
 
-    subs = [target]
+    timeout = cfg.get("timeout", 600)
+
+    # subdomain: subfinder + amass (keduanya pasif, hasil digabung)
+    subs = {target}
+    used = []
     sf = _bin(tools, "subfinder", whicher)
     if sf:
-        rc, out = run_tool([sf, "-silent", "-d", target], cfg.get("timeout", 600))
-        found = sorted({l.strip() for l in out.splitlines() if l.strip()})
-        if found:
-            subs = sorted(set(found) | {target})
+        _, out = run_tool([sf, "-silent", "-d", target], timeout)
+        subs |= set(_lines(out))
+        used.append("subfinder")
+    am = _bin(tools, "amass", whicher)
+    if am:
+        _, out = run_tool([am, "enum", "-passive", "-silent", "-d", target], timeout)
+        subs |= set(_lines(out))
+        used.append("amass")
+    subs = sorted(subs)
+    if used:
         results.append({"check": f"subdomain enumeration ({len(subs)})", "ok": False,
                         "severity": "info", "kind": "recon-subdomain",
-                        "note": "Subdomain terpetakan: " + ", ".join(subs[:20])
+                        "note": f"[{'+'.join(used)}] " + ", ".join(subs[:20])
                                 + (" ..." if len(subs) > 20 else ""),
                         "url": target})
     else:
         results.append({"check": "subdomain enumeration", "ok": True, "severity": "lulus",
-                        "note": "skip: subfinder tidak terpasang", "url": target})
+                        "note": "skip: subfinder/amass tidak terpasang", "url": target})
 
     # httpx: probe alive + tech-detect atas semua subdomain.
     alive_urls = []
@@ -152,7 +166,112 @@ def phase_osint(cfg, run_tool, whicher=shutil.which):
         # tanpa httpx, seed URL dari target agar fase lanjut tetap bisa jalan
         alive_urls = [cfg.get("base_url") or f"https://{target}"]
 
+    # URL historis dari arsip: gau + waybackurls (pasif)
+    hist, hused = set(), []
+    gau = _bin(tools, "gau", whicher)
+    if gau:
+        _, out = run_tool([gau, target], timeout)
+        hist |= set(_lines(out))
+        hused.append("gau")
+    wb = _bin(tools, "waybackurls", whicher)
+    if wb:
+        _, out = run_tool([wb], timeout, stdin=target)
+        hist |= set(_lines(out))
+        hused.append("waybackurls")
+    if hused:
+        hist = sorted(hist)
+        results.append({"check": f"URL historis ({len(hist)})", "ok": False,
+                        "severity": "info", "kind": "recon-subdomain",
+                        "note": f"[{'+'.join(hused)}] {len(hist)} URL dari arsip; contoh: "
+                                + ", ".join(hist[:5]), "url": target})
+        # seed sebagian ke pool agar nuclei ikut memindai (dibatasi 50)
+        alive_urls = list(dict.fromkeys(alive_urls + hist[:50]))
+
     return results, alive_urls
+
+
+def phase_secrets(cfg, run_tool, whicher=shutil.which):
+    """Scan rahasia (trufflehog) atas code_path lokal. Pasif; hanya bila code_path diset."""
+    code = cfg.get("code_path")
+    if not code:
+        return []
+    th = _bin(cfg.get("tools", {}), "trufflehog", whicher)
+    if not th:
+        return [{"check": "secret scan (trufflehog)", "ok": True, "severity": "lulus",
+                 "note": "skip: trufflehog tidak terpasang", "url": code}]
+    _, out = run_tool([th, "filesystem", code, "--json", "--no-update"],
+                      cfg.get("timeout", 600))
+    results = []
+    for obj in _jsonl(out):
+        det = obj.get("DetectorName") or "secret"
+        verified = bool(obj.get("Verified"))
+        where = ""
+        try:
+            where = (obj.get("SourceMetadata") or {}).get("Data", {}) \
+                .get("Filesystem", {}).get("file", "")
+        except AttributeError:
+            where = ""
+        results.append({"check": f"secret: {det}", "ok": False,
+                        "severity": "high" if verified else "medium",
+                        "kind": "leaked-secret",
+                        "note": ("terverifikasi" if verified else "potensial")
+                                + f" di {where or code}", "url": where or code})
+    if not results:
+        results.append({"check": "secret scan", "ok": True, "severity": "lulus",
+                        "note": "Tidak ada secret terdeteksi trufflehog.", "url": code})
+    return results
+
+
+def phase_crawl(cfg, alive_urls, run_tool, whicher=shutil.which):
+    """Crawl (katana) untuk memperluas daftar URL. AKTIF — gated."""
+    target = cfg["target"]
+    kt = _bin(cfg.get("tools", {}), "katana", whicher)
+    if not kt:
+        return [], [{"check": "crawl (katana)", "ok": True, "severity": "lulus",
+                     "note": "skip: katana tidak terpasang", "url": target}]
+    if not alive_urls:
+        return [], []
+    _, out = run_tool([kt, "-silent", "-jc", "-d", "2", "-u", ",".join(alive_urls[:20])],
+                      cfg.get("timeout", 600))
+    urls = _lines(out)
+    res = []
+    if urls:
+        res.append({"check": f"crawl katana ({len(urls)})", "ok": False, "severity": "info",
+                    "kind": "recon-subdomain",
+                    "note": f"{len(urls)} URL ditemukan via crawl.", "url": target})
+    return urls, res
+
+
+def phase_fuzz(cfg, alive_urls, run_tool, whicher=shutil.which):
+    """Content discovery (ffuf). AKTIF — gated. Butuh ffuf_wordlist."""
+    target = cfg["target"]
+    ff = _bin(cfg.get("tools", {}), "ffuf", whicher)
+    wl = cfg.get("ffuf_wordlist")
+    if not ff:
+        return [{"check": "content discovery (ffuf)", "ok": True, "severity": "lulus",
+                 "note": "skip: ffuf tidak terpasang", "url": target}]
+    if not wl:
+        return [{"check": "content discovery (ffuf)", "ok": True, "severity": "lulus",
+                 "note": "skip: ffuf_wordlist tidak diset", "url": target}]
+    base = (alive_urls[0] if alive_urls else cfg.get("base_url") or f"https://{target}")
+    _, out = run_tool([ff, "-u", base.rstrip("/") + "/FUZZ", "-w", wl,
+                      "-mc", "200,301,403", "-of", "json", "-o", "/dev/stdout", "-s"],
+                      cfg.get("timeout", 600))
+    res = []
+    try:
+        data = json.loads(out) if (out or "").strip() else {}
+    except ValueError:
+        data = {}
+    for r in (data.get("results", []) if isinstance(data, dict) else []):
+        st, url = r.get("status"), r.get("url", "")
+        res.append({"check": f"path {url} ({st})", "ok": False,
+                    "severity": "medium" if st in (200, 301) else "info",
+                    "kind": "exposed-service",
+                    "note": f"Path ditemukan ffuf, HTTP {st}.", "url": url})
+    if not res:
+        res.append({"check": "content discovery ffuf", "ok": True, "severity": "lulus",
+                    "note": "Tidak ada path ditemukan.", "url": target})
+    return res
 
 
 def phase_ports(cfg, run_tool, whicher=shutil.which):
@@ -246,6 +365,7 @@ def orchestrate(cfg, run_tool=default_run_tool, whicher=shutil.which):
     active_on = bool(active.get("enabled"))
 
     results, alive = phase_osint(cfg, run_tool, whicher)
+    results += phase_secrets(cfg, run_tool, whicher)   # pasif; hanya bila code_path diset
 
     if depth in ("infra", "full"):
         if active_on and active.get("naabu"):
@@ -257,6 +377,13 @@ def orchestrate(cfg, run_tool=default_run_tool, whicher=shutil.which):
                             "url": cfg["target"]})
 
     if depth == "full":
+        # crawl & fuzz (aktif, gated) memperluas URL sebelum nuclei
+        if active_on and active.get("katana"):
+            crawled, cres = phase_crawl(cfg, alive, run_tool, whicher)
+            results += cres
+            alive = list(dict.fromkeys(alive + crawled))
+        if active_on and active.get("ffuf"):
+            results += phase_fuzz(cfg, alive, run_tool, whicher)
         if active_on and active.get("nuclei"):
             results += phase_vuln(cfg, alive, run_tool, whicher)
         else:
