@@ -1,4 +1,5 @@
-# Salin ke auth_policy.yml. Non-destruktif — tidak brute-force.
+# Salin ke auth_policy.yml. Non-destruktif — tidak brute-force, tak menyimpan apa pun
+# bila template disusun agar request gagal di field LAIN (lihat password_checks).
 base_url: "${TARGET_BASE_URL}"
 
 # Opsional — untuk stack Laravel Sanctum, endpoint register sering menolak tanpa
@@ -8,17 +9,44 @@ base_url: "${TARGET_BASE_URL}"
 #   csrf_path: "/sanctum/csrf-cookie"
 #   origin: "${TARGET_BASE_URL}"     # wajib cocok SANCTUM_STATEFUL_DOMAINS
 
+# Opsional — sesi login untuk uji yang butuh autentikasi (mis. ganti sandi).
+#   export POLICY_USER=... POLICY_PASS=...   (akun uji, bukan akun admin produksi)
+# login:
+#   method: POST
+#   path: "/api/login"
+#   body: { email: "${POLICY_USER}", password: "${POLICY_PASS}" }
+
 # Uji penolakan sandi lemah saat registrasi (opsional — hapus blok bila tak ada endpoint).
+# Agar sandi kuat (kontrol) pun tak membuat akun, sengaja hilangkan satu field wajib
+# lain (mis. persetujuan privasi) dari template.
 register:
   path: "/api/auth/register"
   template:
     email: "probe{rand}@example.test"
     name: "probe"
   password_field: "password"
+  # confirm_field: "password_confirmation"
+
+# Uji tambahan (opsional). Ganti sandi: kirim current_password yang SALAH supaya
+# tak ada yang berubah — sandi lemah harus gagal di field sandi, bukan current_password.
+# password_checks:
+#   - name: "ganti sandi"
+#     path: "/api/auth/change-password"
+#     authenticated: true
+#     template: { current_password: "salah-sengaja-probe" }
+#     password_field: "password"
+#     confirm_field: "password_confirmation"
 
 # Captcha harus berganti tiap kali diterbitkan (opsional).
 captcha:
   issue_path: "/api/captcha"
   token_field: "data.id"
 
-weak_passwords: ["12345678", "password", "aaaaaaaa", "qwerty12", "11111111"]
+# Sertakan sandi yang lolos aturan kompleksitas tapi dikenal bocor (uji HIBP).
+weak_passwords: ["12345678", "password", "aaaaaaaa", "qwerty12", "11111111", "Password123!"]
+
+# Kontrol positif: sandi kuat tak boleh kena error di field sandi.
+# strong_password: "${POLICY_STRONG}"
+
+# Jeda antar request (detik) agar tak kena rate limit; 429 dicatat sebagai skip.
+# delay_seconds: 20

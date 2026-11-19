@@ -14,6 +14,21 @@ brute-force atau serangan. Konfigurasi lewat auth_policy.yml:
       token_field: "data.id"
     weak_passwords: ["12345678", "password", "aaaaaaaa", "qwerty12"]
 
+Opsional:
+    login: { path: "/api/login", body: {...} }   # sesi untuk uji yang butuh auth
+    password_checks:               # selain/menggantikan 'register'
+      - name: "ganti sandi"
+        path: "/api/auth/change-password"
+        authenticated: true        # pakai sesi 'login'
+        template: { current_password: "salah-sengaja" }   # gagal di field lain → tak tersimpan
+        password_field: "password"
+        confirm_field: "password_confirmation"
+    strong_password: "..."         # kontrol: sandi kuat tak boleh kena error sandi
+    delay_seconds: 20              # jeda antar request, hormati rate limit
+
+Sandi lemah dianggap ditolak hanya bila 422 memuat error DI field sandi. 429
+dicatat sebagai skip (tak bisa disimpulkan), bukan kegagalan.
+
 Pakai: python run_auth_policy.py --config auth_policy.yml
 """
 from __future__ import annotations
@@ -23,6 +38,7 @@ import os
 import re
 import secrets
 import sys
+import time
 from pathlib import Path
 
 import requests
@@ -50,6 +66,32 @@ def dig(obj, dotted):
     return obj
 
 
+def password_error(resp, field):
+    """True bila respons menolak dengan error DI field sandi.
+
+    Laravel membalas 422 {"errors": {field: [...]}}. 422 karena field lain (captcha,
+    email, dsb.) bukan bukti kebijakan sandi ditegakkan. Bila respons tak memuat
+    daftar error per field, jatuh ke kode status saja.
+    """
+    if resp.status_code not in (400, 422):
+        return False
+    try:
+        errors = resp.json().get("errors")
+    except (ValueError, AttributeError):
+        return True
+    if isinstance(errors, dict):
+        return field in errors
+    return True
+
+
+def password_checks(cfg):
+    """Daftar uji kebijakan sandi; blok 'register' lama tetap didukung."""
+    checks = list(cfg.get("password_checks") or [])
+    if cfg.get("register"):
+        checks.insert(0, {"name": "register", **cfg["register"]})
+    return checks
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="auth_policy.yml")
@@ -72,27 +114,86 @@ def main():
     def auth_h():
         return _sanctum.auth_headers(sess, sanctum.get("origin")) if sanctum else {}
 
-    # 1. Sandi lemah harus ditolak saat registrasi.
-    reg = cfg.get("register")
-    if reg:
-        print("== Kebijakan sandi ==")
+    # Sesi login (opsional) — untuk uji yang butuh autentikasi, mis. ganti sandi.
+    authed = None
+    login = cfg.get("login")
+    if login:
+        authed = requests.Session()
+        if sanctum:
+            _sanctum.prime_csrf(authed, base, sanctum)
+        r = authed.request(login.get("method", "POST"), base + login["path"],
+                           json=login.get("body") or {},
+                           headers=_sanctum.auth_headers(authed, (sanctum or {}).get("origin")),
+                           timeout=20)
+        if r.status_code >= 400:
+            print(f"login gagal: HTTP {r.status_code}", file=sys.stderr)
+            return 2
+
+    delay = float(cfg.get("delay_seconds", 0))   # jeda antar request (rate limit)
+    first = [True]
+
+    def post(chk, body):
+        if not first[0] and delay:
+            time.sleep(delay)
+        first[0] = False
+        s = authed if chk.get("authenticated") else sess
+        h = _sanctum.auth_headers(s, sanctum.get("origin")) if sanctum else {}
+        return s.request(chk.get("method", "POST"), base + chk["path"], json=body,
+                         headers=h, timeout=20)
+
+    # 1. Sandi lemah harus ditolak — DENGAN error di field sandi, bukan field lain.
+    for chk in password_checks(cfg):
+        label = chk.get("name", chk["path"])
+        field = chk.get("password_field", "password")
+        print(f"== Kebijakan sandi: {label} ==")
+
+        def body_for(pw):
+            body = {k: (v.replace("{rand}", secrets.token_hex(4)) if isinstance(v, str) else v)
+                    for k, v in (chk.get("template") or {}).items()}
+            body[field] = pw
+            if chk.get("confirm_field"):
+                body[chk["confirm_field"]] = pw
+            return body
+
         for pw in cfg.get("weak_passwords", []):
-            body = dict(reg.get("template", {}))
-            body = {k: v.replace("{rand}", secrets.token_hex(4)) for k, v in body.items()}
-            body[reg.get("password_field", "password")] = pw
             try:
-                r = sess.post(base + reg["path"], json=body, headers=auth_h(), timeout=20)
-                rejected = r.status_code in (400, 422)
+                r = post(chk, body_for(pw))
             except Exception as exc:  # noqa: BLE001
                 print(f"  galat '{pw}': {exc}")
                 failures += 1
                 continue
+            if r.status_code == 429:
+                # Rate limit = tak bisa disimpulkan, bukan bukti sandi lemah lolos.
+                print(f"  sandi {pw!r:<16} HTTP 429  skip (rate limit)")
+                results.append({"check": f"{label} sandi lemah {pw}", "status": 429,
+                                "ok": True, "note": "skip: rate limit"})
+                continue
+            rejected = password_error(r, field)
             mark = "ok" if rejected else "XX DITERIMA (sandi lemah lolos)"
             if not rejected:
                 failures += 1
-            print(f"  sandi {pw!r:<14} HTTP {r.status_code}  {mark}")
-            results.append({"check": f"weak-password:{pw}", "status": r.status_code,
+            print(f"  sandi {pw!r:<16} HTTP {r.status_code}  {mark}")
+            results.append({"check": f"{label} sandi lemah {pw}", "status": r.status_code,
                             "ok": rejected, "note": "" if rejected else "sandi lemah lolos"})
+
+        # Kontrol positif: sandi kuat TAK boleh kena error sandi — kalau kena, uji di
+        # atas tak bermakna (endpoint menolak apa pun). Template sebaiknya membuat
+        # request gagal di field LAIN agar tak ada yang tersimpan.
+        strong = cfg.get("strong_password")
+        if strong:
+            try:
+                r = post(chk, body_for(strong))
+                ok = r.status_code == 429 or not password_error(r, field)
+                note = "skip: rate limit" if r.status_code == 429 else (
+                    "" if ok else "sandi kuat pun ditolak — uji sandi lemah tak bermakna")
+            except Exception as exc:  # noqa: BLE001
+                ok, note, r = False, f"galat: {exc}", None
+            if not ok:
+                failures += 1
+            status = r.status_code if r is not None else -1
+            print(f"  kontrol sandi kuat     HTTP {status}  {'ok' if ok else 'XX ' + note}")
+            results.append({"check": f"{label} kontrol sandi kuat", "status": status,
+                            "ok": ok, "note": note})
 
     # 2. Captcha harus regenerasi (token baru tiap terbit).
     cap = cfg.get("captcha")
