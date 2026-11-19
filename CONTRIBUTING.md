@@ -1,4 +1,4 @@
-**🇮🇩 Indonesia** · [🇬🇧 English](CONTRIBUTING.en.md) · [🇩🇪 Deutsch](CONTRIBUTING.de.md)
+**<img src="https://flagcdn.com/id.svg" width="18" alt="ID"> Indonesia** · [<img src="https://flagcdn.com/gb.svg" width="18" alt="EN"> English](CONTRIBUTING.en.md) · [<img src="https://flagcdn.com/de.svg" width="18" alt="DE"> Deutsch](CONTRIBUTING.de.md)
 
 # Berkontribusi
 

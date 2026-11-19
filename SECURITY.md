@@ -1,4 +1,4 @@
-**🇮🇩 Indonesia** · [🇬🇧 English](SECURITY.en.md) · [🇩🇪 Deutsch](SECURITY.de.md)
+**<img src="https://flagcdn.com/id.svg" width="18" alt="ID"> Indonesia** · [<img src="https://flagcdn.com/gb.svg" width="18" alt="EN"> English](SECURITY.en.md) · [<img src="https://flagcdn.com/de.svg" width="18" alt="DE"> Deutsch](SECURITY.de.md)
 
 # Kebijakan Keamanan
 

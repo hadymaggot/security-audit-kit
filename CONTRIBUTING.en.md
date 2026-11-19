@@ -1,4 +1,4 @@
-[🇮🇩 Indonesia](CONTRIBUTING.md) · **🇬🇧 English** · [🇩🇪 Deutsch](CONTRIBUTING.de.md)
+[<img src="https://flagcdn.com/id.svg" width="18" alt="ID"> Indonesia](CONTRIBUTING.md) · **<img src="https://flagcdn.com/gb.svg" width="18" alt="EN"> English** · [<img src="https://flagcdn.com/de.svg" width="18" alt="DE"> Deutsch](CONTRIBUTING.de.md)
 
 # Contributing
 

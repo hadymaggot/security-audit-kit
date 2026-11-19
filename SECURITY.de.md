@@ -1,4 +1,4 @@
-[🇮🇩 Indonesia](SECURITY.md) · [🇬🇧 English](SECURITY.en.md) · **🇩🇪 Deutsch**
+[<img src="https://flagcdn.com/id.svg" width="18" alt="ID"> Indonesia](SECURITY.md) · [<img src="https://flagcdn.com/gb.svg" width="18" alt="EN"> English](SECURITY.en.md) · **<img src="https://flagcdn.com/de.svg" width="18" alt="DE"> Deutsch**
 
 # Sicherheitsrichtlinie
 

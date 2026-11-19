@@ -1,4 +1,4 @@
-[🇮🇩 Indonesia](README.md) · [🇬🇧 English](README.en.md) · **🇩🇪 Deutsch**
+[<img src="https://flagcdn.com/id.svg" width="18" alt="ID"> Indonesia](README.md) · [<img src="https://flagcdn.com/gb.svg" width="18" alt="EN"> English](README.en.md) · **<img src="https://flagcdn.com/de.svg" width="18" alt="DE"> Deutsch**
 
 # Security Audit Kit
 
