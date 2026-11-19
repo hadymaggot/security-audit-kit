@@ -30,3 +30,32 @@ code_path: "."
 #                          yang melayani base_url) -> `localhost` = container tsb.
 # Contoh (target di balik Traefik pada localhost:18880):
 # docker_network: "container:app-traefik-1"
+
+# ── Scan AKTIF (ZAP full / api) ───────────────────────────────────────────────────────────
+# Scan aktif menulis ke target secara acak sehingga tidak dapat dibalik per tindakan. Rollback yang
+# realistis adalah SNAPSHOT DATA: dump sebelum scan, pulihkan sesudahnya (otomatis, juga bila scan
+# gagal). Backup yang gagal MEMBATALKAN scan. Entri jurnal dicatat agar `python audit.py rollback`
+# dapat memulihkan bila proses mati di tengah jalan.
+# Catatan: hanya data yang dicakup langkah snapshot yang dipulihkan (PostgreSQL). MinIO/S3, RabbitMQ,
+# dan Redis tidak ikut kecuali Anda menambah langkahnya.
+#
+# Preset PostgreSQL di Docker:
+# snapshot:
+#   preset: postgres-docker
+#   container: "app-postgres-1"
+#   user: "app-user"
+#   databases: ["iam", "emission"]   # database yang mungkin berubah oleh scan
+#   keep: false                      # hapus berkas snapshot setelah berhasil dipulihkan
+#   timeout_seconds: 1800
+#
+# Atau langkah kustom (argv tanpa shell; {dir} = direktori snapshot):
+# snapshot:
+#   steps:
+#     - name: "mysql app"
+#       backup:  { cmd: ["docker","exec","db","mysqldump","-uroot","app"], stdout_to: "{dir}/app.sql" }
+#       restore: { cmd: ["docker","exec","-i","db","mysql","-uroot","app"], stdin_from: "{dir}/app.sql" }
+#
+# Opsi tambahan scan aktif ZAP:
+# zap_exclude: [".*/logout.*", ".*/delete.*"]   # regex URL penuh yang dilewati scanner
+# zap_spider_minutes: 3                         # -m : lama spider (menit)
+# zap_timeout_minutes: 20                       # -T : batas waktu (menit)

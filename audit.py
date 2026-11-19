@@ -122,19 +122,53 @@ def mod_zap(tgt, sub="baseline"):
     if sub == "baseline":
         return run(base + ["zap-baseline.py", "-t", tgt["base_url"],
                            "-r", "zap-baseline.html", "-J", "zap-baseline.json", "-I"] + extra)
-    if sub == "api":
-        spec = tgt.get("openapi")
-        if not spec:
+    if sub in ("api", "full"):
+        # Scan AKTIF menulis ke target secara acak -> wajib dibungkus snapshot data bila dikonfigurasi.
+        if sub == "api" and not tgt.get("openapi"):
             print("targets.yml belum punya 'openapi' untuk ZAP API scan.", file=sys.stderr)
             return 2
-        return run(base + ["zap-api-scan.py", "-t", spec, "-f", "openapi",
-                           "-r", "zap-api.html", "-J", "zap-api.json", "-I"] + extra)
-    if sub == "full":
         print("ACTIVE SCAN — hanya ke dev/staging milik sendiri.", file=sys.stderr)
-        return run(base + ["zap-full-scan.py", "-t", tgt["base_url"],
-                           "-r", "zap-full.html", "-J", "zap-full.json", "-I"] + extra)
+        if not tgt.get("snapshot"):
+            print("PERINGATAN: tidak ada blok 'snapshot' di targets.yml — perubahan data oleh scan "
+                  "aktif TIDAK dapat dipulihkan otomatis.", file=sys.stderr)
+        sys.path.insert(0, str(ROOT / "tests"))
+        import _snapshot  # noqa: E402
+        try:
+            with _snapshot.Guard(tgt.get("snapshot"), reports_dir(), f"ZAP {sub}") as g:
+                rc = run(base + zap_scan_cmd(tgt, sub) + zap_scan_opts(tgt) + extra)
+        except _snapshot.SnapshotError as exc:
+            print(f"Snapshot gagal — scan DIBATALKAN: {exc}", file=sys.stderr)
+            return 2
+        return rc | (0 if g.ok else 1)
     print(f"subperintah zap tak dikenal: {sub}", file=sys.stderr)
     return 2
+
+
+def zap_scan_cmd(tgt, sub):
+    """Argumen skrip ZAP untuk scan aktif (full/api)."""
+    if sub == "api":
+        return ["zap-api-scan.py", "-t", tgt["openapi"], "-f", "openapi",
+                "-r", "zap-api.html", "-J", "zap-api.json", "-I"]
+    return ["zap-full-scan.py", "-t", tgt["base_url"], "-r", "zap-full.html", "-J", "zap-full.json",
+            "-I"]
+
+
+def zap_scan_opts(tgt):
+    """Opsi tambahan scan aktif dari targets.yml: zap_exclude (regex URL yang dilewati, mis. logout/hapus),
+    zap_spider_minutes (-m), dan zap_timeout_minutes (-T)."""
+    opts = []
+    if tgt.get("zap_spider_minutes"):
+        opts += ["-m", str(int(tgt["zap_spider_minutes"]))]
+    if tgt.get("zap_timeout_minutes"):
+        opts += ["-T", str(int(tgt["zap_timeout_minutes"]))]
+    excl = [e for e in tgt.get("zap_exclude", []) if e]
+    if excl:
+        parts = []
+        for i, rx in enumerate(excl):
+            parts += [f"-config globalexcludeurl.url_list.url({i}).regex={rx}",
+                      f"-config globalexcludeurl.url_list.url({i}).enabled=true"]
+        opts += ["-z", " ".join(parts)]
+    return opts
 
 
 def mod_tls(tgt):
@@ -275,6 +309,7 @@ def mod_rollback():
     import _fixture  # noqa: E402
     import _rollback  # noqa: E402
     import _sanctum  # noqa: E402
+    import _snapshot  # noqa: E402
 
     reports = reports_dir()
     if not _rollback.pending(reports):
@@ -304,6 +339,8 @@ def mod_rollback():
         a = entry["action"]
         if a.get("fixture_config"):               # akun uji sekali pakai -> hapus pakai sesi admin
             return _fixture.restore_entry(entry)
+        if a.get("snapshot_manifest"):            # snapshot data (scan aktif) -> pulihkan dari berkas
+            return _snapshot.restore_entry(entry)
         c = ma_ctx()
         url = (a.get("base_url") or c["base"]).rstrip("/") + a["path"]
         hdr = (_sanctum.auth_headers(c["sess"], c["sanctum"].get("origin"))
