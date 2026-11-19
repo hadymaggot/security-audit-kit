@@ -59,7 +59,9 @@
  .topbar .sp{margin-left:auto}
 
  .stage{position:relative;z-index:2;flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(0,640px) 0fr;justify-content:center;align-items:center;gap:0;padding:0 1.2rem 1.3rem;transition:grid-template-columns .5s cubic-bezier(.4,0,.2,1),gap .5s ease}
- .stage.scanning{grid-template-columns:minmax(0,520px) minmax(0,560px);gap:1.3rem}
+ .stage.scanning{grid-template-columns:minmax(0,600px) minmax(0,660px);gap:1.5rem}
+ /* saat split: kartu dan terminal sama tinggi, sejajar */
+ .stage.scanning .card{height:min(82vh,640px);max-height:min(82vh,640px)}
 
  .card{min-width:0;width:100%;max-height:100%;overflow:auto;justify-self:center;
    background:linear-gradient(180deg,rgba(27,31,27,.9),rgba(18,18,18,.92));
@@ -94,13 +96,13 @@
  .scanpanel{min-width:0;width:100%;overflow:hidden;opacity:0;transform:translateX(26px);pointer-events:none;
    transition:opacity .4s ease,transform .4s ease}
  .stage.scanning .scanpanel{opacity:1;transform:none;pointer-events:auto}
- .termcard{display:flex;flex-direction:column;height:min(74vh,560px);background-color:var(--terminal-bg);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+ .termcard{display:flex;flex-direction:column;height:min(82vh,640px);background-color:var(--terminal-bg);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5)}
  .terminal-header{display:flex;align-items:center;background-color:rgba(60,60,60,.6);padding:.5rem 1rem;border-bottom:1px solid rgba(122,197,90,.3)}
- .terminal-buttons{display:flex;gap:.4rem} .term-btn{width:12px;height:12px;border-radius:50%}
+ .terminal-buttons{display:flex;gap:.4rem;align-items:center} .term-btn{width:12px;height:12px;border-radius:50%}
  .red{background:#ff5f56}.yellow{background:#ffbd2e}.green{background:#27c93f}
- .terminal-title{flex:1;text-align:center;font-family:var(--mono);font-size:.78rem;color:rgba(255,255,255,.7)}
- .term-x{background:none;border:0;color:rgba(255,255,255,.7);font-size:17px;cursor:pointer;line-height:1;padding:0 2px}
- #log{flex:1;overflow:auto;padding:13px 15px;font-family:var(--mono);font-size:12.5px;white-space:pre-wrap;word-break:break-word}
+ button.term-btn{appearance:none;border:0;padding:0;cursor:pointer;position:relative}
+ button.red:hover::after,button.red:focus-visible::after{content:"\00d7";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;line-height:1;color:rgba(0,0,0,.6)}
+ .terminal-title{flex:1;text-align:center;font-family:var(--mono);font-size:.78rem;color:rgba(255,255,255,.7)} #log{flex:1;overflow:auto;padding:13px 15px;font-family:var(--mono);font-size:12.5px;white-space:pre-wrap;word-break:break-word}
  #log .ln{margin:1px 0} #log .ok{color:var(--primary)} #log .bad{color:#ff8a3d} #log .mut{color:rgba(255,255,255,.6)} #log a{color:var(--secondary);cursor:pointer;text-decoration:underline}
  #il{display:flex;align-items:center;gap:8px;border-top:1px solid rgba(122,197,90,.3);padding:8px 13px;background:rgba(19,19,19,.8)}
  #il .p{color:var(--primary);font-family:var(--mono)} #il input{flex:1;background:transparent;border:0;outline:0;color:var(--text);font-family:var(--mono);font-size:13px}
@@ -110,7 +112,7 @@
    body{height:auto;overflow:auto}
    .stage{grid-template-columns:1fr;grid-template-rows:auto 0fr;justify-content:stretch;transition:grid-template-rows .5s cubic-bezier(.4,0,.2,1),gap .5s ease}
    .stage.scanning{grid-template-columns:1fr;grid-template-rows:auto 1fr;gap:1rem}
-   .card{max-height:none}
+   .card,.stage.scanning .card{height:auto;max-height:none}
    .scanpanel{transform:translateY(16px)} .stage.scanning .scanpanel{transform:none}
    .termcard{height:72vh}
  }
@@ -164,9 +166,8 @@ python audit.py all                                # scan + laporan</code></pre>
   <aside class="scanpanel" aria-hidden="true">
     <div class="termcard">
       <div class="terminal-header">
-        <div class="terminal-buttons"><span class="term-btn red"></span><span class="term-btn yellow"></span><span class="term-btn green"></span></div>
+        <div class="terminal-buttons"><button class="term-btn red" type="button" onclick="closeScan()" aria-label="Tutup scanner" title="Tutup"></button><span class="term-btn yellow"></span><span class="term-btn green"></span></div>
         <div class="terminal-title">bash ~ open-scanner (pasif)</div>
-        <button class="term-x" type="button" onclick="closeScan()" aria-label="Tutup">&times;</button>
       </div>
       <div id="log"></div>
       <div id="il"><span class="p">scan&gt;</span><input id="in" autocomplete="off" spellcheck="false" placeholder="ketik URL target lalu Enter, atau 'help'"></div>
