@@ -1,4 +1,14 @@
 # Salin ke upload_safety.yml. Kredensial dari env var.
+#
+# Langkah dapat kredensial uji:
+#   - Bearer/JWT: login sekali sebagai akun uji, ambil token dari respons, lalu
+#       export UPLOAD_TOKEN="Bearer <token>"
+#     mis. curl -s -X POST "$TARGET_BASE_URL/api/login" -H 'Content-Type: application/json' \
+#            -d '{"email":"...","password":"..."}' | jq -r .token
+#   - Laravel Sanctum (SPA, cookie sesi): tak perlu token manual — isi
+#       export UPLOAD_USER=... UPLOAD_PASS=...
+#     dan aktifkan Pilihan B; runner ambil cookie CSRF lalu login sendiri.
+#   Pakai akun peran terendah yang memang boleh upload, ke objek MILIKNYA sendiri.
 base_url: "${TARGET_BASE_URL}"
 auth:
   # Pilihan A — token statis (Bearer/JWT atau header kustom):
@@ -16,7 +26,15 @@ auth:
   #   body: { email: "${UPLOAD_USER}", password: "${UPLOAD_PASS}" }
 endpoint:
   method: POST
-  path: "/api/upload"
+  path: "/api/upload"             # mis. "/api/reports/<id-milik-sendiri>/attachments"
   field: "file"                   # nama field multipart
+  # data: { type: "lainnya" }     # field form tambahan yang diwajibkan endpoint
 allow_only: [".pdf"]              # ekstensi sah menurut aplikasi
 max_bytes: 2097152                # 2 MB; berkas lebih besar harus ditolak
+
+# Opsional, sangat disarankan ke target bersama: berkas uji yang DITERIMA (termasuk
+# kontrol PDF sah & temuan) langsung dihapus. {id} diambil dari respons upload.
+# cleanup:
+#   method: DELETE
+#   path: "/api/reports/<id-milik-sendiri>/attachments/{id}"
+#   id_field: "id"                # dotted, mis. "data.id"
