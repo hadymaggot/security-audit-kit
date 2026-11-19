@@ -135,6 +135,26 @@ def test_guard_restore_gagal_tetap_di_jurnal(tmp_path):
     assert list((tmp_path / "snapshots").rglob("*.dump"))                    # berkas dipertahankan
 
 
+def test_guard_idempoten_bila_rollback_bawaan_sudah_memulihkan(tmp_path):
+    """Modul di dalam guard memanggil mod_rollback -> entri snapshot dipulihkan lebih dulu dan dump
+    dihapus; __exit__ tidak boleh memulihkan lagi (sebelumnya: FileNotFoundError)."""
+    runner = FakeRunner()
+    g, lines = _guard(tmp_path, runner)
+    with g:
+        entry = RB.pending(tmp_path)[0]
+        ok, _ = SN.restore_entry(entry, runner)                # meniru mod_rollback di dalam scan
+        assert ok
+        data = RB.load(tmp_path)
+        for e in data:
+            e["done"] = True                                   # replay menandai selesai
+        RB._write(tmp_path, data)
+        restores_before = sum("pg_restore" in " ".join(c[0]) for c in runner.calls)
+    restores_after = sum("pg_restore" in " ".join(c[0]) for c in runner.calls)
+    assert restores_after == restores_before                  # tidak ada restore kedua
+    assert g.ok is True and g.results == []
+    assert any("sudah dipulihkan" in l for l in lines)
+
+
 def test_guard_tanpa_konfigurasi_tidak_melakukan_apa_apa(tmp_path):
     runner = FakeRunner()
     with SN.Guard(None, tmp_path, "x", runner=runner) as g:

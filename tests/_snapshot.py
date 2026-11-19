@@ -184,6 +184,15 @@ class Guard:
     def __exit__(self, exc_type, exc, tb):
         if not self.active or self.manifest is None:
             return False
+        # Idempoten: modul yang dijalankan DI DALAM guard (mis. audit.py mass-assignment) memanggil
+        # mod_rollback di akhirnya, yang ikut memproses entri snapshot pending ini lalu menghapus
+        # berkas dump. Bila entri sudah done, jangan memulihkan lagi (berkasnya sudah tiada).
+        entry = next((e for e in _rollback.load(self.reports)
+                      if e.get("label") == self._entry.get("label")), None)
+        if entry and entry.get("done"):
+            self.echo(f"== Data setelah {self.label} sudah dipulihkan oleh rollback bawaan ==")
+            self.ok, self.results = True, []
+            return False
         self.echo(f"== Memulihkan data setelah {self.label} ==")
         self.results = restore(self.manifest, self.runner)
         for n, ok, note in self.results:
