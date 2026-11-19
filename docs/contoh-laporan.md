@@ -2,11 +2,11 @@
 
 > **Catatan:** ini **contoh output** dari data fiktif (host `demo.example.test`, endpoint, temuan, dan CVE dibuat untuk ilustrasi), bukan hasil audit sistem nyata. Versi HTML ada di [`contoh-laporan.html`](contoh-laporan.html) — isinya sama, dengan ringkasan risiko berwarna, daftar alert bernavigasi, dan tabel instance. Dibuat dengan `python audit.py report`.
 
-> Dibuat: 2026-11-19 07:52 · Security Audit Kit — dibuat oleh hadymaggot · https://github.com/hadymaggot/security-audit-kit
+> Dibuat: 2026-11-19 08:34 · Security Audit Kit — dibuat oleh hadymaggot · https://github.com/hadymaggot/security-audit-kit
 
 ## 1. Metodologi
 
-Testing dijalankan otomatis dan non-destruktif ke target yang berwenang diuji. Acuannya OWASP Top 10 2021, OWASP ASVS, dan OWASP Risk Rating Methodology (severity = Likelihood x Impact). Tooling-nya OWASP ZAP, Trivy, dan testssl.sh, ditambah rangkaian regression test buat access control, upload, dan password policy.
+Pengujian dijalankan secara otomatis dan non-destruktif terhadap target yang berwenang diuji. Acuannya OWASP Top 10 2021, OWASP ASVS, dan OWASP Risk Rating Methodology (severity = Likelihood x Impact). Tooling yang digunakan OWASP ZAP, Trivy, dan testssl.sh, ditambah rangkaian regression test untuk access control, upload, dan password policy.
 
 ## 2. Ringkasan Temuan
 
@@ -43,7 +43,7 @@ Total alert: **6** · Total CVE terdeteksi: **2**.
 
   | # | Endpoint diuji | Konteks | HTTP | Bukti |
   |---|---|---|---|---|
-  | 1 | `GET http://demo.example.test:18002/api/users  (inject: X-Auth-Roles,X-Auth-User-Id)` | [forged] admin via port langsung | 200 | Role 'anon', respons HTTP 200. X-Auth-Roles: admin palsu diterima; daftar user kebuka |
+  | 1 | `GET http://demo.example.test:18002/api/users  (inject: X-Auth-Roles,X-Auth-User-Id)` | [forged] admin via port langsung | 200 | Role 'anon', respons HTTP 200. X-Auth-Roles: admin palsu diterima; daftar user terekspos |
   | 2 | `GET http://demo.example.test:18004/api/roles  (inject: X-Auth-Roles)` | [forged] role management via port langsung | 200 | Role 'anon', respons HTTP 200. service hilir percaya header mentah tanpa verifikasi |
 
 - **CVE/CWE:** -
@@ -199,7 +199,7 @@ Pemeriksaan yang diuji dan berperilaku benar (bukan temuan) — bukti cakupan uj
 
 ## 5. Batasan & Pertanggungjawaban
 
-Laporan ini hasil automation, bukan pengganti pentest manual. Temuan scanner (misalnya ZAP) bisa false positive dan wajib diverifikasi sebelum severity final dikunci. Celah logika bisnis cuma ketangkep kalau test-nya ditulis khusus. Cakupannya sebatas target & endpoint yang di-config pas dijalanin.
+Laporan ini merupakan hasil automation, bukan pengganti pentest manual. Temuan scanner (misalnya ZAP) dapat berupa false positive dan wajib diverifikasi sebelum severity final ditetapkan. Celah logika bisnis hanya terdeteksi apabila test-nya ditulis secara khusus. Cakupan pengujian terbatas pada target dan endpoint yang dikonfigurasi saat dijalankan. Uji destruktif (mis. mass-assignment) menulis ke target lalu DIPULIHKAN otomatis ke keadaan semula sebagai fase terakhir setelah laporan ini dibuat; log pemulihan ada di reports/rollback.json, dan `python audit.py rollback` memulihkan ulang bila perlu.
 
 ---
 

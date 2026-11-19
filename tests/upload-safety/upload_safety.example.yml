@@ -8,7 +8,7 @@
 #   - Laravel Sanctum (SPA, cookie sesi): tak perlu token manual — isi
 #       export UPLOAD_USER=... UPLOAD_PASS=...
 #     dan aktifkan Pilihan B; runner ambil cookie CSRF lalu login sendiri.
-#   Pakai akun peran terendah yang memang boleh upload, ke objek MILIKNYA sendiri.
+#   Gunakan akun peran terendah yang memang boleh upload, ke objek MILIKNYA sendiri.
 base_url: "${TARGET_BASE_URL}"
 auth:
   # Pilihan A — token statis (Bearer/JWT atau header kustom):

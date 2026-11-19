@@ -4,11 +4,11 @@
 # dipulihkan OTOMATIS sebagai fase terakhir setelah laporan dibuat. Untuk memulihkan
 # ulang secara manual: `python audit.py rollback`.
 #
-# Pakai akun peran RENDAH dan objek MILIKNYA sendiri yang memang boleh ia ubah.
+# Gunakan akun peran RENDAH dan objek MILIKNYA sendiri yang memang boleh ia ubah.
 #   export MA_USER=... MA_PASS=...
 base_url: "${TARGET_BASE_URL}"
 auth:
-  # Laravel Sanctum (SPA, session cookie). Untuk token statis, pakai:
+  # Laravel Sanctum (SPA, session cookie). Untuk token statis, gunakan:
   #   header: "Authorization"
   #   value: "${MA_TOKEN}"   # mis. "Bearer xxx"
   sanctum:

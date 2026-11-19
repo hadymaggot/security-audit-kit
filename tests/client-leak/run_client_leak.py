@@ -14,7 +14,7 @@ B. Kebocoran di JavaScript klien — unduh aset JS (dari konfigurasi atau hasil
    (Ini pola yang dipakai penguji BSSN: membaca JS untuk menemukan endpoint admin.)
 
 Opsional (browser_cache.enabled): konfirmasi lewat Chromium sungguhan (Playwright)
-bahwa respons sensitif memang tersimpan di cache browser, bukan cuma dari header.
+bahwa respons sensitif memang tersimpan di cache browser, bukan hanya dari header.
 
 Konfigurasi di client_leak.yml. Pakai:
     python run_client_leak.py --config client_leak.yml [--json out.json]
