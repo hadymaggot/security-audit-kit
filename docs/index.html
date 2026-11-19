@@ -97,19 +97,22 @@
  .glow-text{color:var(--primary);text-shadow:0 0 5px var(--primary)}
 
  /* panel scanner (terminal) — muncul saat Open scanner */
- .scanpanel{min-width:0;width:100%;max-width:580px;justify-self:center;overflow:hidden;opacity:0;transform:translateX(26px);pointer-events:none;
+ .scanpanel{position:relative;min-width:0;width:100%;max-width:580px;justify-self:center;overflow:hidden;opacity:0;transform:translateX(26px);pointer-events:none;
    transition:opacity .4s ease,transform .4s ease}
- .stage.scanning .scanpanel{opacity:1;transform:none;pointer-events:auto}
- .termcard{display:flex;flex-direction:column;height:100%;min-height:0;background-color:var(--terminal-bg);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+ .stage.scanning .scanpanel{opacity:1;transform:none;pointer-events:auto;min-height:340px}
+ /* termcard mengisi selnya secara absolut -> tinggi terkunci (= tinggi kartu), tidak tumbuh mengikuti isi log */
+ .termcard{position:absolute;inset:0;display:flex;flex-direction:column;background-color:var(--terminal-bg);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5)}
  .terminal-header{display:flex;align-items:center;background-color:rgba(60,60,60,.6);padding:.5rem 1rem;border-bottom:1px solid rgba(122,197,90,.3)}
  .terminal-buttons{display:flex;gap:.4rem;align-items:center} .term-btn{width:12px;height:12px;border-radius:50%}
  .red{background:#ff5f56}.yellow{background:#ffbd2e}.green{background:#27c93f}
  button.term-btn{appearance:none;border:0;padding:0;cursor:pointer;position:relative}
  button.red:hover::after,button.red:focus-visible::after{content:"\00d7";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;line-height:1;color:rgba(0,0,0,.6)}
- .terminal-title{flex:1;text-align:center;font-family:var(--mono);font-size:.78rem;color:rgba(255,255,255,.7)} #log{flex:1;overflow:auto;padding:13px 15px;font-family:var(--mono);font-size:12.5px;white-space:pre-wrap;word-break:break-word}
+ .terminal-title{flex:1;text-align:center;font-family:var(--mono);font-size:.78rem;color:rgba(255,255,255,.7)} #log{flex:1;min-height:0;overflow:auto;padding:13px 15px;font-family:var(--mono);font-size:12.5px;line-height:1.55;white-space:pre-wrap;word-break:break-word;cursor:text}
  #log .ln{margin:1px 0} #log .ok{color:var(--primary)} #log .bad{color:#ff8a3d} #log .mut{color:rgba(255,255,255,.6)} #log a{color:var(--secondary);cursor:pointer;text-decoration:underline}
- #il{display:flex;align-items:center;gap:8px;border-top:1px solid rgba(122,197,90,.3);padding:8px 13px;background:rgba(19,19,19,.8)}
- #il .p{color:var(--primary);font-family:var(--mono)} #il input{flex:1;background:transparent;border:0;outline:0;color:var(--text);font-family:var(--mono);font-size:13px}
+ /* prompt elegan + input mengalir di dalam log (seperti terminal sungguhan) */
+ .cliln{display:flex;align-items:baseline;margin:5px 0 0}
+ .cli{flex:1;min-width:0;background:transparent;border:0;outline:0;color:var(--text);font-family:var(--mono);font-size:12.5px;caret-color:var(--primary);padding:0;margin-left:.6ch}
+ .pr{white-space:nowrap} .pr .pu{color:var(--primary);font-weight:700} .pr .pd{color:rgba(255,255,255,.38)} .pr .pp{color:var(--secondary)} .pr .pa{color:var(--primary);font-weight:700}
 
  /* mobile: terminal turun ke bawah */
  @media (max-width:820px){
@@ -118,7 +121,8 @@
    .stage.scanning{grid-template-columns:1fr;grid-template-rows:auto 1fr;gap:1rem}
    .card,.stage.scanning .card{height:auto;max-height:none}
    .scanpanel{transform:translateY(16px)} .stage.scanning .scanpanel{transform:none}
-   .termcard{height:72vh}
+   .scanpanel{min-height:0}
+   .termcard{position:static;height:72vh}
  }
  /* minimize ke navbar + legend */
  .winchip{background:rgba(122,197,90,.1);border:1px solid rgba(122,197,90,.3);color:var(--primary);font-family:var(--mono);font-size:.78rem;border-radius:999px;padding:.2rem .7rem;cursor:pointer;margin-right:.5rem}
@@ -194,7 +198,6 @@ python audit.py all                                # scan + laporan</code></pre>
         <div class="terminal-title">bash ~ open-scanner (pasif)</div>
       </div>
       <div id="log"></div>
-      <div id="il"><span class="p">scan&gt;</span><input id="in" autocomplete="off" spellcheck="false" placeholder="ketik URL target lalu Enter, atau 'help'"></div>
     </div>
   </aside>
 </main>
@@ -354,22 +357,41 @@ python audit.py all                                # scan + laporan</code></pre>
      out("uji hanya target yang Anda miliki/berwenang. tidak mengirim payload / menulis data.","mut");
      out("perintah: &lt;url&gt; · clear · help","mut");
    }
-   setTimeout(function(){document.getElementById("in").focus()},300);
+   ensurePrompt();
  }
  function closeScan(){ // tutup penuh: reset sesi
    stage.classList.remove("scanning"); stage.querySelector(".scanpanel").setAttribute("aria-hidden","true"); chip("rTerm",false);
-   var l=logEl(); l.innerHTML=""; l.removeAttribute("data-init"); var inp=document.getElementById("in"); if(inp)inp.value="";
+   var l=logEl(); l.innerHTML=""; l.removeAttribute("data-init");
  }
  document.addEventListener("keydown",function(e){if(e.key==="Escape")closeScan()});
 
+ // ---- prompt elegan + input mengalir di dalam log (seperti terminal) ----
+ function promptEl(){ return "<span class='pr'><span class='pu'>me</span><span class='pd'>@ahadizapto</span> <span class='pp'>~</span> <span class='pa'>❯</span></span>"; }
+ function addPrompt(){
+   var d=document.createElement("div"); d.className="ln cliln";
+   d.innerHTML=promptEl()+"<input class='cli' autocomplete='off' autocorrect='off' autocapitalize='off' spellcheck='false' aria-label='perintah scanner'>";
+   logEl().appendChild(d);
+   var inp=d.querySelector(".cli");
+   inp.addEventListener("keydown",function(e){ if(e.key==="Enter"){ e.preventDefault(); submitCmd(inp); } });
+   logEl().scrollTop=logEl().scrollHeight; setTimeout(function(){inp.focus();},0);
+ }
+ function ensurePrompt(){ var i=logEl().querySelector(".cliln .cli"); if(i){setTimeout(function(){i.focus();},10);} else addPrompt(); }
+ function submitCmd(inp){
+   var v=inp.value, line=inp.closest(".cliln");
+   line.className="ln"; line.innerHTML=promptEl()+" "+esc(v); // echo jadi statis
+   var pending=run(v);
+   if(!pending) ensurePrompt();
+ }
+ logEl().addEventListener("click",function(e){ if(e.target.closest("a,button,input"))return; var i=logEl().querySelector(".cliln .cli"); if(i)i.focus(); });
+
  function run(cmd){
-   out("<span class='mut'>scan&gt;</span> "+esc(cmd)); var c=cmd.trim(); if(!c)return;
-   if(c==="clear"){logEl().innerHTML="";logEl().removeAttribute("data-init");openScan();return;}
-   if(c==="help"){out("ketik URL target (mis. https://contoh.example) untuk memindai; 'clear' bersihkan layar.","mut");return;}
+   var c=cmd.trim(); if(!c)return false;
+   if(c==="clear"){logEl().innerHTML="";logEl().removeAttribute("data-init");openScan();return false;}
+   if(c==="help"){out("ketik URL target (mis. https://contoh.example) untuk memindai; 'clear' bersihkan layar.","mut");return false;}
    var url=c.replace(/^scan\s+/,"");
-   if(!/^https?:\/\//.test(url)){out("URL harus diawali http(s)://","bad");return;}
-   if(!api){out("backend tidak tersedia.","bad");return;}
-   scan(url);
+   if(!/^https?:\/\//.test(url)){out("URL harus diawali http(s)://","bad");return false;}
+   if(!api){out("backend tidak tersedia.","bad");return false;}
+   scan(url); return true; // async: prompt baru ditambah setelah scan selesai
  }
  function scan(url){
    var host=url; try{host=new URL(url).hostname;}catch(e){}
@@ -391,7 +413,8 @@ python audit.py all                                # scan + laporan</code></pre>
        var a=out("► <a id='genrep'>klik untuk generate laporan HTML</a>");
        a.querySelector("#genrep").addEventListener("click",function(){genReport(res.j)});
      })
-     .catch(function(err){out("tidak bisa menghubungi backend ("+esc(api)+"): "+esc(err),"bad")}); // URL hanya muncul saat error
+     .catch(function(err){out("tidak bisa menghubungi backend ("+esc(api)+"): "+esc(err),"bad")}) // URL hanya muncul saat error
+     .finally(function(){ensurePrompt();}); // prompt baru setelah scan selesai
  }
  function genReport(data){
    var SEVR={critical:"#e5484d",high:"#f76808",medium:"#e0b400",low:"#3b82f6",info:"#8b8d98",lulus:"#1f9d57",ok:"#1f9d57"};
@@ -436,7 +459,6 @@ python audit.py all                                # scan + laporan</code></pre>
    var blob=new Blob([html],{type:"text/html"}); window.open(URL.createObjectURL(blob),"_blank");
    out("laporan dibuka di tab baru.","ok");
  }
- document.getElementById("in").addEventListener("keydown",function(e){ if(e.key==="Enter"){var v=this.value;this.value="";run(v);} });
 </script>
 </body>
 </html>
