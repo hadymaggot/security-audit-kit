@@ -289,7 +289,7 @@ def main():
     ap.add_argument("module", choices=["all", "zap", "tls", "headers", "deps",
                                        "authz", "upload", "auth-policy", "clientleak",
                                        "cors", "open-redirect", "mass-assignment",
-                                       "webstack", "rollback", "report"])
+                                       "webstack", "injection", "rollback", "report"])
     ap.add_argument("sub", nargs="?", default="baseline",
                     help="subperintah untuk 'zap': baseline|api|full")
     args = ap.parse_args()
@@ -338,6 +338,11 @@ def main():
                     ROOT / "tests" / "webstack" / "webstack.yml", "webstack.json")
         mod_report()
         return rc
+    if args.module == "injection":
+        rc = mod_py(ROOT / "tests" / "injection" / "run_injection.py",
+                    ROOT / "tests" / "injection" / "injection.yml", "injection.json")
+        mod_report()
+        return rc
     if args.module == "mass-assignment":
         rc = mod_py(ROOT / "tests" / "mass-assignment" / "run_mass_assignment.py",
                     ROOT / "tests" / "mass-assignment" / "mass_assignment.yml",
@@ -363,6 +368,7 @@ def main():
             (ROOT / "tests/cors/run_cors.py", ROOT / "tests/cors/cors.yml", "cors.json"),
             (ROOT / "tests/open-redirect/run_open_redirect.py", ROOT / "tests/open-redirect/open_redirect.yml", "open_redirect.json"),
             (ROOT / "tests/webstack/run_webstack.py", ROOT / "tests/webstack/webstack.yml", "webstack.json"),
+            (ROOT / "tests/injection/run_injection.py", ROOT / "tests/injection/injection.yml", "injection.json"),
             (ROOT / "tests/mass-assignment/run_mass_assignment.py", ROOT / "tests/mass-assignment/mass_assignment.yml", "mass_assignment.json"),
         ):
             if cfg.exists():

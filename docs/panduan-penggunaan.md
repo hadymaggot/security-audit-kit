@@ -110,6 +110,7 @@ Modul yang tersedia:
 | `cors` | CORS misconfiguration | Target hidup, config |
 | `open-redirect` | Open redirect | Target hidup, config |
 | `webstack` | Deteksi versi web server dari banner → CVE yang diketahui (Apache mod_http2, NGINX HTTP/2); non-destruktif | Target hidup, config |
+| `injection` | SQL injection (error/boolean-based, time-based opsional); non-destruktif, probing baca | Target hidup, config |
 | `tls` / `headers` | Protokol/cipher TLS usang, security header yang kurang | Target hidup |
 | `report` | Merangkai seluruh hasil menjadi laporan | Hasil scan di `reports/` |
 | `rollback` | Memulihkan ulang aksi destruktif dari rollback journal | — |

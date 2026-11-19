@@ -8,6 +8,7 @@ tests/*/cors.yml
 tests/*/open_redirect.yml
 tests/*/mass_assignment.yml
 tests/*/webstack.yml
+tests/*/injection.yml
 # Hasil pindai
 reports/
 # Python
