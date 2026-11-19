@@ -1,150 +1,177 @@
 # Laporan Hasil Uji Keamanan
 
-> **Catatan:** ini **contoh output** dari data fiktif (host `demo.example.test`, endpoint, temuan, dan CVE dibuat untuk ilustrasi), bukan hasil audit sistem nyata. Versi HTML ada di [`contoh-laporan.html`](contoh-laporan.html). Dibuat dengan `python audit.py report`.
-
 **Klasifikasi:** RAHASIA / CONFIDENTIAL
 
 | | |
 |---|---|
-| Dibuat | 2026-11-19 09:13 (UTC+07:00 SE Asia Standard Time) |
+| Dibuat | 2026-11-19 (contoh) |
 | Disusun oleh | Security Audit Kit — dibuat oleh hadymaggot · https://github.com/hadymaggot/security-audit-kit |
-| Target | Contoh Target (fiktif) (http://demo.example.test) |
+| Target | Contoh Aplikasi (demo) (https://dev.contoh.example) |
 | Versi dokumen | 1.0 |
 
 ## 1. Ringkasan Eksekutif
 
-Pengujian menemukan 10 instance temuan (3 Critical, 4 High, 3 Low) yang tergolong dalam 6 jenis alert. Temuan berisiko tertinggi: Header identitas (X-Auth-*) dipercaya dari klien; Dependensi dengan kerentanan (CVE); IDOR — akses objek milik entitas lain. Perbaikan disarankan memprioritaskan temuan Critical dan High terlebih dahulu. Rincian teknis, bukti endpoint, dan rekomendasi tersedia pada bagian Rincian Temuan.
+Pengujian menemukan 6 instance temuan (1 Critical, 3 High, 1 Medium, 1 Low) yang tergolong dalam 6 jenis alert. Temuan berisiko tertinggi: Kontrol akses rusak (role rendah membuka area terbatas); SQL Injection (A03); Web server versi rentan (CVE diketahui). Perbaikan disarankan memprioritaskan temuan Critical dan High terlebih dahulu. Rincian teknis, bukti endpoint, dan rekomendasi tersedia pada bagian Rincian Temuan.
 
 | Severity | Jumlah instance |
 |---|---|
-| 🔴 Critical | 3 |
-| 🟠 High | 4 |
-| 🟡 Medium | 0 |
-| 🟢 Low | 3 |
+| 🔴 Critical | 1 |
+| 🟠 High | 3 |
+| 🟡 Medium | 1 |
+| 🔵 Low | 1 |
 | ⚪ Info | 0 |
-| ✅ Lulus (kontrol OK) | 12 |
+| 🟢 PASS (kontrol lolos) | 2 |
 
-Total alert: **6** · Total CVE: **2**.
+Total alert: **6** · Total CVE: **1**.
 
 ## 2. Ruang Lingkup & Metodologi
 
-- **Target:** Contoh Target (fiktif) (http://demo.example.test).
-- **Modul/teknik yang dijalankan:** auth-policy, authz-matrix, headers, trivy-cve, upload-safety.
+- **Target:** Contoh Aplikasi (demo) (https://dev.contoh.example).
+- **Modul/teknik yang dijalankan:** authz-matrix, cors, headers, injection, recon, webstack.
 - **Metodologi:** Pengujian dijalankan secara otomatis dan non-destruktif terhadap target yang berwenang diuji. Acuannya OWASP Top 10 2021, OWASP ASVS, dan OWASP Risk Rating Methodology (severity = Likelihood x Impact). Tooling yang digunakan OWASP ZAP, Trivy, dan testssl.sh, ditambah rangkaian regression test untuk access control, upload, dan password policy.
 
 ## 3. Ringkasan Risiko
 
-| ID | Alert | Risiko | CVSS (indikatif) | Keyakinan | Instance |
+| ID | Alert | Risiko | CVSS v3.1 | Keyakinan | Instance |
 |---|---|---|---|---|---|
-| AHZ-001 | Header identitas (X-Auth-*) dipercaya dari klien | 🔴 CRITICAL | 9.0–10.0 | Tinggi | 2 |
-| AHZ-002 | Dependensi dengan kerentanan (CVE) | 🔴 CRITICAL | 9.0–10.0 | Tinggi | 2 |
-| AHZ-003 | IDOR — akses objek milik entitas lain | 🟠 HIGH | 7.0–8.9 | Tinggi | 2 |
-| AHZ-004 | Upload berkas berbahaya diterima | 🟠 HIGH | 7.0–8.9 | Tinggi | 1 |
-| AHZ-005 | Header keamanan tidak diset | 🟢 LOW | 0.1–3.9 | Tinggi | 2 |
-| AHZ-006 | Captcha tidak regenerasi | 🟢 LOW | 0.1–3.9 | Tinggi | 1 |
+| SAK-001 | Kontrol akses rusak (role rendah membuka area terbatas) | 🔴 CRITICAL | 9.1 | Tinggi | 1 |
+| SAK-002 | SQL Injection (A03) | 🟠 HIGH | 9.8 | Tinggi | 1 |
+| SAK-003 | Web server versi rentan (CVE diketahui) | 🟠 HIGH | 7.5 | Tinggi | 1 |
+| SAK-004 | Kredensial/secret bocor di source/aset | 🟠 HIGH | 8.6 | Tinggi | 1 |
+| SAK-005 | CORS salah konfigurasi | 🟡 MEDIUM | 6.5 | Tinggi | 1 |
+| SAK-006 | Header keamanan tidak diset | 🔵 LOW | 3.7 | Tinggi | 1 |
 
 ## 4. Rincian Temuan
 
-### AHZ-001 — 🔴 Header identitas (X-Auth-*) dipercaya dari klien
+### SAK-001 — 🔴 Kontrol akses rusak (role rendah membuka area terbatas)
 
-- **Severity:** CRITICAL &nbsp; **CVSS (indikatif):** 9.0–10.0 &nbsp; **Keyakinan:** Tinggi &nbsp; **Status:** Terbuka
-- **Sumber/plugin:** authz-matrix (`forged-header`)
-- **Deskripsi:** Klien dapat menyuntik header otorisasi internal (mis. X-Auth-Roles) dan gateway/reverse proxy tidak menimpanya, sehingga hak akses naik.
-- **Instance yang diuji (2):**
-
-  | # | Endpoint diuji | Konteks | HTTP | Bukti |
-  |---|---|---|---|---|
-  | 1 | `GET http://demo.example.test:18002/api/users  (inject: X-Auth-Roles,X-Auth-User-Id)` | [forged] admin via port langsung | 200 | Role 'anon', respons HTTP 200. X-Auth-Roles: admin palsu diterima; daftar user terekspos |
-  | 2 | `GET http://demo.example.test:18004/api/roles  (inject: X-Auth-Roles)` | [forged] role management via port langsung | 200 | Role 'anon', respons HTTP 200. service hilir percaya header mentah tanpa verifikasi |
-
-- **CVE/CWE:** -
-- **Dampak:** Bypass otorisasi total hanya dengan menambahkan header pada request.
-- **Justifikasi severity:** Likelihood tinggi (cukup edit header) x Impact tinggi (menyamar sebagai admin).
-- **Rekomendasi & contoh solusi:**
-  - Konfigurasikan reverse proxy untuk SELALU menghapus lalu menyetel ulang header X-Auth-* dari sumber tepercaya; jangan teruskan nilai dari klien.
-  - Contoh (Traefik forwardAuth): pakai authResponseHeaders agar hanya nilai dari service auth yang diteruskan ke backend.
-  - Backend juga harus memverifikasi token/sesi, tidak mempercayai header mentah.
-- **Referensi:** OWASP A01:2021 Broken Access Control; BSSN Perban No.4/2021 Pasal 26 huruf b (manajemen sesi)
-
-### AHZ-002 — 🔴 Dependensi dengan kerentanan (CVE)
-
-- **Severity:** CRITICAL &nbsp; **CVSS (indikatif):** 9.0–10.0 &nbsp; **Keyakinan:** Tinggi &nbsp; **Status:** Terbuka
-- **Sumber/plugin:** trivy-cve (`vuln-dependency`)
-- **Deskripsi:** Komponen/dependensi versi usang dengan kerentanan yang telah terdaftar (CVE).
-- **Instance yang diuji (2):**
-
-  | # | Endpoint diuji | Konteks | HTTP | Bukti |
-  |---|---|---|---|---|
-  | 1 | `-` | CVE-2024-4068 — braces | - | Paket braces 3.0.2 di package-lock.json. Perbaikan: 3.0.3. braces ReDoS via regex |
-  | 2 | `-` | CVE-2023-3824 — php | - | Paket php 8.1.2 di composer.lock. Perbaikan: 8.1.22. php buffer overflow |
-
-- **CVE/CWE:** CVE-2024-4068, CVE-2023-3824
-- **Dampak:** Bergantung CVE: dari kebocoran info hingga eksekusi kode jarak jauh (RCE) lewat pustaka yang rentan.
-- **Justifikasi severity:** Mengikuti skor CVSS pada CVE terkait; eksploit publik menaikkan likelihood.
-- **Rekomendasi & contoh solusi:**
-  - Perbarui paket ke versi perbaikan (fixed version) yang tertera pada temuan.
-  - Bila belum ada perbaikan, terapkan mitigasi/pin versi aman & pantau rilis.
-  - Otomatiskan: Dependabot/Renovate + gerbang CI (trivy/osv-scanner) agar CVE baru cepat terdeteksi.
-- **Referensi:** OWASP A06:2021 Vulnerable and Outdated Components; NVD / CVE; BSSN Perban No.4/2021 (komponen usang)
-
-### AHZ-003 — 🟠 IDOR — akses objek milik entitas lain
-
-- **Severity:** HIGH &nbsp; **CVSS (indikatif):** 7.0–8.9 &nbsp; **Keyakinan:** Tinggi &nbsp; **Status:** Terbuka
-- **Sumber/plugin:** authz-matrix (`idor`)
-- **Deskripsi:** Referensi objek langsung (ID pada URL/parameter) tidak diverifikasi kepemilikannya, sehingga data milik akun lain bisa diakses.
-- **Instance yang diuji (2):**
-
-  | # | Endpoint diuji | Konteks | HTTP | Bukti |
-  |---|---|---|---|---|
-  | 1 | `GET http://demo.example.test/api/reports/1042` | IDOR laporan milik unit lain | 200 | Role 'operator', respons HTTP 200. operator unit A membaca laporan unit B |
-  | 2 | `GET http://demo.example.test/api/analytics/dashboard/company/88?year=2024` | IDOR dashboard perusahaan lain | 200 | Role 'operator', respons HTTP 200. tak ada cek kepemilikan company |
-
-- **CVE/CWE:** -
-- **Dampak:** Kebocoran/putaran data antar pengguna atau antar perusahaan.
-- **Justifikasi severity:** Likelihood sedang–tinggi (ID mudah ditebak) x Impact tinggi (data pribadi/perusahaan lain terungkap).
-- **Rekomendasi & contoh solusi:**
-  - Verifikasi di server bahwa objek yang diminta memang milik pengguna/scope yang sedang login sebelum mengembalikannya.
-
-  ```
-      // contoh: batasi query dengan pemilik, jangan hanya by-id
-      SELECT * FROM doc WHERE id = :id AND company_id = :currentCompany;
-  ```
-
-  - Pertimbangkan ID tak-terprediksi (UUID/ULID) sebagai lapis tambahan, bukan pengganti cek otorisasi.
-- **Referensi:** OWASP A01:2021 Broken Access Control; BSSN Perban No.4/2021 Pasal 26 huruf g (proteksi data)
-
-### AHZ-004 — 🟠 Upload berkas berbahaya diterima
-
-- **Severity:** HIGH &nbsp; **CVSS (indikatif):** 7.0–8.9 &nbsp; **Keyakinan:** Tinggi &nbsp; **Status:** Terbuka
-- **Sumber/plugin:** upload-safety (`upload-accepted`)
-- **Deskripsi:** Berkas berbahaya (mis. PDF ber-JavaScript, polyglot, ekstensi ganda, melebihi batas) diterima server karena validasi lemah.
+- **Severity:** CRITICAL &nbsp; **CVSS v3.1 (indikatif):** 9.1 — CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:N &nbsp; **Keyakinan:** Tinggi &nbsp; **Status:** Terbuka
+- **Sumber/plugin:** authz-matrix (`broken-access`)
+- **Deskripsi:** Endpoint sensitif dapat diakses oleh role yang tidak berwenang karena otorisasi tidak ditegakkan di sisi server.
 - **Instance yang diuji (1):**
 
   | # | Endpoint diuji | Konteks | HTTP | Bukti |
   |---|---|---|---|---|
-  | 1 | `POST http://demo.example.test/api/reports/77/attachments  (file='a.pdf', type=application/pdf)` | PDF berisi JavaScript | 201 | respons HTTP 201. DITERIMA padahal harus ditolak; tak ada pemindaian isi berkas |
+  | 1 | `GET https://dev.contoh.example/api/admin/users` | GET /api/admin/users | 200 | Role 'user' menerima HTTP 200 pada endpoint khusus admin — otorisasi tidak ditegakkan di server. ![bukti](contoh-evidence.png) |
 
 - **CVE/CWE:** -
-- **Dampak:** Stored XSS saat file dibuka pengguna lain, penyimpanan konten berbahaya, potensi pencurian sesi.
-- **Justifikasi severity:** Likelihood sedang (perlu menyusun file) x Impact tinggi (eksekusi skrip pada konteks korban).
+- **Dampak:** Peningkatan hak akses (privilege escalation), pembuatan/penghapusan akun, perubahan data kritikal — berpotensi pengambilalihan sistem.
+- **Justifikasi severity:** Likelihood tinggi (dapat dipicu oleh pengguna login biasa tanpa alat khusus) x Impact tinggi (kendali penuh fungsi admin).
 - **Rekomendasi & contoh solusi:**
-  - Validasi tipe file berdasarkan ISI (magic bytes), bukan hanya ekstensi/Content-Type dari klien.
-  - Terapkan allowlist ekstensi & batas ukuran di server; tolak ekstensi ganda.
-  - Bersihkan/normalkan nama file (hindari path traversal), simpan dengan nama acak dan sajikan lewat Content-Disposition: attachment.
-  - Untuk PDF: tolak/strip objek /JavaScript & /OpenAction. Terapkan CSP ketat pada halaman yang menampilkan konten upload.
-- **Referensi:** OWASP A03:2021 Injection; OWASP File Upload Cheat Sheet; BSSN Perban No.4/2021 Pasal 26 huruf d (validasi input)
+  - Tegakkan otorisasi di SISI SERVER pada setiap endpoint, bukan hanya menyembunyikan menu di klien.
+  - Terapkan authorization middleware/guard sebelum handler, contoh pola:
 
-### AHZ-005 — 🟢 Header keamanan tidak diset
+  ```
+      // middleware: tolak jika role tak termasuk daftar yang diizinkan
+      if (!user.roles.intersects(endpoint.allowedRoles)) return deny(403);
+  ```
 
-- **Severity:** LOW &nbsp; **CVSS (indikatif):** 0.1–3.9 &nbsp; **Keyakinan:** Tinggi &nbsp; **Status:** Terbuka
-- **Sumber/plugin:** headers (`missing-header`)
-- **Deskripsi:** Security header respons tidak dikonfigurasi (atau header pembocor info seperti Server/X-Powered-By masih tampil).
-- **Instance yang diuji (2):**
+  - Gunakan RBAC/ABAC terpusat; jadikan 'default deny' sebagai perilaku bawaan.
+- **Referensi:** OWASP A01:2021 Broken Access Control; OWASP ASVS V4 Access Control; BSSN Perban No.4/2021 Pasal 26 huruf c (persyaratan kontrol akses)
+
+### SAK-002 — 🟠 SQL Injection (A03)
+
+- **Severity:** HIGH &nbsp; **CVSS v3.1 (indikatif):** 9.8 — CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H &nbsp; **Keyakinan:** Tinggi &nbsp; **Status:** Terbuka
+- **Sumber/plugin:** injection (`sql-injection`)
+- **Deskripsi:** Input pengguna disusun langsung ke query SQL tanpa parameterisasi, sehingga penyerang dapat mengubah logika query (error-based, boolean-based, atau time-based).
+- **Instance yang diuji (1):**
 
   | # | Endpoint diuji | Konteks | HTTP | Bukti |
   |---|---|---|---|---|
-  | 1 | `GET http://demo.example.test/` | Content-Security-Policy | 200 | respons HTTP 200. header tidak ada |
-  | 2 | `GET http://demo.example.test/` | Strict-Transport-Security | 200 | respons HTTP 200. HSTS tidak diset |
+  | 1 | `GET https://dev.contoh.example/api/produk?id=1` | Parameter 'id' rentan SQL Injection (boolean-based) | 200 | Respons berbeda antara id=1 AND 1=1 dan id=1 AND 1=2 — indikasi SQLi. |
+
+- **CVE/CWE:** -
+- **Dampak:** Pembacaan/perubahan data di luar wewenang, bypass autentikasi, hingga potensi RCE tergantung konfigurasi DBMS.
+- **Justifikasi severity:** Likelihood sedang–tinggi (vektor klasik, tooling melimpah) x Impact tinggi (kerahasiaan & integritas data). Deteksi otomatis wajib diverifikasi manual sebelum severity final dikunci.
+- **Rekomendasi & contoh solusi:**
+  - Gunakan prepared statement / parameterized query (bind parameter), jangan merangkai string query dari input.
+
+  ```
+      // Laravel: Model::where('x', $input) / DB::select('... = ?', [$input])
+      // JANGAN DB::raw("... = '$input'").
+  ```
+
+  - Terapkan allowlist tipe/format input dan least-privilege pada akun DB.
+  - Pakai ORM/query builder dengan benar; hindari raw query berisi input mentah.
+- **Referensi:** OWASP A03:2021 Injection; CWE-89 SQL Injection; OWASP Testing Guide WSTG-INPV-05
+
+### SAK-003 — 🟠 Web server versi rentan (CVE diketahui)
+
+- **Severity:** HIGH &nbsp; **CVSS v3.1 (indikatif):** 7.5 — CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N &nbsp; **Keyakinan:** Tinggi &nbsp; **Status:** Terbuka
+- **Sumber/plugin:** webstack (`server-vuln`)
+- **Deskripsi:** Versi web server/komponen yang terdeteksi dari banner cocok dengan kerentanan yang telah terdaftar (CVE), mis. Apache mod_http2 atau NGINX HTTP/2.
+- **Instance yang diuji (1):**
+
+  | # | Endpoint diuji | Konteks | HTTP | Bukti |
+  |---|---|---|---|---|
+  | 1 | `GET https://dev.contoh.example/` | Versi rentan: nginx 1.18.0 | 200 | Banner Server mengekspos versi dengan CVE diketahui. |
+
+- **CVE/CWE:** CVE-2026-123633
+- **Dampak:** Bergantung CVE-nya, berpotensi remote code execution, DoS, atau memory corruption pada server yang terekspos.
+- **Justifikasi severity:** Likelihood sedang (eksploit publik untuk CVE yang aktif) x Impact tinggi (RCE/DoS). Deteksi berbasis banner — keyakinan sedang, wajib dikonfirmasi ke advisory vendor.
+- **Rekomendasi & contoh solusi:**
+  - Update ke versi yang sudah diperbaiki sesuai advisory vendor (mis. Apache httpd 2.4.71+, NGINX 1.30.7+/1.31.9+).
+  - Batasi exposure komponen yang rentan; terapkan mitigasi sementara (mis. WAF, nonaktifkan modul/fitur terkait bila memungkinkan).
+  - Kosongkan banner versi (ServerTokens Prod / server_tokens off) agar tidak memudahkan fingerprint.
+- **Referensi:** OWASP A06:2021 Vulnerable and Outdated Components; CISA Known Exploited Vulnerabilities (KEV)
+
+### SAK-004 — 🟠 Kredensial/secret bocor di source/aset
+
+- **Severity:** HIGH &nbsp; **CVSS v3.1 (indikatif):** 8.6 — CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:L/A:N &nbsp; **Keyakinan:** Tinggi &nbsp; **Status:** Terbuka
+- **Sumber/plugin:** recon (`leaked-secret`)
+- **Deskripsi:** Kredensial/secret (API key, token, password) terdeteksi di source atau aset (trufflehog), berpotensi ter-commit ke repository.
+- **Instance yang diuji (1):**
+
+  | # | Endpoint diuji | Konteks | HTTP | Bukti |
+  |---|---|---|---|---|
+  | 1 | `app/config/prod.py` | secret: AWS Access Key | - | terverifikasi di app/config/prod.py — kredensial ter-commit ke repository. |
+
+- **CVE/CWE:** -
+- **Dampak:** Secret yang bocor dapat dipakai menyalahgunakan layanan pihak ketiga, mengakses data, atau pivot ke sistem internal.
+- **Justifikasi severity:** Likelihood tinggi (mudah ditemukan via scanner otomatis) x Impact tinggi (akses langsung ke layanan/data). Terverifikasi = High.
+- **Rekomendasi & contoh solusi:**
+  - Cabut (revoke) dan rotasi segera secret yang bocor; anggap sudah terkompromi.
+  - Hapus secret dari riwayat git (git filter-repo/BFG), bukan hanya commit terbaru.
+  - Pindahkan secret ke environment variable / secret manager; jangan commit ke repo.
+  - Pasang pre-commit hook (gitleaks/trufflehog) untuk mencegah kebocoran berulang.
+- **Referensi:** OWASP A07:2021 Identification and Authentication Failures; CWE-798 Use of Hard-coded Credentials; OWASP ASVS V2.10
+
+### SAK-005 — 🟡 CORS salah konfigurasi
+
+- **Severity:** MEDIUM &nbsp; **CVSS v3.1 (indikatif):** 6.5 — CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:N/A:N &nbsp; **Keyakinan:** Tinggi &nbsp; **Status:** Terbuka
+- **Sumber/plugin:** cors (`cors-misconfig`)
+- **Deskripsi:** Konfigurasi CORS terlalu longgar: server memantulkan Origin apa pun ke Access-Control-Allow-Origin, atau memadukan wildcard dengan Access-Control-Allow-Credentials, atau menerima Origin 'null'.
+- **Instance yang diuji (1):**
+
+  | # | Endpoint diuji | Konteks | HTTP | Bukti |
+  |---|---|---|---|---|
+  | 1 | `GET https://dev.contoh.example/api/profil` | ACAO merefleksikan Origin + ACAC: true | 200 | CORS mengizinkan kredensial lintas-origin arbitrer. |
+
+- **CVE/CWE:** -
+- **Dampak:** Situs jahat yang dibuka korban bisa mengirim request berkredensial ke API dan membaca responsnya — pencurian data terautentikasi lintas-origin.
+- **Justifikasi severity:** Likelihood sedang (butuh korban buka situs jahat sambil login) x Impact tinggi (baca data terautentikasi).
+- **Rekomendasi & contoh solusi:**
+  - Jangan pantulkan Origin mentah. Pakai allowlist origin yang tepercaya saja.
+  - Contoh (pola backend):
+
+  ```
+      if (allowlist.includes(origin)) resp.header('Access-Control-Allow-Origin', origin);
+  ```
+
+  - Kalau butuh Access-Control-Allow-Credentials: true, Origin WAJIB spesifik, bukan '*' dan bukan hasil pantulan sembarangan.
+  - Tolak Origin 'null'. Batasi method & header yang diizinkan seperlunya.
+- **Referensi:** OWASP A05:2021 Security Misconfiguration; OWASP ASVS V14 Configuration; BSSN Perban No.4/2021 huruf h (keamanan komunikasi)
+
+### SAK-006 — 🔵 Header keamanan tidak diset
+
+- **Severity:** LOW &nbsp; **CVSS v3.1 (indikatif):** 3.7 — CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N &nbsp; **Keyakinan:** Tinggi &nbsp; **Status:** Terbuka
+- **Sumber/plugin:** headers (`missing-header`)
+- **Deskripsi:** Security header respons tidak dikonfigurasi (atau header pembocor info seperti Server/X-Powered-By masih tampil).
+- **Instance yang diuji (1):**
+
+  | # | Endpoint diuji | Konteks | HTTP | Bukti |
+  |---|---|---|---|---|
+  | 1 | `GET https://dev.contoh.example/` | Content-Security-Policy tidak diset | 200 | Header CSP tidak ada — mitigasi XSS berkurang. |
 
 - **CVE/CWE:** -
 - **Dampak:** Memudahkan clickjacking, MIME sniffing, XSS, dan fingerprinting server.
@@ -163,56 +190,26 @@ Total alert: **6** · Total CVE: **2**.
   - Kosongkan/hapus header Server dan X-Powered-By.
 - **Referensi:** OWASP A05:2021 Security Misconfiguration; OWASP Secure Headers Project
 
-### AHZ-006 — 🟢 Captcha tidak regenerasi
-
-- **Severity:** LOW &nbsp; **CVSS (indikatif):** 0.1–3.9 &nbsp; **Keyakinan:** Tinggi &nbsp; **Status:** Terbuka
-- **Sumber/plugin:** auth-policy (`captcha-static`)
-- **Deskripsi:** Nilai captcha tidak diperbarui setelah percobaan gagal / dapat dipakai ulang.
-- **Instance yang diuji (1):**
-
-  | # | Endpoint diuji | Konteks | HTTP | Bukti |
-  |---|---|---|---|---|
-  | 1 | `GET http://demo.example.test/api/captcha` | captcha-regenerasi | - | token captcha berulang |
-
-- **CVE/CWE:** -
-- **Dampak:** Captcha tak efektif menahan otomasi/brute-force.
-- **Justifikasi severity:** Likelihood sedang x Impact rendah (lapis tambahan, bukan satu-satunya).
-- **Rekomendasi & contoh solusi:**
-  - Regenerasi token & tantangan captcha setiap percobaan gagal; sekali pakai dengan masa berlaku singkat.
-  - Padukan dengan rate-limit dan lockout per-akun.
-- **Referensi:** OWASP A07:2021 Identification & Authentication Failures
-
-### Kontrol yang Lolos (PASS: 12)
+### Kontrol yang Lolos (PASS: 2)
 
 Pemeriksaan yang diuji dan berperilaku benar (bukan temuan) — bukti cakupan uji.
 
 | Pemeriksaan | Modul | Endpoint diuji | HTTP |
 |---|---|---|---|
-| Daftar pengguna (admin only) | authz-matrix | `GET http://demo.example.test/api/users` | 200 |
-| Daftar pengguna (admin only) | authz-matrix | `GET http://demo.example.test/api/users` | 403 |
-| Kelola role (admin only) | authz-matrix | `GET http://demo.example.test/api/roles` | 403 |
-| [forged] admin via gateway | authz-matrix | `GET http://demo.example.test/api/users  (inject: X-Auth-Roles)` | 403 |
-| Polyglot GIF+PHP | upload-safety | `POST http://demo.example.test/api/reports/77/attachments  (file='a.pdf', type=application/pdf)` | 422 |
-| Ekstensi ganda berakhir .php | upload-safety | `POST http://demo.example.test/api/reports/77/attachments  (file='a.pdf.php', type=application/pdf)` | 422 |
-| Melebihi batas ukuran | upload-safety | `POST http://demo.example.test/api/reports/77/attachments  (file='big.pdf', type=application/pdf)` | 422 |
-| PDF sah (kontrol) | upload-safety | `POST http://demo.example.test/api/reports/77/attachments  (file='ok.pdf', type=application/pdf)` | 201 |
-| ganti sandi sandi lemah 12345678 | auth-policy | `POST http://demo.example.test/api/auth/change-password` | 422 |
-| ganti sandi sandi lemah password | auth-policy | `POST http://demo.example.test/api/auth/change-password` | 422 |
-| ganti sandi kontrol sandi kuat | auth-policy | `POST http://demo.example.test/api/auth/change-password` | 422 |
-| X-Content-Type-Options | headers | `GET http://demo.example.test/` | 200 |
+| GET /api/admin/users (role admin) | authz-matrix | `GET https://dev.contoh.example/api/admin/users` | 200 |
+| Strict-Transport-Security diset | headers | `GET https://dev.contoh.example/` | 200 |
 
 ## 5. Daftar CVE
 
 | CVE | Paket/Lokasi | Severity |
 |---|---|---|
-| CVE-2024-4068 | CVE-2024-4068 — braces | 🟠 HIGH |
-| CVE-2023-3824 | CVE-2023-3824 — php | 🔴 CRITICAL |
+| CVE-2026-123633 | Versi rentan: nginx 1.18.0 | 🟠 HIGH |
 
 ## 6. Lampiran
 
 **Tooling & acuan.** OWASP ZAP (DAST); Trivy (SCA/CVE); semgrep (SAST); gitleaks (secret); testssl.sh (TLS); runner internal Security Audit Kit (authz, mass-assignment, upload, auth-policy, client-leak, cors, open-redirect, webstack, injection). Acuan: OWASP Top 10 2021, OWASP API Security Top 10 2023, OWASP ASVS, OWASP Risk Rating Methodology.
 
-**Catatan CVSS.** Skor CVSS bersifat indikatif (pemetaan kualitatif dari OWASP Risk Rating); vektor CVSS final perlu diverifikasi manual per temuan.
+**Catatan CVSS.** Skor CVSS bersifat indikatif (pemetaan kualitatif dari OWASP Risk Rating + vektor v3.1 representatif per jenis temuan); skor+vektor final tetap perlu diverifikasi manual per konteks target.
 
 **Batasan & pertanggungjawaban.** Laporan ini merupakan hasil automation, bukan pengganti pentest manual. Temuan scanner (misalnya ZAP) dapat berupa false positive dan wajib diverifikasi sebelum severity final ditetapkan. Celah logika bisnis hanya terdeteksi apabila test-nya ditulis secara khusus. Cakupan pengujian terbatas pada target dan endpoint yang dikonfigurasi saat dijalankan. Uji destruktif (mis. mass-assignment) menulis ke target lalu DIPULIHKAN otomatis ke keadaan semula sebagai fase terakhir setelah laporan ini dibuat; log pemulihan ada di reports/rollback.json, dan `python audit.py rollback` memulihkan ulang bila perlu.
 
