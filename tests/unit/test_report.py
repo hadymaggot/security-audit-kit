@@ -226,7 +226,7 @@ def test_write_md_has_emoji_and_dependency_remediation(tmp_path):
 
 def test_write_html_colors_per_severity(tmp_path):
     _, h = _render(tmp_path)
-    assert f"border-left:5px solid {RP.SEV_COLOR['high']}" in h   # garis kartu temuan
+    assert f"background:{RP.SEV_COLOR['high']}" in h              # warna severity via badge (bukan strip kiri)
     assert "nvd.nist.gov/vuln/detail/CVE-2024-4068" in h          # tautan CVE
     assert "class='badge'" in h                                   # badge severity CVE
 
