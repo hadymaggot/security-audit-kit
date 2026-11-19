@@ -522,6 +522,90 @@ def write_html(path, findings, counts, when, cves):
     path.write_text(doc, encoding="utf-8")
 
 
+def write_slides(path, findings, counts, when, cves):
+    """Varian laporan sebagai slide deck mandiri (HTML+CSS+JS inline, tanpa dependency).
+
+    Navigasi: panah kiri/kanan atau klik. Cocok untuk presentasi ringkas ke stakeholder;
+    laporan lengkap tetap di laporan.html.
+    """
+    def esc(x):
+        return html.escape(str(x))
+
+    alerts = group_alerts([f for f in findings if not f["lulus"]])
+    tgt_name, tgt_url = read_target()
+    total = sum(counts[s] for s in ("critical", "high", "medium", "low", "info"))
+
+    slides = [f"""<section class="slide cover">
+      <div class="klas">{esc(KLASIFIKASI)}</div>
+      <h1>Laporan Hasil Uji Keamanan</h1>
+      <p class="tgt">{esc(tgt_name)} <span class="u">{esc(tgt_url)}</span></p>
+      <p class="meta">{esc(when)}</p>
+      <p class="credit">{esc(CREDIT)}</p></section>"""]
+
+    cards = "".join(
+        f"<div class='scard' style='border-color:{SEV_COLOR[s]}'>"
+        f"<div class='n' style='color:{SEV_COLOR[s]}'>{counts[s]}</div>"
+        f"<div class='l'>{s.upper()}</div></div>"
+        for s in ("critical", "high", "medium", "low", "info"))
+    slides.append(f"""<section class="slide"><h2>Ringkasan Risiko</h2>
+      <div class="scards">{cards}</div>
+      <p class="big">{total} instance temuan · {len(alerts)} alert · {len(cves)} CVE · {counts['lulus']} kontrol lolos</p></section>""")
+
+    slides.append(f"""<section class="slide"><h2>Ringkasan Eksekutif</h2>
+      <p class="exec">{esc(exec_summary(alerts, counts))}</p></section>""")
+
+    for i, a in enumerate(alerts, 1):
+        kb = a["kb"]
+        rec1 = esc(kb["rekomendasi"][0]) if kb.get("rekomendasi") else ""
+        col = SEV_COLOR[a["severity"]]
+        slides.append(f"""<section class="slide" style="border-top:7px solid {col}">
+          <div class="fid">{esc(finding_id(i))} &nbsp;·&nbsp;
+            <span class="badge" style="background:{col}">{esc(a['severity'].upper())}</span>
+            &nbsp;·&nbsp; CVSS {esc(cvss_band(a['severity']))} &nbsp;·&nbsp;
+            {len(a['instances'])} instance</div>
+          <h2>{esc(a['nama'])}</h2>
+          <p><b>Dampak.</b> {esc(kb['dampak'])}</p>
+          <p><b>Rekomendasi utama.</b> {rec1}</p></section>""")
+
+    slides.append(f"""<section class="slide cover"><h2>Terima kasih</h2>
+      <p class="meta">Laporan lengkap: <code>laporan.html</code>. Dokumen bersifat {esc(KLASIFIKASI)}.</p>
+      <p class="credit">{esc(CREDIT)}</p></section>""")
+
+    deck = "".join(slides)
+    doc = f"""<!doctype html><html lang="id"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Laporan Uji Keamanan — Presentasi</title>
+<style>
+ *{{box-sizing:border-box}} body{{margin:0;font-family:system-ui,Segoe UI,sans-serif;background:#0b1626;color:#1b1f24;overflow:hidden}}
+ .slide{{display:none;position:fixed;inset:0;padding:6vh 8vw;flex-direction:column;justify-content:center;background:#f6f7f9}}
+ .slide.active{{display:flex}}
+ .slide.cover{{background:#14233b;color:#fff;align-items:flex-start}}
+ .slide.cover h1{{font-size:5vh;margin:.2em 0}} .slide h2{{font-size:4.2vh;margin:.1em 0 .4em}}
+ .slide p{{font-size:2.6vh;line-height:1.5;max-width:60ch}} .slide .big{{font-size:3vh;font-weight:600}}
+ .klas{{display:inline-block;background:#b4232a;color:#fff;font-size:1.8vh;font-weight:700;letter-spacing:.08em;padding:4px 12px;border-radius:4px}}
+ .tgt{{font-size:3vh;font-weight:600}} .tgt .u{{opacity:.7;font-weight:400;font-size:2.2vh}}
+ .meta{{opacity:.8}} .credit{{opacity:.75;font-size:2vh}}
+ .scards{{display:flex;gap:2vw;margin:3vh 0}}
+ .scard{{flex:1;background:#fff;border-left:7px solid;border-radius:10px;padding:2.5vh 2vw;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,.08)}}
+ .scard .n{{font-size:6vh;font-weight:800}} .scard .l{{font-size:1.6vh;letter-spacing:.05em;color:#555}}
+ .badge{{color:#fff;font-size:1.8vh;padding:2px 10px;border-radius:12px}}
+ .fid{{font-size:2vh;color:#555;margin-bottom:1vh}} code{{background:#0003;padding:1px 6px;border-radius:4px}}
+ #nav{{position:fixed;bottom:2vh;right:3vw;color:#8aa;font-size:1.8vh;z-index:9}}
+ #nav button{{background:#ffffff22;color:inherit;border:1px solid #ffffff44;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:1.8vh}}
+</style>
+<div id="deck">{deck}</div>
+<div id="nav"><button onclick="go(-1)">‹</button> <span id="pg"></span> <button onclick="go(1)">›</button></div>
+<script>
+ var s=[].slice.call(document.querySelectorAll('.slide')),i=0;
+ function show(n){{i=Math.max(0,Math.min(s.length-1,n));s.forEach(function(e,k){{e.classList.toggle('active',k===i)}});document.getElementById('pg').textContent=(i+1)+' / '+s.length}}
+ function go(d){{show(i+d)}}
+ document.addEventListener('keydown',function(e){{if(e.key==='ArrowRight'||e.key===' ')go(1);if(e.key==='ArrowLeft')go(-1)}});
+ document.getElementById('deck').addEventListener('click',function(e){{if(e.target.tagName!=='BUTTON'&&!e.target.closest('a'))go(1)}});
+ show(0);
+</script></html>"""
+    path.write_text(doc, encoding="utf-8")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dir", default="reports")
@@ -548,9 +632,10 @@ def main():
 
     write_md(d / "laporan.md", findings, counts, when, cves)
     write_html(d / "laporan.html", findings, counts, when, cves)
+    write_slides(d / "laporan-slides.html", findings, counts, when, cves)
 
     gagal = sum(1 for f in findings if not f["lulus"])
-    print(f"Laporan: {d/'laporan.html'} & {d/'laporan.md'}")
+    print(f"Laporan: {d/'laporan.html'} & {d/'laporan.md'} & {d/'laporan-slides.html'}")
     print(f"Total {len(findings)} item, {gagal} perlu tindak lanjut, {len(cves)} CVE.")
     print(f"  Critical {counts['critical']} · High {counts['high']} · "
           f"Medium {counts['medium']} · Low {counts['low']} · Info {counts['info']}")

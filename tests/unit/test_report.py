@@ -326,6 +326,27 @@ def test_finding_id_format():
     assert RP.finding_id(1) == "AHZ-001" and RP.finding_id(42) == "AHZ-042"
 
 
+def test_write_slides_selfcontained(tmp_path):
+    (tmp_path / "authz.json").write_text(json.dumps([
+        {"endpoint": "Admin", "role": "anon", "expected": "deny", "status": 200,
+         "ok": False, "note": "x", "url": "GET http://t/api/admin"},
+    ]), encoding="utf-8")
+    findings = RP.collect(tmp_path)
+    RP.write_slides(tmp_path / "s.html", findings, RP.summarize(findings), "2026-01-01", [])
+    h = (tmp_path / "s.html").read_text(encoding="utf-8")
+    assert "id=\"deck\"" in h and "class=\"slide cover\"" in h      # struktur deck
+    assert "AHZ-001" in h and "Ringkasan Eksekutif" in h           # slide temuan + exec
+    assert RP.KIT_AUTHOR in h and RP.KLASIFIKASI in h              # kredit + klasifikasi
+    assert "cdn" not in h.lower() and "src=\"http" not in h        # tanpa dependency eksternal
+
+
+def test_write_slides_empty(tmp_path):
+    # Tanpa temuan tetap menghasilkan deck yang valid (cover + ringkasan + penutup).
+    RP.write_slides(tmp_path / "s.html", [], RP.summarize([]), "2026-01-01", [])
+    h = (tmp_path / "s.html").read_text(encoding="utf-8")
+    assert "Ringkasan Risiko" in h and RP.KIT_AUTHOR in h
+
+
 def test_credit_always_in_every_report(tmp_path):
     # Walau tak ada temuan sama sekali, kredit pembuat tetap ada di MD & HTML.
     findings = RP.collect(tmp_path)   # direktori kosong → nol temuan

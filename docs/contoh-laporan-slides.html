@@ -1,0 +1,84 @@
+<!doctype html><html lang="id"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Laporan Uji Keamanan — Presentasi</title>
+<style>
+ *{box-sizing:border-box} body{margin:0;font-family:system-ui,Segoe UI,sans-serif;background:#0b1626;color:#1b1f24;overflow:hidden}
+ .slide{display:none;position:fixed;inset:0;padding:6vh 8vw;flex-direction:column;justify-content:center;background:#f6f7f9}
+ .slide.active{display:flex}
+ .slide.cover{background:#14233b;color:#fff;align-items:flex-start}
+ .slide.cover h1{font-size:5vh;margin:.2em 0} .slide h2{font-size:4.2vh;margin:.1em 0 .4em}
+ .slide p{font-size:2.6vh;line-height:1.5;max-width:60ch} .slide .big{font-size:3vh;font-weight:600}
+ .klas{display:inline-block;background:#b4232a;color:#fff;font-size:1.8vh;font-weight:700;letter-spacing:.08em;padding:4px 12px;border-radius:4px}
+ .tgt{font-size:3vh;font-weight:600} .tgt .u{opacity:.7;font-weight:400;font-size:2.2vh}
+ .meta{opacity:.8} .credit{opacity:.75;font-size:2vh}
+ .scards{display:flex;gap:2vw;margin:3vh 0}
+ .scard{flex:1;background:#fff;border-left:7px solid;border-radius:10px;padding:2.5vh 2vw;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,.08)}
+ .scard .n{font-size:6vh;font-weight:800} .scard .l{font-size:1.6vh;letter-spacing:.05em;color:#555}
+ .badge{color:#fff;font-size:1.8vh;padding:2px 10px;border-radius:12px}
+ .fid{font-size:2vh;color:#555;margin-bottom:1vh} code{background:#0003;padding:1px 6px;border-radius:4px}
+ #nav{position:fixed;bottom:2vh;right:3vw;color:#8aa;font-size:1.8vh;z-index:9}
+ #nav button{background:#ffffff22;color:inherit;border:1px solid #ffffff44;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:1.8vh}
+</style>
+<div id="deck"><section class="slide cover">
+      <div class="klas">RAHASIA / CONFIDENTIAL</div>
+      <h1>Laporan Hasil Uji Keamanan</h1>
+      <p class="tgt">Contoh Target (fiktif) <span class="u">http://demo.example.test</span></p>
+      <p class="meta" style="color:#ffcf8a">Contoh output — data fiktif, bukan hasil audit sistem nyata.</p>
+      <p class="meta">2026-11-19 09:19 (UTC+07:00 SE Asia Standard Time)</p>
+      <p class="credit">Security Audit Kit — dibuat oleh hadymaggot · https://github.com/hadymaggot/security-audit-kit</p></section><section class="slide"><h2>Ringkasan Risiko</h2>
+      <div class="scards"><div class='scard' style='border-color:#7c1313'><div class='n' style='color:#7c1313'>3</div><div class='l'>CRITICAL</div></div><div class='scard' style='border-color:#b4232a'><div class='n' style='color:#b4232a'>4</div><div class='l'>HIGH</div></div><div class='scard' style='border-color:#c67b00'><div class='n' style='color:#c67b00'>0</div><div class='l'>MEDIUM</div></div><div class='scard' style='border-color:#2d7d46'><div class='n' style='color:#2d7d46'>3</div><div class='l'>LOW</div></div><div class='scard' style='border-color:#555'><div class='n' style='color:#555'>0</div><div class='l'>INFO</div></div></div>
+      <p class="big">10 instance temuan · 6 alert · 2 CVE · 12 kontrol lolos</p></section><section class="slide"><h2>Ringkasan Eksekutif</h2>
+      <p class="exec">Pengujian menemukan 10 instance temuan (3 Critical, 4 High, 3 Low) yang tergolong dalam 6 jenis alert. Temuan berisiko tertinggi: Header identitas (X-Auth-*) dipercaya dari klien; Dependensi dengan kerentanan (CVE); IDOR — akses objek milik entitas lain. Perbaikan disarankan memprioritaskan temuan Critical dan High terlebih dahulu. Rincian teknis, bukti endpoint, dan rekomendasi tersedia pada bagian Rincian Temuan.</p></section><section class="slide" style="border-top:7px solid #7c1313">
+          <div class="fid">AHZ-001 &nbsp;·&nbsp;
+            <span class="badge" style="background:#7c1313">CRITICAL</span>
+            &nbsp;·&nbsp; CVSS 9.0–10.0 &nbsp;·&nbsp;
+            2 instance</div>
+          <h2>Header identitas (X-Auth-*) dipercaya dari klien</h2>
+          <p><b>Dampak.</b> Bypass otorisasi total hanya dengan menambahkan header pada request.</p>
+          <p><b>Rekomendasi utama.</b> Konfigurasikan reverse proxy untuk SELALU menghapus lalu menyetel ulang header X-Auth-* dari sumber tepercaya; jangan teruskan nilai dari klien.</p></section><section class="slide" style="border-top:7px solid #7c1313">
+          <div class="fid">AHZ-002 &nbsp;·&nbsp;
+            <span class="badge" style="background:#7c1313">CRITICAL</span>
+            &nbsp;·&nbsp; CVSS 9.0–10.0 &nbsp;·&nbsp;
+            2 instance</div>
+          <h2>Dependensi dengan kerentanan (CVE)</h2>
+          <p><b>Dampak.</b> Bergantung CVE: dari kebocoran info hingga eksekusi kode jarak jauh (RCE) lewat pustaka yang rentan.</p>
+          <p><b>Rekomendasi utama.</b> Perbarui paket ke versi perbaikan (fixed version) yang tertera pada temuan.</p></section><section class="slide" style="border-top:7px solid #b4232a">
+          <div class="fid">AHZ-003 &nbsp;·&nbsp;
+            <span class="badge" style="background:#b4232a">HIGH</span>
+            &nbsp;·&nbsp; CVSS 7.0–8.9 &nbsp;·&nbsp;
+            2 instance</div>
+          <h2>IDOR — akses objek milik entitas lain</h2>
+          <p><b>Dampak.</b> Kebocoran/putaran data antar pengguna atau antar perusahaan.</p>
+          <p><b>Rekomendasi utama.</b> Verifikasi di server bahwa objek yang diminta memang milik pengguna/scope yang sedang login sebelum mengembalikannya.</p></section><section class="slide" style="border-top:7px solid #b4232a">
+          <div class="fid">AHZ-004 &nbsp;·&nbsp;
+            <span class="badge" style="background:#b4232a">HIGH</span>
+            &nbsp;·&nbsp; CVSS 7.0–8.9 &nbsp;·&nbsp;
+            1 instance</div>
+          <h2>Upload berkas berbahaya diterima</h2>
+          <p><b>Dampak.</b> Stored XSS saat file dibuka pengguna lain, penyimpanan konten berbahaya, potensi pencurian sesi.</p>
+          <p><b>Rekomendasi utama.</b> Validasi tipe file berdasarkan ISI (magic bytes), bukan hanya ekstensi/Content-Type dari klien.</p></section><section class="slide" style="border-top:7px solid #2d7d46">
+          <div class="fid">AHZ-005 &nbsp;·&nbsp;
+            <span class="badge" style="background:#2d7d46">LOW</span>
+            &nbsp;·&nbsp; CVSS 0.1–3.9 &nbsp;·&nbsp;
+            2 instance</div>
+          <h2>Header keamanan tidak diset</h2>
+          <p><b>Dampak.</b> Memudahkan clickjacking, MIME sniffing, XSS, dan fingerprinting server.</p>
+          <p><b>Rekomendasi utama.</b> Set header di reverse proxy/framework:</p></section><section class="slide" style="border-top:7px solid #2d7d46">
+          <div class="fid">AHZ-006 &nbsp;·&nbsp;
+            <span class="badge" style="background:#2d7d46">LOW</span>
+            &nbsp;·&nbsp; CVSS 0.1–3.9 &nbsp;·&nbsp;
+            1 instance</div>
+          <h2>Captcha tidak regenerasi</h2>
+          <p><b>Dampak.</b> Captcha tak efektif menahan otomasi/brute-force.</p>
+          <p><b>Rekomendasi utama.</b> Regenerasi token &amp; tantangan captcha setiap percobaan gagal; sekali pakai dengan masa berlaku singkat.</p></section><section class="slide cover"><h2>Terima kasih</h2>
+      <p class="meta">Laporan lengkap: <code>laporan.html</code>. Dokumen bersifat RAHASIA / CONFIDENTIAL.</p>
+      <p class="credit">Security Audit Kit — dibuat oleh hadymaggot · https://github.com/hadymaggot/security-audit-kit</p></section></div>
+<div id="nav"><button onclick="go(-1)">‹</button> <span id="pg"></span> <button onclick="go(1)">›</button></div>
+<script>
+ var s=[].slice.call(document.querySelectorAll('.slide')),i=0;
+ function show(n){i=Math.max(0,Math.min(s.length-1,n));s.forEach(function(e,k){e.classList.toggle('active',k===i)});document.getElementById('pg').textContent=(i+1)+' / '+s.length}
+ function go(d){show(i+d)}
+ document.addEventListener('keydown',function(e){if(e.key==='ArrowRight'||e.key===' ')go(1);if(e.key==='ArrowLeft')go(-1)});
+ document.getElementById('deck').addEventListener('click',function(e){if(e.target.tagName!=='BUTTON'&&!e.target.closest('a'))go(1)});
+ show(0);
+</script></html>
