@@ -221,7 +221,7 @@ def test_write_md_has_emoji_and_dependency_remediation(tmp_path):
     md, _ = _render(tmp_path)
     assert "🟠 High" in md                       # penanda warna di ringkasan
     assert "fixed version" in md.lower()          # CVE pakai remediasi vuln-dependency
-    assert "## 4. Daftar CVE" in md and "CVE-2024-4068" in md
+    assert "## 5. Daftar CVE" in md and "CVE-2024-4068" in md
 
 
 def test_write_html_colors_per_severity(tmp_path):
@@ -291,6 +291,39 @@ def test_zap_module_confidence_sedang():
     assert RP._confidence({"zap"}) == "Sedang"
     assert RP._confidence({"authz-matrix"}) == "Tinggi"
     assert RP._confidence({"zap", "authz-matrix"}) == "Tinggi"
+
+
+def test_professional_structure_present(tmp_path):
+    # Satu temuan → cek elemen laporan standar konsultan di MD & HTML.
+    (tmp_path / "authz.json").write_text(json.dumps([
+        {"endpoint": "Admin panel", "role": "anon", "expected": "deny", "status": 200,
+         "ok": False, "note": "terbuka", "url": "GET http://t/api/admin"},
+    ]), encoding="utf-8")
+    findings = RP.collect(tmp_path)
+    counts = RP.summarize(findings)
+    RP.write_md(tmp_path / "m.md", findings, counts, "2026-01-01", [])
+    RP.write_html(tmp_path / "m.html", findings, counts, "2026-01-01", [])
+    md = (tmp_path / "m.md").read_text(encoding="utf-8")
+    h = (tmp_path / "m.html").read_text(encoding="utf-8")
+    for doc in (md, h):
+        assert "AHZ-001" in doc                       # ID temuan
+        assert "RAHASIA / CONFIDENTIAL" in doc        # klasifikasi
+        assert "Ringkasan Eksekutif" in doc           # executive summary
+        assert "Ruang Lingkup" in doc                 # scope
+        assert "CVSS (indikatif)" in doc              # kolom/label CVSS
+    assert "## 6. Lampiran" in md and "6. Lampiran" in h
+
+
+def test_exec_summary_empty_vs_findings():
+    assert "Tidak ditemukan temuan" in RP.exec_summary([], RP.summarize([]))
+    a = [{"nama": "X", "severity": "high", "instances": [1]}]
+    c = {k: 0 for k in RP.SEV_ORDER}
+    c["high"] = 1
+    assert "1 instance temuan" in RP.exec_summary(a, c)
+
+
+def test_finding_id_format():
+    assert RP.finding_id(1) == "AHZ-001" and RP.finding_id(42) == "AHZ-042"
 
 
 def test_credit_always_in_every_report(tmp_path):

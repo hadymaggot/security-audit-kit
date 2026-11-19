@@ -1,14 +1,19 @@
-# Laporan Hasil Uji Keamanan (Otomatis)
+# Laporan Hasil Uji Keamanan
 
-> **Catatan:** ini **contoh output** dari data fiktif (host `demo.example.test`, endpoint, temuan, dan CVE dibuat untuk ilustrasi), bukan hasil audit sistem nyata. Versi HTML ada di [`contoh-laporan.html`](contoh-laporan.html) — isinya sama, dengan ringkasan risiko berwarna, daftar alert bernavigasi, dan tabel instance. Dibuat dengan `python audit.py report`.
+> **Catatan:** ini **contoh output** dari data fiktif (host `demo.example.test`, endpoint, temuan, dan CVE dibuat untuk ilustrasi), bukan hasil audit sistem nyata. Versi HTML ada di [`contoh-laporan.html`](contoh-laporan.html). Dibuat dengan `python audit.py report`.
 
-> Dibuat: 2026-11-19 08:34 · Security Audit Kit — dibuat oleh hadymaggot · https://github.com/hadymaggot/security-audit-kit
+**Klasifikasi:** RAHASIA / CONFIDENTIAL
 
-## 1. Metodologi
+| | |
+|---|---|
+| Dibuat | 2026-11-19 09:13 (UTC+07:00 SE Asia Standard Time) |
+| Disusun oleh | Security Audit Kit — dibuat oleh hadymaggot · https://github.com/hadymaggot/security-audit-kit |
+| Target | Contoh Target (fiktif) (http://demo.example.test) |
+| Versi dokumen | 1.0 |
 
-Pengujian dijalankan secara otomatis dan non-destruktif terhadap target yang berwenang diuji. Acuannya OWASP Top 10 2021, OWASP ASVS, dan OWASP Risk Rating Methodology (severity = Likelihood x Impact). Tooling yang digunakan OWASP ZAP, Trivy, dan testssl.sh, ditambah rangkaian regression test untuk access control, upload, dan password policy.
+## 1. Ringkasan Eksekutif
 
-## 2. Ringkasan Temuan
+Pengujian menemukan 10 instance temuan (3 Critical, 4 High, 3 Low) yang tergolong dalam 6 jenis alert. Temuan berisiko tertinggi: Header identitas (X-Auth-*) dipercaya dari klien; Dependensi dengan kerentanan (CVE); IDOR — akses objek milik entitas lain. Perbaikan disarankan memprioritaskan temuan Critical dan High terlebih dahulu. Rincian teknis, bukti endpoint, dan rekomendasi tersedia pada bagian Rincian Temuan.
 
 | Severity | Jumlah instance |
 |---|---|
@@ -19,27 +24,33 @@ Pengujian dijalankan secara otomatis dan non-destruktif terhadap target yang ber
 | ⚪ Info | 0 |
 | ✅ Lulus (kontrol OK) | 12 |
 
-Total alert: **6** · Total CVE terdeteksi: **2**.
+Total alert: **6** · Total CVE: **2**.
 
-### Daftar Alert
+## 2. Ruang Lingkup & Metodologi
 
-| # | Alert | Risiko | Keyakinan | Instance |
-|---|---|---|---|---|
-| 1 | Header identitas (X-Auth-*) dipercaya dari klien | 🔴 CRITICAL | Tinggi | 2 |
-| 2 | Dependensi dengan kerentanan (CVE) | 🔴 CRITICAL | Tinggi | 2 |
-| 3 | IDOR — akses objek milik entitas lain | 🟠 HIGH | Tinggi | 2 |
-| 4 | Upload berkas berbahaya diterima | 🟠 HIGH | Tinggi | 1 |
-| 5 | Header keamanan tidak diset | 🟢 LOW | Tinggi | 2 |
-| 6 | Captcha tidak regenerasi | 🟢 LOW | Tinggi | 1 |
+- **Target:** Contoh Target (fiktif) (http://demo.example.test).
+- **Modul/teknik yang dijalankan:** auth-policy, authz-matrix, headers, trivy-cve, upload-safety.
+- **Metodologi:** Pengujian dijalankan secara otomatis dan non-destruktif terhadap target yang berwenang diuji. Acuannya OWASP Top 10 2021, OWASP ASVS, dan OWASP Risk Rating Methodology (severity = Likelihood x Impact). Tooling yang digunakan OWASP ZAP, Trivy, dan testssl.sh, ditambah rangkaian regression test untuk access control, upload, dan password policy.
 
-## 3. Rincian Temuan & Rekomendasi
+## 3. Ringkasan Risiko
 
-### 1. 🔴 Header identitas (X-Auth-*) dipercaya dari klien  `CRITICAL`
+| ID | Alert | Risiko | CVSS (indikatif) | Keyakinan | Instance |
+|---|---|---|---|---|---|
+| AHZ-001 | Header identitas (X-Auth-*) dipercaya dari klien | 🔴 CRITICAL | 9.0–10.0 | Tinggi | 2 |
+| AHZ-002 | Dependensi dengan kerentanan (CVE) | 🔴 CRITICAL | 9.0–10.0 | Tinggi | 2 |
+| AHZ-003 | IDOR — akses objek milik entitas lain | 🟠 HIGH | 7.0–8.9 | Tinggi | 2 |
+| AHZ-004 | Upload berkas berbahaya diterima | 🟠 HIGH | 7.0–8.9 | Tinggi | 1 |
+| AHZ-005 | Header keamanan tidak diset | 🟢 LOW | 0.1–3.9 | Tinggi | 2 |
+| AHZ-006 | Captcha tidak regenerasi | 🟢 LOW | 0.1–3.9 | Tinggi | 1 |
 
-- **Risiko:** CRITICAL &nbsp; **Keyakinan:** Tinggi
+## 4. Rincian Temuan
+
+### AHZ-001 — 🔴 Header identitas (X-Auth-*) dipercaya dari klien
+
+- **Severity:** CRITICAL &nbsp; **CVSS (indikatif):** 9.0–10.0 &nbsp; **Keyakinan:** Tinggi &nbsp; **Status:** Terbuka
 - **Sumber/plugin:** authz-matrix (`forged-header`)
 - **Deskripsi:** Klien dapat menyuntik header otorisasi internal (mis. X-Auth-Roles) dan gateway/reverse proxy tidak menimpanya, sehingga hak akses naik.
-- **Jumlah instance:** 2
+- **Instance yang diuji (2):**
 
   | # | Endpoint diuji | Konteks | HTTP | Bukti |
   |---|---|---|---|---|
@@ -55,12 +66,12 @@ Total alert: **6** · Total CVE terdeteksi: **2**.
   - Backend juga harus memverifikasi token/sesi, tidak mempercayai header mentah.
 - **Referensi:** OWASP A01:2021 Broken Access Control; BSSN Perban No.4/2021 Pasal 26 huruf b (manajemen sesi)
 
-### 2. 🔴 Dependensi dengan kerentanan (CVE)  `CRITICAL`
+### AHZ-002 — 🔴 Dependensi dengan kerentanan (CVE)
 
-- **Risiko:** CRITICAL &nbsp; **Keyakinan:** Tinggi
+- **Severity:** CRITICAL &nbsp; **CVSS (indikatif):** 9.0–10.0 &nbsp; **Keyakinan:** Tinggi &nbsp; **Status:** Terbuka
 - **Sumber/plugin:** trivy-cve (`vuln-dependency`)
 - **Deskripsi:** Komponen/dependensi versi usang dengan kerentanan yang telah terdaftar (CVE).
-- **Jumlah instance:** 2
+- **Instance yang diuji (2):**
 
   | # | Endpoint diuji | Konteks | HTTP | Bukti |
   |---|---|---|---|---|
@@ -76,12 +87,12 @@ Total alert: **6** · Total CVE terdeteksi: **2**.
   - Otomatiskan: Dependabot/Renovate + gerbang CI (trivy/osv-scanner) agar CVE baru cepat terdeteksi.
 - **Referensi:** OWASP A06:2021 Vulnerable and Outdated Components; NVD / CVE; BSSN Perban No.4/2021 (komponen usang)
 
-### 3. 🟠 IDOR — akses objek milik entitas lain  `HIGH`
+### AHZ-003 — 🟠 IDOR — akses objek milik entitas lain
 
-- **Risiko:** HIGH &nbsp; **Keyakinan:** Tinggi
+- **Severity:** HIGH &nbsp; **CVSS (indikatif):** 7.0–8.9 &nbsp; **Keyakinan:** Tinggi &nbsp; **Status:** Terbuka
 - **Sumber/plugin:** authz-matrix (`idor`)
 - **Deskripsi:** Referensi objek langsung (ID pada URL/parameter) tidak diverifikasi kepemilikannya, sehingga data milik akun lain bisa diakses.
-- **Jumlah instance:** 2
+- **Instance yang diuji (2):**
 
   | # | Endpoint diuji | Konteks | HTTP | Bukti |
   |---|---|---|---|---|
@@ -102,12 +113,12 @@ Total alert: **6** · Total CVE terdeteksi: **2**.
   - Pertimbangkan ID tak-terprediksi (UUID/ULID) sebagai lapis tambahan, bukan pengganti cek otorisasi.
 - **Referensi:** OWASP A01:2021 Broken Access Control; BSSN Perban No.4/2021 Pasal 26 huruf g (proteksi data)
 
-### 4. 🟠 Upload berkas berbahaya diterima  `HIGH`
+### AHZ-004 — 🟠 Upload berkas berbahaya diterima
 
-- **Risiko:** HIGH &nbsp; **Keyakinan:** Tinggi
+- **Severity:** HIGH &nbsp; **CVSS (indikatif):** 7.0–8.9 &nbsp; **Keyakinan:** Tinggi &nbsp; **Status:** Terbuka
 - **Sumber/plugin:** upload-safety (`upload-accepted`)
 - **Deskripsi:** Berkas berbahaya (mis. PDF ber-JavaScript, polyglot, ekstensi ganda, melebihi batas) diterima server karena validasi lemah.
-- **Jumlah instance:** 1
+- **Instance yang diuji (1):**
 
   | # | Endpoint diuji | Konteks | HTTP | Bukti |
   |---|---|---|---|---|
@@ -123,12 +134,12 @@ Total alert: **6** · Total CVE terdeteksi: **2**.
   - Untuk PDF: tolak/strip objek /JavaScript & /OpenAction. Terapkan CSP ketat pada halaman yang menampilkan konten upload.
 - **Referensi:** OWASP A03:2021 Injection; OWASP File Upload Cheat Sheet; BSSN Perban No.4/2021 Pasal 26 huruf d (validasi input)
 
-### 5. 🟢 Header keamanan tidak diset  `LOW`
+### AHZ-005 — 🟢 Header keamanan tidak diset
 
-- **Risiko:** LOW &nbsp; **Keyakinan:** Tinggi
+- **Severity:** LOW &nbsp; **CVSS (indikatif):** 0.1–3.9 &nbsp; **Keyakinan:** Tinggi &nbsp; **Status:** Terbuka
 - **Sumber/plugin:** headers (`missing-header`)
 - **Deskripsi:** Security header respons tidak dikonfigurasi (atau header pembocor info seperti Server/X-Powered-By masih tampil).
-- **Jumlah instance:** 2
+- **Instance yang diuji (2):**
 
   | # | Endpoint diuji | Konteks | HTTP | Bukti |
   |---|---|---|---|---|
@@ -152,12 +163,12 @@ Total alert: **6** · Total CVE terdeteksi: **2**.
   - Kosongkan/hapus header Server dan X-Powered-By.
 - **Referensi:** OWASP A05:2021 Security Misconfiguration; OWASP Secure Headers Project
 
-### 6. 🟢 Captcha tidak regenerasi  `LOW`
+### AHZ-006 — 🟢 Captcha tidak regenerasi
 
-- **Risiko:** LOW &nbsp; **Keyakinan:** Tinggi
+- **Severity:** LOW &nbsp; **CVSS (indikatif):** 0.1–3.9 &nbsp; **Keyakinan:** Tinggi &nbsp; **Status:** Terbuka
 - **Sumber/plugin:** auth-policy (`captcha-static`)
 - **Deskripsi:** Nilai captcha tidak diperbarui setelah percobaan gagal / dapat dipakai ulang.
-- **Jumlah instance:** 1
+- **Instance yang diuji (1):**
 
   | # | Endpoint diuji | Konteks | HTTP | Bukti |
   |---|---|---|---|---|
@@ -190,16 +201,20 @@ Pemeriksaan yang diuji dan berperilaku benar (bukan temuan) — bukti cakupan uj
 | ganti sandi kontrol sandi kuat | auth-policy | `POST http://demo.example.test/api/auth/change-password` | 422 |
 | X-Content-Type-Options | headers | `GET http://demo.example.test/` | 200 |
 
-## 4. Daftar CVE
+## 5. Daftar CVE
 
 | CVE | Paket/Lokasi | Severity |
 |---|---|---|
 | CVE-2024-4068 | CVE-2024-4068 — braces | 🟠 HIGH |
 | CVE-2023-3824 | CVE-2023-3824 — php | 🔴 CRITICAL |
 
-## 5. Batasan & Pertanggungjawaban
+## 6. Lampiran
 
-Laporan ini merupakan hasil automation, bukan pengganti pentest manual. Temuan scanner (misalnya ZAP) dapat berupa false positive dan wajib diverifikasi sebelum severity final ditetapkan. Celah logika bisnis hanya terdeteksi apabila test-nya ditulis secara khusus. Cakupan pengujian terbatas pada target dan endpoint yang dikonfigurasi saat dijalankan. Uji destruktif (mis. mass-assignment) menulis ke target lalu DIPULIHKAN otomatis ke keadaan semula sebagai fase terakhir setelah laporan ini dibuat; log pemulihan ada di reports/rollback.json, dan `python audit.py rollback` memulihkan ulang bila perlu.
+**Tooling & acuan.** OWASP ZAP (DAST); Trivy (SCA/CVE); semgrep (SAST); gitleaks (secret); testssl.sh (TLS); runner internal Security Audit Kit (authz, mass-assignment, upload, auth-policy, client-leak, cors, open-redirect, webstack, injection). Acuan: OWASP Top 10 2021, OWASP API Security Top 10 2023, OWASP ASVS, OWASP Risk Rating Methodology.
+
+**Catatan CVSS.** Skor CVSS bersifat indikatif (pemetaan kualitatif dari OWASP Risk Rating); vektor CVSS final perlu diverifikasi manual per temuan.
+
+**Batasan & pertanggungjawaban.** Laporan ini merupakan hasil automation, bukan pengganti pentest manual. Temuan scanner (misalnya ZAP) dapat berupa false positive dan wajib diverifikasi sebelum severity final ditetapkan. Celah logika bisnis hanya terdeteksi apabila test-nya ditulis secara khusus. Cakupan pengujian terbatas pada target dan endpoint yang dikonfigurasi saat dijalankan. Uji destruktif (mis. mass-assignment) menulis ke target lalu DIPULIHKAN otomatis ke keadaan semula sebagai fase terakhir setelah laporan ini dibuat; log pemulihan ada di reports/rollback.json, dan `python audit.py rollback` memulihkan ulang bila perlu.
 
 ---
 

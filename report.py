@@ -226,14 +226,67 @@ def group_alerts(gagal):
     return alerts
 
 
+KLASIFIKASI = "RAHASIA / CONFIDENTIAL"
+TOOLS = ["OWASP ZAP (DAST)", "Trivy (SCA/CVE)", "semgrep (SAST)", "gitleaks (secret)",
+         "testssl.sh (TLS)",
+         "runner internal Security Audit Kit (authz, mass-assignment, upload, auth-policy, "
+         "client-leak, cors, open-redirect, webstack, injection)"]
+# Rentang CVSS v3.1 indikatif per severity (pemetaan kualitatif OWASP Risk Rating).
+CVSS_BAND = {"critical": "9.0–10.0", "high": "7.0–8.9", "medium": "4.0–6.9",
+             "low": "0.1–3.9", "info": "0.0", "lulus": "—"}
+
+
+def cvss_band(sev):
+    return CVSS_BAND.get(sev, "—")
+
+
+def finding_id(i):
+    return f"AHZ-{i:03d}"
+
+
+def read_target():
+    """Baca nama & base_url target dari config/targets.yml (best-effort)."""
+    try:
+        import yaml
+        p = Path(__file__).resolve().parent / "config" / "targets.yml"
+        cfg = yaml.safe_load(p.read_text(encoding="utf-8")) if p.exists() else {}
+        return (cfg or {}).get("name") or "-", (cfg or {}).get("base_url") or "-"
+    except Exception:  # noqa: BLE001
+        return "-", "-"
+
+
+def exec_summary(alerts, counts):
+    """Ringkasan eksekutif ringkas, bahasa manajemen (non-teknis)."""
+    total = sum(counts[s] for s in ("critical", "high", "medium", "low", "info"))
+    if total == 0:
+        return ("Tidak ditemukan temuan pada cakupan yang diuji; seluruh kontrol yang diuji "
+                "berperilaku sesuai harapan. Pemeriksaan yang lolos dirinci pada bagian "
+                "Kontrol yang Lolos sebagai bukti cakupan uji.")
+    per = ", ".join(f"{counts[s]} {s.capitalize()}" for s in
+                    ("critical", "high", "medium", "low", "info") if counts[s])
+    top = "; ".join(a["nama"] for a in alerts[:3])
+    prioritas = ("Critical dan High" if (counts["critical"] or counts["high"])
+                 else "Medium dan Low")
+    return (f"Pengujian menemukan {total} instance temuan ({per}) yang tergolong dalam "
+            f"{len(alerts)} jenis alert. Temuan berisiko tertinggi: {top}. Perbaikan "
+            f"disarankan memprioritaskan temuan {prioritas} terlebih dahulu. Rincian teknis, "
+            "bukti endpoint, dan rekomendasi tersedia pada bagian Rincian Temuan.")
+
+
 def write_md(path, findings, counts, when, cves):
     gagal = [f for f in findings if not f["lulus"]]
     alerts = group_alerts(gagal)
+    tgt_name, tgt_url = read_target()
+    moduls = sorted({f["modul"] for f in findings})
     L = [
-        "# Laporan Hasil Uji Keamanan (Otomatis)",
-        "", f"> Dibuat: {when} · {CREDIT}", "",
-        "## 1. Metodologi", "", METODOLOGI, "",
-        "## 2. Ringkasan Temuan", "",
+        "# Laporan Hasil Uji Keamanan",
+        "", f"**Klasifikasi:** {KLASIFIKASI}", "",
+        "| | |", "|---|---|",
+        f"| Dibuat | {when} |",
+        f"| Disusun oleh | {CREDIT} |",
+        f"| Target | {tgt_name} ({tgt_url}) |",
+        f"| Versi dokumen | 1.0 |", "",
+        "## 1. Ringkasan Eksekutif", "", exec_summary(alerts, counts), "",
         "| Severity | Jumlah instance |", "|---|---|",
         f"| {SEV_EMOJI['critical']} Critical | {counts['critical']} |",
         f"| {SEV_EMOJI['high']} High | {counts['high']} |",
@@ -241,28 +294,36 @@ def write_md(path, findings, counts, when, cves):
         f"| {SEV_EMOJI['low']} Low | {counts['low']} |",
         f"| {SEV_EMOJI['info']} Info | {counts['info']} |",
         f"| {SEV_EMOJI['lulus']} Lulus (kontrol OK) | {counts['lulus']} |",
-        "", f"Total alert: **{len(alerts)}** · Total CVE terdeteksi: **{len(cves)}**.", "",
+        "", f"Total alert: **{len(alerts)}** · Total CVE: **{len(cves)}**.", "",
+        "## 2. Ruang Lingkup & Metodologi", "",
+        f"- **Target:** {tgt_name} ({tgt_url}).",
+        f"- **Modul/teknik yang dijalankan:** {', '.join(moduls) if moduls else '-'}.",
+        "- **Metodologi:** " + METODOLOGI, "",
+        "## 3. Ringkasan Risiko", "",
     ]
-    # Daftar alert (ringkas) — gaya ZAP: nama alert, risiko, keyakinan, jumlah instance.
+    # Daftar alert (ToC) dengan ID temuan, risiko, CVSS indikatif, keyakinan, instance.
     if alerts:
-        L += ["### Daftar Alert", "",
-              "| # | Alert | Risiko | Keyakinan | Instance |", "|---|---|---|---|---|"]
+        L += ["| ID | Alert | Risiko | CVSS (indikatif) | Keyakinan | Instance |",
+              "|---|---|---|---|---|---|"]
         for i, a in enumerate(alerts, 1):
-            L.append(f"| {i} | {a['nama']} | {SEV_EMOJI.get(a['severity'], '')} "
-                     f"{a['severity'].upper()} | {a['keyakinan']} | {len(a['instances'])} |")
+            L.append(f"| {finding_id(i)} | {a['nama']} | {SEV_EMOJI.get(a['severity'], '')} "
+                     f"{a['severity'].upper()} | {cvss_band(a['severity'])} | "
+                     f"{a['keyakinan']} | {len(a['instances'])} |")
         L.append("")
+    else:
+        L += ["_Tidak ada temuan — seluruh kontrol yang diuji lolos._", ""]
 
-    L += ["## 3. Rincian Temuan & Rekomendasi", ""]
-    if not alerts:
-        L.append("_Tidak ada temuan gagal — semua kontrol yang diuji lolos._")
+    L += ["## 4. Rincian Temuan", ""]
     for i, a in enumerate(alerts, 1):
         kb = a["kb"]
         L += [
-            f"### {i}. {SEV_EMOJI.get(a['severity'], '')} {a['nama']}  `{a['severity'].upper()}`", "",
-            f"- **Risiko:** {a['severity'].upper()} &nbsp; **Keyakinan:** {a['keyakinan']}",
+            f"### {finding_id(i)} — {SEV_EMOJI.get(a['severity'], '')} {a['nama']}", "",
+            f"- **Severity:** {a['severity'].upper()} &nbsp; **CVSS (indikatif):** "
+            f"{cvss_band(a['severity'])} &nbsp; **Keyakinan:** {a['keyakinan']} &nbsp; "
+            f"**Status:** Terbuka",
             f"- **Sumber/plugin:** {', '.join(a['moduls'])} (`{a['kind']}`)",
             f"- **Deskripsi:** {kb['deskripsi']}",
-            f"- **Jumlah instance:** {len(a['instances'])}", "",
+            f"- **Instance yang diuji ({len(a['instances'])}):**", "",
             "  | # | Endpoint diuji | Konteks | HTTP | Bukti |",
             "  |---|---|---|---|---|",
         ]
@@ -287,7 +348,7 @@ def write_md(path, findings, counts, when, cves):
         L.append(f"- **Referensi:** {'; '.join(kb['referensi'])}")
         L.append("")
 
-    # Kontrol yang lolos — perinci apa yang diuji & berperilaku benar (angka 'Lulus').
+    # Kontrol yang lolos — bukti cakupan uji.
     lulus = [f for f in findings if f["lulus"]]
     if lulus:
         L += [f"### Kontrol yang Lolos (LULUS: {len(lulus)})", "",
@@ -299,12 +360,19 @@ def write_md(path, findings, counts, when, cves):
             L.append(f"| {f['judul']} | {f['modul']} | `{url}` | {st} |")
         L.append("")
     if cves:
-        L += ["## 4. Daftar CVE", "", "| CVE | Paket/Lokasi | Severity |", "|---|---|---|"]
+        L += ["## 5. Daftar CVE", "", "| CVE | Paket/Lokasi | Severity |", "|---|---|---|"]
         for c in cves:
             L.append(f"| {c['id']} | {c['where']} | {SEV_EMOJI.get(c['sev'], '')} {c['sev'].upper()} |")
         L.append("")
-    L += ["## 5. Batasan & Pertanggungjawaban", "", BATASAN, "",
-          "---", "", f"_{CREDIT}_", ""]
+    L += [
+        "## 6. Lampiran", "",
+        "**Tooling & acuan.** " + "; ".join(TOOLS) + ". Acuan: OWASP Top 10 2021, OWASP API "
+        "Security Top 10 2023, OWASP ASVS, OWASP Risk Rating Methodology.", "",
+        "**Catatan CVSS.** Skor CVSS bersifat indikatif (pemetaan kualitatif dari OWASP Risk "
+        "Rating); vektor CVSS final perlu diverifikasi manual per temuan.", "",
+        "**Batasan & pertanggungjawaban.** " + BATASAN, "",
+        "---", "", f"_{CREDIT}_", "",
+    ]
     path.write_text("\n".join(L), encoding="utf-8")
 
 
@@ -320,14 +388,17 @@ def write_html(path, findings, counts, when, cves):
         f"<div class='n' style='color:{SEV_COLOR[s]}'>{counts[s]}</div>"
         f"<div class='l'>{s.upper()}</div></div>" for s in SEV_ORDER)
 
-    # Daftar alert (ToC, gaya ZAP): nama, risiko, keyakinan, jumlah instance.
+    tgt_name, tgt_url = read_target()
+    moduls = sorted({f["modul"] for f in findings})
+
+    # Daftar alert (ToC): ID temuan, risiko, CVSS indikatif, keyakinan, instance.
     toc_rows = "".join(
-        f"<tr><td>{i}</td><td><a href='#alert-{i}'>{esc(a['nama'])}</a></td>"
+        f"<tr><td><a href='#alert-{i}'>{esc(finding_id(i))}</a></td><td>{esc(a['nama'])}</td>"
         f"<td><span class='badge' style='background:{SEV_COLOR[a['severity']]}'>"
-        f"{esc(a['severity'].upper())}</span></td><td>{esc(a['keyakinan'])}</td>"
-        f"<td>{len(a['instances'])}</td></tr>"
+        f"{esc(a['severity'].upper())}</span></td><td>{esc(cvss_band(a['severity']))}</td>"
+        f"<td>{esc(a['keyakinan'])}</td><td>{len(a['instances'])}</td></tr>"
         for i, a in enumerate(alerts, 1)) or \
-        "<tr><td colspan='5'>Tidak ada temuan gagal — semua kontrol yang diuji lolos.</td></tr>"
+        "<tr><td colspan='6'>Tidak ada temuan — semua kontrol yang diuji lolos.</td></tr>"
 
     blocks = ""
     for i, a in enumerate(alerts, 1):
@@ -347,23 +418,25 @@ def write_html(path, findings, counts, when, cves):
         blocks += f"""
         <div class="finding" id="alert-{i}" style="border-left:5px solid {col}">
           <h3><span class="badge" style="background:{col}">{esc(a['severity'].upper())}</span>
-              {i}. {esc(a['nama'])}</h3>
-          <p><b>Risiko:</b> {esc(a['severity'].upper())} &nbsp;·&nbsp;
+              {esc(finding_id(i))} — {esc(a['nama'])}</h3>
+          <p><b>Severity:</b> {esc(a['severity'].upper())} &nbsp;·&nbsp;
+             <b>CVSS (indikatif):</b> {esc(cvss_band(a['severity']))} &nbsp;·&nbsp;
              <b>Keyakinan:</b> {esc(a['keyakinan'])} &nbsp;·&nbsp;
-             <b>Sumber/plugin:</b> {esc(', '.join(a['moduls']))} (<code>{esc(a['kind'])}</code>)
+             <b>Status:</b> Terbuka</p>
+          <p><b>Sumber/plugin:</b> {esc(', '.join(a['moduls']))} (<code>{esc(a['kind'])}</code>)
              &nbsp;·&nbsp; <b>CVE/CWE:</b> {esc(cve)}</p>
           <p><b>Deskripsi.</b> {esc(kb['deskripsi'])}</p>
-          <p><b>Instance diuji ({len(a['instances'])}):</b></p>
+          <p><b>Instance yang diuji ({len(a['instances'])}):</b></p>
           <table class="inst"><thead><tr><th>#</th><th>Endpoint diuji (bukti)</th>
             <th>Konteks</th><th>HTTP</th><th>Catatan</th></tr></thead>
             <tbody>{inst_rows}</tbody></table>
           <p><b>Dampak.</b> {esc(kb['dampak'])}</p>
           <p><b>Justifikasi severity.</b> {esc(kb['severity_dasar'])}</p>
-          <p><b>Solusi & contoh.</b></p><ul>{recs}</ul>
+          <p><b>Rekomendasi & contoh solusi.</b></p><ul>{recs}</ul>
           <p class="ref"><b>Referensi:</b> {esc('; '.join(kb['referensi']))}</p>
         </div>"""
     if not alerts:
-        blocks = "<p>Tidak ada temuan gagal — semua kontrol yang diuji lolos.</p>"
+        blocks = "<p>Tidak ada temuan — semua kontrol yang diuji lolos.</p>"
 
     lulus = [f for f in findings if f["lulus"]]
     lulus_rows = "".join(
@@ -411,20 +484,38 @@ def write_html(path, findings, counts, when, cves):
  table.inst td{{font-size:13px}} table.inst code{{background:#f3f5f8}}
  footer{{max-width:1000px;margin:0 auto;padding:16px 20px 40px;color:#555;font-size:12px;border-top:1px solid #e3e7ec}}
  footer a{{color:#14233b}}
+ .klas{{display:inline-block;background:#b4232a;color:#fff;font-size:11px;font-weight:700;letter-spacing:.08em;padding:3px 10px;border-radius:4px;margin-top:8px}}
+ .meta td{{font-size:13px}} .meta td:first-child{{color:#555;width:160px;white-space:nowrap}}
+ .exec{{background:#fff;border-left:4px solid #14233b;padding:14px 16px;border-radius:6px;font-size:14px}}
 </style>
-<header><h1>Laporan Hasil Uji Keamanan (Otomatis)</h1>
-<div class="sub">Dibuat {esc(when)} · {credit_html}</div></header>
+<header><h1>Laporan Hasil Uji Keamanan</h1>
+<div class="sub">Dibuat {esc(when)}</div>
+<div class="klas">{esc(KLASIFIKASI)}</div></header>
 <main>
-<h2>1. Metodologi</h2><div class="note">{html.escape(METODOLOGI)}</div>
-<h2>2. Ringkasan Risiko</h2><div class="cards">{cards}</div>
-<p>Total alert: <b>{len(alerts)}</b> · Total CVE terdeteksi: <b>{len(cves)}</b>.</p>
-<table><thead><tr><th>#</th><th>Alert</th><th>Risiko</th><th>Keyakinan</th><th>Instance</th></tr></thead>
+<table class="meta"><tbody>
+<tr><td>Disusun oleh</td><td>{credit_html}</td></tr>
+<tr><td>Target</td><td>{esc(tgt_name)} (<code>{esc(tgt_url)}</code>)</td></tr>
+<tr><td>Versi dokumen</td><td>1.0</td></tr>
+</tbody></table>
+<h2>1. Ringkasan Eksekutif</h2>
+<div class="exec">{esc(exec_summary(alerts, counts))}</div>
+<div class="cards">{cards}</div>
+<p>Total alert: <b>{len(alerts)}</b> · Total CVE: <b>{len(cves)}</b>.</p>
+<h2>2. Ruang Lingkup &amp; Metodologi</h2>
+<div class="note"><p><b>Target.</b> {esc(tgt_name)} (<code>{esc(tgt_url)}</code>)</p>
+<p><b>Modul/teknik.</b> {esc(', '.join(moduls) if moduls else '-')}</p>
+<p><b>Metodologi.</b> {html.escape(METODOLOGI)}</p></div>
+<h2>3. Ringkasan Risiko</h2>
+<table><thead><tr><th>ID</th><th>Alert</th><th>Risiko</th><th>CVSS (indikatif)</th><th>Keyakinan</th><th>Instance</th></tr></thead>
 <tbody>{toc_rows}</tbody></table>
-<h2>3. Rincian Temuan & Rekomendasi</h2>{blocks}
+<h2>4. Rincian Temuan</h2>{blocks}
 {lulus_section}
-<h2>4. Daftar CVE</h2>
+<h2>5. Daftar CVE</h2>
 <table><thead><tr><th>CVE</th><th>Paket/Lokasi</th><th>Severity</th></tr></thead><tbody>{cve_rows}</tbody></table>
-<h2>5. Batasan & Pertanggungjawaban</h2><div class="note">{html.escape(BATASAN)}</div>
+<h2>6. Lampiran</h2>
+<div class="note"><p><b>Tooling &amp; acuan.</b> {esc('; '.join(TOOLS))}. Acuan: OWASP Top 10 2021, OWASP API Security Top 10 2023, OWASP ASVS, OWASP Risk Rating Methodology.</p>
+<p><b>Catatan CVSS.</b> Skor CVSS bersifat indikatif (pemetaan kualitatif dari OWASP Risk Rating); vektor CVSS final perlu diverifikasi manual per temuan.</p>
+<p><b>Batasan &amp; pertanggungjawaban.</b> {html.escape(BATASAN)}</p></div>
 </main>
 <footer>{credit_html}</footer>
 </html>"""
