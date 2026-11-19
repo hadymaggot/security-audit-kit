@@ -43,6 +43,16 @@
  .frame{border:1px solid rgba(122,197,90,.25);border-radius:10px;overflow:hidden;background:#fff}
  iframe{width:100%;height:72vh;border:0;display:block;background:#fff}
  .note{font-size:.85rem;opacity:.8;margin-top:.8rem}
+ .mdwrap{display:none;border:1px solid rgba(122,197,90,.25);border-radius:10px;background:rgba(255,255,255,.02);padding:1.4rem 1.6rem;max-height:72vh;overflow:auto}
+ #mdbox{line-height:1.8}
+ #mdbox h1{font-size:1.5rem;color:var(--secondary-color)}
+ #mdbox h2{font-size:1.25rem;color:var(--secondary-color);border-bottom:1px solid rgba(122,197,90,.2);padding-bottom:.3rem;margin-top:1.8rem}
+ #mdbox h3{color:var(--secondary-color)}
+ #mdbox code{font-family:var(--mono);background:rgba(122,197,90,.1);padding:1px 5px;border-radius:4px;font-size:.9em}
+ #mdbox pre{background:var(--terminal-bg);padding:1rem;border-radius:6px;overflow:auto} #mdbox pre code{background:transparent;padding:0}
+ #mdbox table{border-collapse:collapse;width:100%;margin:1rem 0;font-size:.92rem} #mdbox th,#mdbox td{border:1px solid rgba(122,197,90,.25);padding:6px 10px;text-align:left;vertical-align:top} #mdbox th{background:rgba(122,197,90,.1)}
+ #mdbox a{color:var(--primary-color)} #mdbox blockquote{border-left:3px solid var(--primary-color);margin:0 0 1rem;padding-left:1rem;opacity:.9}
+ #mdbox img{max-width:100%} #mdbox hr{border:0;border-top:1px solid rgba(122,197,90,.2);margin:1.5rem 0}
 </style>
 </head>
 <body>
@@ -70,7 +80,7 @@
     <button class="fmt" data-fmt="md" role="tab" aria-selected="false">
       <div class="ic"><i class="fab fa-markdown"></i></div>
       <h3>Markdown</h3>
-      <p>Teks mentah untuk ditempel ke wiki/issue atau dikonversi ke test. Dirender rapi di GitHub.</p>
+      <p>Untuk ditempel ke wiki/issue atau dikonversi ke test. Dirender rapi langsung di halaman.</p>
     </button>
   </div>
 
@@ -78,21 +88,42 @@
     <span id="label">HTML lengkap</span>
     <a class="open" id="openLink" href="contoh-laporan-html.html" target="_blank" rel="noopener">Buka di tab baru &nearr;</a>
   </div>
-  <div class="frame"><iframe id="frame" title="Pratinjau laporan" src="contoh-laporan-html.html"></iframe></div>
+  <div class="frame" id="frameWrap"><iframe id="frame" title="Pratinjau laporan" src="contoh-laporan-html.html"></iframe></div>
+  <div class="mdwrap" id="mdwrap"><div id="mdbox">Memuat…</div></div>
   <p class="note" id="note">Pratinjau HTML lengkap. Format ini dihasilkan oleh <code>python audit.py all</code>.</p>
 </main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.9/purify.min.js"></script>
 <script>
  var MD_GH = "https://github.com/hadymaggot/security-audit-kit/blob/main/docs/contoh-laporan.md";
  var FMT = {
    html:  {src:"contoh-laporan-html.html",   open:"contoh-laporan-html.html",   label:"HTML lengkap",      note:"Pratinjau HTML lengkap (standar konsultan)."},
    slides:{src:"contoh-laporan-slides.html", open:"contoh-laporan-slides.html", label:"Slide presentasi",  note:"Pratinjau slide presentasi — satu temuan per slide."},
-   md:    {src:"contoh-laporan.md",          open:MD_GH,                         label:"Markdown",          note:"Pratinjau sumber Markdown. Untuk tampilan terender rapi, buka di GitHub via tombol kanan atas."}
+   md:    {src:"contoh-laporan.md",          open:MD_GH,                         label:"Markdown",          note:"Pratinjau Markdown (dirender di halaman). Tombol kanan atas membuka versi terender GitHub."}
  };
- var frame=document.getElementById("frame"), label=document.getElementById("label"),
-     openLink=document.getElementById("openLink"), note=document.getElementById("note");
+ var frame=document.getElementById("frame"), frameWrap=document.getElementById("frameWrap"),
+     mdwrap=document.getElementById("mdwrap"), mdbox=document.getElementById("mdbox"),
+     label=document.getElementById("label"), openLink=document.getElementById("openLink"),
+     note=document.getElementById("note");
+ var mdLoaded=false;
+ function renderMd(){
+   if(mdLoaded)return; mdLoaded=true;
+   fetch("contoh-laporan.md").then(function(r){return r.text()}).then(function(t){
+     if(window.marked&&window.DOMPurify){
+       mdbox.innerHTML=DOMPurify.sanitize(marked.parse(t));
+     }else{
+       var pre=document.createElement("pre"); pre.textContent=t; mdbox.innerHTML=""; mdbox.appendChild(pre);
+     }
+   }).catch(function(){ mdbox.textContent="Gagal memuat Markdown. Buka di GitHub via tombol di atas."; mdLoaded=false; });
+ }
  function pick(k){
    var f=FMT[k]; if(!f)return;
-   frame.src=f.src; label.textContent=f.label; openLink.href=f.open; note.textContent=f.note;
+   label.textContent=f.label; openLink.href=f.open; note.textContent=f.note;
+   if(k==="md"){
+     frameWrap.style.display="none"; mdwrap.style.display="block"; renderMd();
+   }else{
+     mdwrap.style.display="none"; frameWrap.style.display="block"; frame.src=f.src;
+   }
    var btns=document.querySelectorAll(".fmt");
    btns.forEach(function(b){var on=b.getAttribute("data-fmt")===k;b.classList.toggle("active",on);b.setAttribute("aria-selected",on?"true":"false");});
  }
