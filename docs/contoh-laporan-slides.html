@@ -18,59 +18,59 @@
  .fid{font-size:2vh;color:#555;margin-bottom:1vh} code{background:#0003;padding:1px 6px;border-radius:4px}
  #nav{position:fixed;bottom:2vh;right:3vw;color:#8aa;font-size:1.8vh;z-index:9}
  #nav button{background:#ffffff22;color:inherit;border:1px solid #ffffff44;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:1.8vh}
+ .shot{max-height:34vh;max-width:70vw;border:1px solid #ccd;border-radius:8px;margin-top:2vh} .shotwrap{margin-top:1vh}
 </style>
 <div id="deck"><section class="slide cover">
       <div class="klas">RAHASIA / CONFIDENTIAL</div>
       <h1>Laporan Hasil Uji Keamanan</h1>
-      <p class="tgt">Contoh Target (fiktif) <span class="u">http://demo.example.test</span></p>
-      <p class="meta" style="color:#ffcf8a">Contoh output — data fiktif, bukan hasil audit sistem nyata.</p>
-      <p class="meta">2026-11-19 09:19 (UTC+07:00 SE Asia Standard Time)</p>
+      <p class="tgt">Contoh Aplikasi (demo) <span class="u">https://dev.contoh.example</span></p>
+      <p class="meta">2026-11-19 (contoh)</p>
       <p class="credit">Security Audit Kit — dibuat oleh hadymaggot · https://github.com/hadymaggot/security-audit-kit</p></section><section class="slide"><h2>Ringkasan Risiko</h2>
-      <div class="scards"><div class='scard' style='border-color:#7c1313'><div class='n' style='color:#7c1313'>3</div><div class='l'>CRITICAL</div></div><div class='scard' style='border-color:#b4232a'><div class='n' style='color:#b4232a'>4</div><div class='l'>HIGH</div></div><div class='scard' style='border-color:#c67b00'><div class='n' style='color:#c67b00'>0</div><div class='l'>MEDIUM</div></div><div class='scard' style='border-color:#2d7d46'><div class='n' style='color:#2d7d46'>3</div><div class='l'>LOW</div></div><div class='scard' style='border-color:#555'><div class='n' style='color:#555'>0</div><div class='l'>INFO</div></div></div>
-      <p class="big">10 instance temuan · 6 alert · 2 CVE · 12 kontrol lolos</p></section><section class="slide"><h2>Ringkasan Eksekutif</h2>
-      <p class="exec">Pengujian menemukan 10 instance temuan (3 Critical, 4 High, 3 Low) yang tergolong dalam 6 jenis alert. Temuan berisiko tertinggi: Header identitas (X-Auth-*) dipercaya dari klien; Dependensi dengan kerentanan (CVE); IDOR — akses objek milik entitas lain. Perbaikan disarankan memprioritaskan temuan Critical dan High terlebih dahulu. Rincian teknis, bukti endpoint, dan rekomendasi tersedia pada bagian Rincian Temuan.</p></section><section class="slide" style="border-top:7px solid #7c1313">
-          <div class="fid">AHZ-001 &nbsp;·&nbsp;
-            <span class="badge" style="background:#7c1313">CRITICAL</span>
-            &nbsp;·&nbsp; CVSS 9.0–10.0 &nbsp;·&nbsp;
-            2 instance</div>
-          <h2>Header identitas (X-Auth-*) dipercaya dari klien</h2>
-          <p><b>Dampak.</b> Bypass otorisasi total hanya dengan menambahkan header pada request.</p>
-          <p><b>Rekomendasi utama.</b> Konfigurasikan reverse proxy untuk SELALU menghapus lalu menyetel ulang header X-Auth-* dari sumber tepercaya; jangan teruskan nilai dari klien.</p></section><section class="slide" style="border-top:7px solid #7c1313">
-          <div class="fid">AHZ-002 &nbsp;·&nbsp;
-            <span class="badge" style="background:#7c1313">CRITICAL</span>
-            &nbsp;·&nbsp; CVSS 9.0–10.0 &nbsp;·&nbsp;
-            2 instance</div>
-          <h2>Dependensi dengan kerentanan (CVE)</h2>
-          <p><b>Dampak.</b> Bergantung CVE: dari kebocoran info hingga eksekusi kode jarak jauh (RCE) lewat pustaka yang rentan.</p>
-          <p><b>Rekomendasi utama.</b> Perbarui paket ke versi perbaikan (fixed version) yang tertera pada temuan.</p></section><section class="slide" style="border-top:7px solid #b4232a">
-          <div class="fid">AHZ-003 &nbsp;·&nbsp;
-            <span class="badge" style="background:#b4232a">HIGH</span>
-            &nbsp;·&nbsp; CVSS 7.0–8.9 &nbsp;·&nbsp;
-            2 instance</div>
-          <h2>IDOR — akses objek milik entitas lain</h2>
-          <p><b>Dampak.</b> Kebocoran/putaran data antar pengguna atau antar perusahaan.</p>
-          <p><b>Rekomendasi utama.</b> Verifikasi di server bahwa objek yang diminta memang milik pengguna/scope yang sedang login sebelum mengembalikannya.</p></section><section class="slide" style="border-top:7px solid #b4232a">
-          <div class="fid">AHZ-004 &nbsp;·&nbsp;
-            <span class="badge" style="background:#b4232a">HIGH</span>
-            &nbsp;·&nbsp; CVSS 7.0–8.9 &nbsp;·&nbsp;
+      <div class="scards"><div class='scard' style='border-color:#c0392b'><div class='n' style='color:#c0392b'>1</div><div class='l'>CRITICAL</div></div><div class='scard' style='border-color:#e8710a'><div class='n' style='color:#e8710a'>3</div><div class='l'>HIGH</div></div><div class='scard' style='border-color:#d4a017'><div class='n' style='color:#d4a017'>1</div><div class='l'>MEDIUM</div></div><div class='scard' style='border-color:#2f6feb'><div class='n' style='color:#2f6feb'>1</div><div class='l'>LOW</div></div><div class='scard' style='border-color:#6b7280'><div class='n' style='color:#6b7280'>0</div><div class='l'>INFO</div></div></div>
+      <p class="big">6 instance temuan · 6 alert · 1 CVE · 2 kontrol lolos</p></section><section class="slide"><h2>Ringkasan Eksekutif</h2>
+      <p class="exec">Pengujian menemukan 6 instance temuan (1 Critical, 3 High, 1 Medium, 1 Low) yang tergolong dalam 6 jenis alert. Temuan berisiko tertinggi: Kontrol akses rusak (role rendah membuka area terbatas); SQL Injection (A03); Web server versi rentan (CVE diketahui). Perbaikan disarankan memprioritaskan temuan Critical dan High terlebih dahulu. Rincian teknis, bukti endpoint, dan rekomendasi tersedia pada bagian Rincian Temuan.</p></section><section class="slide" style="border-top:7px solid #c0392b">
+          <div class="fid">SAK-001 &nbsp;·&nbsp;
+            <span class="badge" style="background:#c0392b">CRITICAL</span>
+            &nbsp;·&nbsp; CVSS 9.1 &nbsp;·&nbsp;
             1 instance</div>
-          <h2>Upload berkas berbahaya diterima</h2>
-          <p><b>Dampak.</b> Stored XSS saat file dibuka pengguna lain, penyimpanan konten berbahaya, potensi pencurian sesi.</p>
-          <p><b>Rekomendasi utama.</b> Validasi tipe file berdasarkan ISI (magic bytes), bukan hanya ekstensi/Content-Type dari klien.</p></section><section class="slide" style="border-top:7px solid #2d7d46">
-          <div class="fid">AHZ-005 &nbsp;·&nbsp;
-            <span class="badge" style="background:#2d7d46">LOW</span>
-            &nbsp;·&nbsp; CVSS 0.1–3.9 &nbsp;·&nbsp;
-            2 instance</div>
+          <h2>Kontrol akses rusak (role rendah membuka area terbatas)</h2>
+          <p><b>Dampak.</b> Peningkatan hak akses (privilege escalation), pembuatan/penghapusan akun, perubahan data kritikal — berpotensi pengambilalihan sistem.</p>
+          <p><b>Rekomendasi utama.</b> Tegakkan otorisasi di SISI SERVER pada setiap endpoint, bukan hanya menyembunyikan menu di klien.</p><div class='shotwrap'><img class='shot' src='contoh-evidence.png' alt='bukti'></div></section><section class="slide" style="border-top:7px solid #e8710a">
+          <div class="fid">SAK-002 &nbsp;·&nbsp;
+            <span class="badge" style="background:#e8710a">HIGH</span>
+            &nbsp;·&nbsp; CVSS 9.8 &nbsp;·&nbsp;
+            1 instance</div>
+          <h2>SQL Injection (A03)</h2>
+          <p><b>Dampak.</b> Pembacaan/perubahan data di luar wewenang, bypass autentikasi, hingga potensi RCE tergantung konfigurasi DBMS.</p>
+          <p><b>Rekomendasi utama.</b> Gunakan prepared statement / parameterized query (bind parameter), jangan merangkai string query dari input.</p></section><section class="slide" style="border-top:7px solid #e8710a">
+          <div class="fid">SAK-003 &nbsp;·&nbsp;
+            <span class="badge" style="background:#e8710a">HIGH</span>
+            &nbsp;·&nbsp; CVSS 7.5 &nbsp;·&nbsp;
+            1 instance</div>
+          <h2>Web server versi rentan (CVE diketahui)</h2>
+          <p><b>Dampak.</b> Bergantung CVE-nya, berpotensi remote code execution, DoS, atau memory corruption pada server yang terekspos.</p>
+          <p><b>Rekomendasi utama.</b> Update ke versi yang sudah diperbaiki sesuai advisory vendor (mis. Apache httpd 2.4.71+, NGINX 1.30.7+/1.31.9+).</p></section><section class="slide" style="border-top:7px solid #e8710a">
+          <div class="fid">SAK-004 &nbsp;·&nbsp;
+            <span class="badge" style="background:#e8710a">HIGH</span>
+            &nbsp;·&nbsp; CVSS 8.6 &nbsp;·&nbsp;
+            1 instance</div>
+          <h2>Kredensial/secret bocor di source/aset</h2>
+          <p><b>Dampak.</b> Secret yang bocor dapat dipakai menyalahgunakan layanan pihak ketiga, mengakses data, atau pivot ke sistem internal.</p>
+          <p><b>Rekomendasi utama.</b> Cabut (revoke) dan rotasi segera secret yang bocor; anggap sudah terkompromi.</p></section><section class="slide" style="border-top:7px solid #d4a017">
+          <div class="fid">SAK-005 &nbsp;·&nbsp;
+            <span class="badge" style="background:#d4a017">MEDIUM</span>
+            &nbsp;·&nbsp; CVSS 6.5 &nbsp;·&nbsp;
+            1 instance</div>
+          <h2>CORS salah konfigurasi</h2>
+          <p><b>Dampak.</b> Situs jahat yang dibuka korban bisa mengirim request berkredensial ke API dan membaca responsnya — pencurian data terautentikasi lintas-origin.</p>
+          <p><b>Rekomendasi utama.</b> Jangan pantulkan Origin mentah. Pakai allowlist origin yang tepercaya saja.</p></section><section class="slide" style="border-top:7px solid #2f6feb">
+          <div class="fid">SAK-006 &nbsp;·&nbsp;
+            <span class="badge" style="background:#2f6feb">LOW</span>
+            &nbsp;·&nbsp; CVSS 3.7 &nbsp;·&nbsp;
+            1 instance</div>
           <h2>Header keamanan tidak diset</h2>
           <p><b>Dampak.</b> Memudahkan clickjacking, MIME sniffing, XSS, dan fingerprinting server.</p>
-          <p><b>Rekomendasi utama.</b> Set header di reverse proxy/framework:</p></section><section class="slide" style="border-top:7px solid #2d7d46">
-          <div class="fid">AHZ-006 &nbsp;·&nbsp;
-            <span class="badge" style="background:#2d7d46">LOW</span>
-            &nbsp;·&nbsp; CVSS 0.1–3.9 &nbsp;·&nbsp;
-            1 instance</div>
-          <h2>Captcha tidak regenerasi</h2>
-          <p><b>Dampak.</b> Captcha tak efektif menahan otomasi/brute-force.</p>
-          <p><b>Rekomendasi utama.</b> Regenerasi token &amp; tantangan captcha setiap percobaan gagal; sekali pakai dengan masa berlaku singkat.</p></section><section class="slide cover"><h2>Terima kasih</h2>
+          <p><b>Rekomendasi utama.</b> Set header di reverse proxy/framework:</p></section><section class="slide cover"><h2>Terima kasih</h2>
       <p class="meta">Laporan lengkap: <code>laporan.html</code>. Dokumen bersifat RAHASIA / CONFIDENTIAL.</p>
       <p class="credit">Security Audit Kit — dibuat oleh hadymaggot · https://github.com/hadymaggot/security-audit-kit</p></section></div>
 <div id="nav"><button onclick="go(-1)">‹</button> <span id="pg"></span> <button onclick="go(1)">›</button></div>
