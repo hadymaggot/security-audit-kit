@@ -388,6 +388,9 @@ python audit.py all                                # scan + laporan</code></pre>
    out("  <span style='color:var(--primary)'>help</span>     tampilkan bantuan ini");
    out("  <span style='color:var(--primary)'>clear</span>    bersihkan layar");
    out("");
+   out("<span style='color:var(--secondary)'>ARGUMEN</span>");
+   out("  <span style='color:var(--primary)'>--active</span>, <span style='color:var(--primary)'>-a</span>   konfirmasi scan aktif/intrusif (ditampilkan sebagai perintah CLI, bukan via demo)");
+   out("");
    out("<span style='color:var(--secondary)'>CAKUPAN</span> (pasif · non-intrusif)");
    out("  security headers · cookie flags · CORS · banner&rarr;CVE · clientleak");
    out("");
@@ -395,11 +398,17 @@ python audit.py all                                # scan + laporan</code></pre>
    out("  uji hanya target milik/berwenang Anda. tidak mengirim payload / menulis data.","mut");
  }
  function ensurePrompt(){ var i=logEl().querySelector(".cliln .cli"); if(i){setTimeout(function(){i.focus();},10);} else addPrompt(); }
+ var pendingActive=null; // url yang menunggu konfirmasi scan aktif
  function submitCmd(inp){
    var v=inp.value, line=inp.closest(".cliln");
    line.className="ln"; line.innerHTML=promptEl()+" "+esc(v); // echo jadi statis
+   if(pendingActive!==null){ answerActive(v); ensurePrompt(); return; }
    var pending=run(v);
    if(!pending) ensurePrompt();
+ }
+ function answerActive(v){
+   var ans=(v||"").trim().toLowerCase(), t=pendingActive; pendingActive=null;
+   if(ans==="y"||ans==="ya"||ans==="yes") activeInstructions(t); else out("dibatalkan.","mut");
  }
  logEl().addEventListener("click",function(e){ if(e.target.closest("a,button,input"))return; var i=logEl().querySelector(".cliln .cli"); if(i)i.focus(); });
 
@@ -407,10 +416,27 @@ python audit.py all                                # scan + laporan</code></pre>
    var c=cmd.trim(); if(!c)return false;
    if(c==="clear"){logEl().innerHTML="";logEl().removeAttribute("data-init");openScan();return false;}
    if(c==="help"){printHelp();return false;}
-   var url=c.replace(/^scan\s+/,"");
+   c=c.replace(/^scan\s+/,"");
+   var toks=c.split(/\s+/), url=toks[0];
+   var active=toks.slice(1).some(function(x){return x==="--active"||x==="-a"||x==="--aktif";});
    if(!/^https?:\/\//.test(url)){out("URL harus diawali http(s)://","bad");return false;}
+   if(active){ askActive(url); return false; } // konfirmasi dulu
    if(!api){out("backend tidak tersedia.","bad");return false;}
    scan(url); return true; // async: prompt baru ditambah setelah scan selesai
+ }
+ function askActive(url){
+   pendingActive=url;
+   out("<span class='bad'>! scan AKTIF/intrusif</span> pada <span style='color:var(--secondary)'>"+esc(url)+"</span>");
+   out("hanya untuk target yang Anda miliki/berwenang uji. lanjutkan? [y/N]","mut");
+ }
+ function activeInstructions(url){
+   out("scan aktif tidak dijalankan via demo publik ini (mencegah penyalahgunaan).","mut");
+   out("jalankan di mesin Anda — set base_url target di config/targets.yml, lalu:");
+   out("  <span style='color:var(--primary)'>python audit.py injection</span>       # SQLi error/boolean/time-based");
+   out("  <span style='color:var(--primary)'>python audit.py open-redirect</span>");
+   out("  <span style='color:var(--primary)'>python audit.py authz</span>           # access control / IDOR (kredensial per role)");
+   out("  <span style='color:var(--primary)'>python audit.py upload</span>");
+   out("kredensial lewat environment variable. panduan: docs/panduan-penggunaan.md","mut");
  }
  function scan(url){
    var host=url; try{host=new URL(url).hostname;}catch(e){}
