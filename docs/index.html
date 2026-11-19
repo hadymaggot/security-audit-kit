@@ -12,6 +12,10 @@
 <meta property="og:description" content="DAST + SCA, berbasis konfigurasi, non-destruktif dengan rollback otomatis, laporan standar konsultan. Open-source.">
 <meta property="og:url" content="https://hadymaggot.github.io/security-audit-kit/">
 <meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -28,71 +32,91 @@
 }
 </script>
 <style>
- body{font-family:system-ui,Segoe UI,sans-serif;margin:0;background:#f6f7f9;color:#1b1f24;line-height:1.6}
- header{background:#14233b;color:#fff;padding:48px 20px;text-align:center}
- header h1{margin:0 0 8px;font-size:30px} header p{margin:0 auto;max-width:640px;opacity:.9}
- .cta{margin-top:20px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
- .cta a{background:#fff;color:#14233b;text-decoration:none;padding:10px 18px;border-radius:8px;font-weight:600}
- .cta a.ghost{background:transparent;color:#fff;border:1px solid #fff6}
- main{max-width:900px;margin:0 auto;padding:24px 20px}
- h2{border-bottom:2px solid #e3e7ec;padding-bottom:6px;margin-top:36px}
- .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:16px}
- .card{background:#fff;border-radius:10px;padding:14px 16px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
- .card h3{margin:0 0 6px;font-size:15px} .card p{margin:0;font-size:14px;color:#444}
- code,pre{background:#0f1b2d;color:#e6edf3;border-radius:6px} pre{padding:12px;overflow:auto;font-size:13px} code{padding:1px 5px;font-size:13px}
- a{color:#14233b} footer{text-align:center;color:#555;font-size:13px;padding:24px;border-top:1px solid #e3e7ec}
- .lang a{margin:0 4px}
+ :root{
+   --primary:#7AC55A; --secondary:#C3DB65; --bg:#121212; --terminal:rgba(18,18,18,.95);
+   --accent:#234823; --text:#f2f2f2; --muted:#9bb39b; --border:#2a2f2a;
+   --mono:'JetBrains Mono',monospace; --sans:'Poppins',sans-serif;
+ }
+ *{box-sizing:border-box} html{scroll-behavior:smooth}
+ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.65}
+ a{color:var(--primary);text-decoration:none} a:hover{text-decoration:underline}
+ code,pre,.mono{font-family:var(--mono)}
+ .wrap{max-width:920px;margin:0 auto;padding:0 18px}
+ .prompt{color:var(--primary);font-family:var(--mono)} .prompt::before{content:"ahadi@kit:~$ ";color:var(--secondary)}
+ /* terminal window */
+ .term{background:var(--terminal);border:1px solid var(--border);border-radius:10px;margin:28px auto;box-shadow:0 10px 30px rgba(0,0,0,.4);overflow:hidden}
+ .bar{display:flex;align-items:center;gap:8px;padding:10px 14px;background:#1b1b1b;border-bottom:1px solid var(--border)}
+ .dot{width:12px;height:12px;border-radius:50%} .r{background:#ff5f56}.y{background:#ffbd2e}.g{background:#27c93f}
+ .bar .t{margin-left:8px;color:var(--muted);font-family:var(--mono);font-size:13px}
+ .term .body{padding:26px 22px}
+ h1{font-family:var(--mono);font-size:30px;margin:.2em 0;color:#fff}
+ h1 .c{color:var(--primary)}
+ h2{font-family:var(--mono);font-size:19px;margin:34px 0 10px;color:var(--primary);border-bottom:1px solid var(--border);padding-bottom:6px}
+ .tag{color:var(--muted);margin:0 0 18px}
+ .cta{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+ .btn{border:1px solid var(--primary);color:var(--primary);background:transparent;padding:9px 16px;border-radius:8px;font-family:var(--mono);font-size:14px}
+ .btn.fill{background:var(--primary);color:#0c1a0c;font-weight:600}
+ .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:14px}
+ .card{background:#171717;border:1px solid var(--border);border-left:3px solid var(--primary);border-radius:8px;padding:12px 14px}
+ .card h3{margin:0 0 6px;font-family:var(--mono);font-size:14px;color:#fff} .card p{margin:0;font-size:13.5px;color:#cdd6cd}
+ pre{background:#0c0f0c;border:1px solid var(--border);border-radius:8px;padding:14px;overflow:auto;font-size:13px;color:#e6ede6}
+ code{background:#0c0f0c;border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:12.5px}
+ .lang img{vertical-align:-3px}
+ footer{border-top:1px solid var(--border);color:var(--muted);font-size:13px;padding:22px 0;text-align:center;font-family:var(--mono)}
 </style>
 </head>
 <body>
-<header>
-  <h1>Security Audit Kit</h1>
-  <p>Toolkit otomatisasi <b>security testing web/API</b> lintas sistem operasi, berbasis
-  konfigurasi — <b>DAST + SCA</b>, non-destruktif dengan <b>rollback otomatis</b>, dan
-  laporan berstandar konsultan IT security.</p>
-  <div class="cta">
-    <a href="https://github.com/hadymaggot/security-audit-kit">⭐ GitHub</a>
-    <a href="scan.html" class="ghost">Open scanner (pasif)</a>
-    <a href="contoh-laporan.html" class="ghost">Contoh laporan</a>
-  </div>
-</header>
-<main>
-  <h2>Apa ini</h2>
-  <p>Security Audit Kit mengadaptasi alur pentest berbasis <b>OWASP</b> menjadi automated
-  regression testing yang dapat dijalankan lokal maupun di CI. Satu entry point
-  <code>python audit.py &lt;modul&gt;</code>, identik di Windows dan Linux, dengan
-  kredensial lewat environment variable.</p>
+<div class="wrap">
+  <div class="term">
+    <div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="t">bash — security-audit-kit</span></div>
+    <div class="body">
+      <p class="prompt">whoami</p>
+      <h1>Security<span class="c">·</span>Audit<span class="c">·</span>Kit</h1>
+      <p class="tag">Toolkit otomatisasi <b>security testing web/API</b> lintas sistem operasi,
+      berbasis konfigurasi — <b>DAST + SCA</b>, non-destruktif dengan <b>rollback otomatis</b>,
+      dan laporan berstandar konsultan IT security.</p>
+      <div class="cta">
+        <a class="btn fill" href="https://github.com/hadymaggot/security-audit-kit"><i class="fab fa-github"></i> GitHub</a>
+        <a class="btn" href="scan.html">Open scanner (pasif)</a>
+        <a class="btn" href="contoh-laporan.html">Contoh laporan</a>
+      </div>
 
-  <h2>Modul</h2>
-  <div class="grid">
-    <div class="card"><h3>Access control &amp; BOPLA</h3><p>Privilege escalation, IDOR, forged header, bypass gateway, mass assignment (destruktif + rollback otomatis).</p></div>
-    <div class="card"><h3>Injection &amp; upload</h3><p>SQL injection (error/boolean/time-based) dan penolakan upload berbahaya.</p></div>
-    <div class="card"><h3>Web stack &amp; CVE</h3><p>Banner <code>Server</code>/<code>X-Powered-By</code> → CVE (Apache, NGINX, PHP), dependency CVE via Trivy.</p></div>
-    <div class="card"><h3>CORS, redirect, TLS, header</h3><p>CORS misconfiguration, open redirect, TLS/cipher usang, security header.</p></div>
-    <div class="card"><h3>SCA &amp; SAST</h3><p>CVE dependency (Trivy) + SAST (semgrep) + secret ter-commit (gitleaks).</p></div>
-    <div class="card"><h3>Laporan</h3><p>Standar konsultan: executive summary, ID temuan, CVSS indikatif, bukti endpoint &amp; screenshot, varian HTML/Markdown/slide.</p></div>
-  </div>
+      <h2># apa ini</h2>
+      <p>Security Audit Kit mengadaptasi alur pentest berbasis <b>OWASP</b> menjadi automated
+      regression testing yang dapat dijalankan lokal maupun di CI. Satu entry point
+      <code>python audit.py &lt;modul&gt;</code>, identik di Windows dan Linux, dengan kredensial
+      lewat environment variable.</p>
 
-  <h2>Mulai cepat</h2>
-  <pre>pip install -r requirements.txt
+      <h2># modul</h2>
+      <div class="grid">
+        <div class="card"><h3>Access control &amp; BOPLA</h3><p>Privilege escalation, IDOR, forged header, bypass gateway, mass assignment (destruktif + rollback otomatis).</p></div>
+        <div class="card"><h3>Injection &amp; upload</h3><p>SQL injection (error/boolean/time-based) dan penolakan upload berbahaya.</p></div>
+        <div class="card"><h3>Web stack &amp; CVE</h3><p>Banner <code>Server</code>/<code>X-Powered-By</code> → CVE (Apache, NGINX, PHP), dependency CVE via Trivy.</p></div>
+        <div class="card"><h3>CORS, redirect, TLS, header</h3><p>CORS misconfiguration, open redirect, TLS/cipher usang, security header.</p></div>
+        <div class="card"><h3>SCA &amp; SAST</h3><p>CVE dependency (Trivy) + SAST (semgrep) + secret ter-commit (gitleaks).</p></div>
+        <div class="card"><h3>Laporan</h3><p>Standar konsultan: executive summary, ID temuan, CVSS indikatif, bukti endpoint &amp; screenshot, varian HTML/Markdown/slide.</p></div>
+      </div>
+
+      <h2># mulai cepat</h2>
+      <pre>pip install -r requirements.txt
 cp config/targets.example.yml config/targets.yml   # isi base_url target Anda
 python audit.py all                                # scan + laporan</pre>
-  <p>Panduan lengkap:
-  <a href="https://github.com/hadymaggot/security-audit-kit/blob/main/docs/panduan-penggunaan.md">Panduan Penggunaan</a> ·
-  <a href="https://github.com/hadymaggot/security-audit-kit/blob/main/docs/metodologi.md">Metodologi</a> ·
-  <a href="https://github.com/hadymaggot/security-audit-kit/blob/main/docs/temuan-to-test-mapping.md">Temuan → Test</a>.</p>
+      <p>Panduan lengkap:
+      <a href="https://github.com/hadymaggot/security-audit-kit/blob/main/docs/panduan-penggunaan.md">Panduan Penggunaan</a> ·
+      <a href="https://github.com/hadymaggot/security-audit-kit/blob/main/docs/metodologi.md">Metodologi</a> ·
+      <a href="https://github.com/hadymaggot/security-audit-kit/blob/main/docs/temuan-to-test-mapping.md">Temuan → Test</a>.</p>
 
-  <h2>Dokumentasi (tiga bahasa)</h2>
-  <p class="lang">
-    <img src="https://flagcdn.com/id.svg" width="18" alt="ID"> <a href="https://github.com/hadymaggot/security-audit-kit/blob/main/README.md">Indonesia</a> ·
-    <img src="https://flagcdn.com/gb.svg" width="18" alt="EN"> <a href="https://github.com/hadymaggot/security-audit-kit/blob/main/README.en.md">English</a> ·
-    <img src="https://flagcdn.com/de.svg" width="18" alt="DE"> <a href="https://github.com/hadymaggot/security-audit-kit/blob/main/README.de.md">Deutsch</a>
-  </p>
-</main>
-<footer>
-  Security Audit Kit — dibuat oleh <b>hadymaggot</b> ·
-  <a href="https://github.com/hadymaggot/security-audit-kit">github.com/hadymaggot/security-audit-kit</a> ·
-  Apache-2.0
-</footer>
+      <h2># dokumentasi (tiga bahasa)</h2>
+      <p class="lang">
+        <img src="https://flagcdn.com/id.svg" width="18" alt="ID"> <a href="https://github.com/hadymaggot/security-audit-kit/blob/main/README.md">Indonesia</a> ·
+        <img src="https://flagcdn.com/gb.svg" width="18" alt="EN"> <a href="https://github.com/hadymaggot/security-audit-kit/blob/main/README.en.md">English</a> ·
+        <img src="https://flagcdn.com/de.svg" width="18" alt="DE"> <a href="https://github.com/hadymaggot/security-audit-kit/blob/main/README.de.md">Deutsch</a>
+      </p>
+    </div>
+  </div>
+  <footer>Security Audit Kit — dibuat oleh <b>hadymaggot</b> ·
+  <a href="https://github.com/hadymaggot/security-audit-kit">github.com/hadymaggot/security-audit-kit</a> · Apache-2.0</footer>
+</div>
 </body>
 </html>
