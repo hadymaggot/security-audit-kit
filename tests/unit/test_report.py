@@ -335,11 +335,11 @@ def test_professional_structure_present(tmp_path):
     md = (tmp_path / "m.md").read_text(encoding="utf-8")
     h = (tmp_path / "m.html").read_text(encoding="utf-8")
     for doc in (md, h):
-        assert "AHZ-001" in doc                       # ID temuan
+        assert "SAK-001" in doc                       # ID temuan
         assert "RAHASIA / CONFIDENTIAL" in doc        # klasifikasi
         assert "Ringkasan Eksekutif" in doc           # executive summary
         assert "Ruang Lingkup" in doc                 # scope
-        assert "CVSS (indikatif)" in doc              # kolom/label CVSS
+        assert "CVSS v3.1" in doc              # kolom/label CVSS
     assert "## 6. Lampiran" in md and "6. Lampiran" in h
 
 
@@ -352,7 +352,7 @@ def test_exec_summary_empty_vs_findings():
 
 
 def test_finding_id_format():
-    assert RP.finding_id(1) == "AHZ-001" and RP.finding_id(42) == "AHZ-042"
+    assert RP.finding_id(1) == "SAK-001" and RP.finding_id(42) == "SAK-042"
 
 
 def test_write_slides_selfcontained(tmp_path):
@@ -364,7 +364,7 @@ def test_write_slides_selfcontained(tmp_path):
     RP.write_slides(tmp_path / "s.html", findings, RP.summarize(findings), "2026-01-01", [])
     h = (tmp_path / "s.html").read_text(encoding="utf-8")
     assert "id=\"deck\"" in h and "class=\"slide cover\"" in h      # struktur deck
-    assert "AHZ-001" in h and "Ringkasan Eksekutif" in h           # slide temuan + exec
+    assert "SAK-001" in h and "Ringkasan Eksekutif" in h           # slide temuan + exec
     assert RP.KIT_AUTHOR in h and RP.KLASIFIKASI in h              # kredit + klasifikasi
     assert "cdn" not in h.lower() and "src=\"http" not in h        # tanpa dependency eksternal
 

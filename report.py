@@ -254,17 +254,57 @@ TOOLS = ["OWASP ZAP (DAST)", "Trivy (SCA/CVE)", "semgrep (SAST)", "gitleaks (sec
          "testssl.sh (TLS)",
          "runner internal Security Audit Kit (authz, mass-assignment, upload, auth-policy, "
          "client-leak, cors, open-redirect, webstack, injection)"]
-# Rentang CVSS v3.1 indikatif per severity (pemetaan kualitatif OWASP Risk Rating).
-CVSS_BAND = {"critical": "9.0–10.0", "high": "7.0–8.9", "medium": "4.0–6.9",
-             "low": "0.1–3.9", "info": "0.0", "lulus": "—"}
+# CVSS v3.1 indikatif: skor + vektor representatif per jenis temuan (kind). Dipakai
+# sebagai acuan awal; vektor final tetap perlu diverifikasi per konteks target.
+KIND_CVSS = {
+    "broken-access": (9.1, "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:N"),
+    "forged-header": (9.1, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:N"),
+    "idor": (8.1, "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N"),
+    "sql-injection": (9.8, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"),
+    "upload-accepted": (8.8, "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H"),
+    "mass-assignment": (8.1, "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N"),
+    "leaked-secret": (8.6, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:L/A:N"),
+    "server-vuln": (7.5, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"),
+    "vuln-dependency": (7.5, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"),
+    "exposed-service": (7.5, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"),
+    "recon-finding": (7.5, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"),
+    "cors-misconfig": (6.5, "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:N/A:N"),
+    "open-redirect": (6.1, "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N"),
+    "tls-weak": (5.9, "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N"),
+    "weak-password": (5.3, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"),
+    "info-exposure": (5.3, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"),
+    "js-leak": (5.3, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"),
+    "recon-subdomain": (5.3, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"),
+    "client-cache": (4.3, "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:L/I:N/A:N"),
+    "missing-header": (3.7, "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N"),
+    "captcha-static": (3.7, "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:L/A:N"),
+}
+# Fallback representatif per severity bila kind tak terdaftar.
+CVSS_REP = {"critical": (9.8, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"),
+            "high": (8.1, "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N"),
+            "medium": (5.3, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"),
+            "low": (3.7, "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N"),
+            "info": (0.0, "-"), "lulus": (0.0, "-")}
 
 
-def cvss_band(sev):
-    return CVSS_BAND.get(sev, "—")
+def cvss_for(kind, severity):
+    """(skor, vektor) CVSS v3.1 indikatif untuk sebuah temuan."""
+    if kind in KIND_CVSS:
+        return KIND_CVSS[kind]
+    return CVSS_REP.get((severity or "info").lower(), (0.0, "-"))
+
+
+def cvss_score(kind, severity):
+    return f"{cvss_for(kind, severity)[0]:.1f}"
+
+
+def cvss_full(kind, severity):
+    skor, vek = cvss_for(kind, severity)
+    return f"{skor:.1f} — {vek}" if vek and vek != "-" else f"{skor:.1f}"
 
 
 def finding_id(i):
-    return f"AHZ-{i:03d}"
+    return f"SAK-{i:03d}"
 
 
 def read_target():
@@ -326,11 +366,11 @@ def write_md(path, findings, counts, when, cves):
     ]
     # Daftar alert (ToC) dengan ID temuan, risiko, CVSS indikatif, keyakinan, instance.
     if alerts:
-        L += ["| ID | Alert | Risiko | CVSS (indikatif) | Keyakinan | Instance |",
+        L += ["| ID | Alert | Risiko | CVSS v3.1 | Keyakinan | Instance |",
               "|---|---|---|---|---|---|"]
         for i, a in enumerate(alerts, 1):
             L.append(f"| {finding_id(i)} | {a['nama']} | {SEV_EMOJI.get(a['severity'], '')} "
-                     f"{a['severity'].upper()} | {cvss_band(a['severity'])} | "
+                     f"{a['severity'].upper()} | {cvss_score(a['kind'], a['severity'])} | "
                      f"{a['keyakinan']} | {len(a['instances'])} |")
         L.append("")
     else:
@@ -341,8 +381,8 @@ def write_md(path, findings, counts, when, cves):
         kb = a["kb"]
         L += [
             f"### {finding_id(i)} — {SEV_EMOJI.get(a['severity'], '')} {a['nama']}", "",
-            f"- **Severity:** {a['severity'].upper()} &nbsp; **CVSS (indikatif):** "
-            f"{cvss_band(a['severity'])} &nbsp; **Keyakinan:** {a['keyakinan']} &nbsp; "
+            f"- **Severity:** {a['severity'].upper()} &nbsp; **CVSS v3.1 (indikatif):** "
+            f"{cvss_full(a['kind'], a['severity'])} &nbsp; **Keyakinan:** {a['keyakinan']} &nbsp; "
             f"**Status:** Terbuka",
             f"- **Sumber/plugin:** {', '.join(a['moduls'])} (`{a['kind']}`)",
             f"- **Deskripsi:** {kb['deskripsi']}",
@@ -394,7 +434,7 @@ def write_md(path, findings, counts, when, cves):
         "**Tooling & acuan.** " + "; ".join(TOOLS) + ". Acuan: OWASP Top 10 2021, OWASP API "
         "Security Top 10 2023, OWASP ASVS, OWASP Risk Rating Methodology.", "",
         "**Catatan CVSS.** Skor CVSS bersifat indikatif (pemetaan kualitatif dari OWASP Risk "
-        "Rating); vektor CVSS final perlu diverifikasi manual per temuan.", "",
+        "Rating + vektor v3.1 representatif per jenis temuan); skor+vektor final tetap perlu diverifikasi manual per konteks target.", "",
         "**Batasan & pertanggungjawaban.** " + BATASAN, "",
         "---", "", f"_{CREDIT}_", "",
     ]
@@ -420,7 +460,7 @@ def write_html(path, findings, counts, when, cves):
     toc_rows = "".join(
         f"<tr><td><a href='#alert-{i}'>{esc(finding_id(i))}</a></td><td>{esc(a['nama'])}</td>"
         f"<td><span class='badge' style='background:{SEV_COLOR[a['severity']]}'>"
-        f"{esc(a['severity'].upper())}</span></td><td>{esc(cvss_band(a['severity']))}</td>"
+        f"{esc(a['severity'].upper())}</span></td><td>{esc(cvss_score(a['kind'], a['severity']))}</td>"
         f"<td>{esc(a['keyakinan'])}</td><td>{len(a['instances'])}</td></tr>"
         for i, a in enumerate(alerts, 1)) or \
         "<tr><td colspan='6'>Tidak ada temuan — semua kontrol yang diuji lolos.</td></tr>"
@@ -452,7 +492,7 @@ def write_html(path, findings, counts, when, cves):
           <h3><span class="badge" style="background:{col}">{esc(a['severity'].upper())}</span>
               {esc(finding_id(i))} — {esc(a['nama'])}</h3>
           <p><b>Severity:</b> {esc(a['severity'].upper())} &nbsp;·&nbsp;
-             <b>CVSS (indikatif):</b> {esc(cvss_band(a['severity']))} &nbsp;·&nbsp;
+             <b>CVSS v3.1 (indikatif):</b> {esc(cvss_full(a['kind'], a['severity']))} &nbsp;·&nbsp;
              <b>Keyakinan:</b> {esc(a['keyakinan'])} &nbsp;·&nbsp;
              <b>Status:</b> Terbuka</p>
           <p><b>Sumber/plugin:</b> {esc(', '.join(a['moduls']))} (<code>{esc(a['kind'])}</code>)
@@ -540,7 +580,7 @@ def write_html(path, findings, counts, when, cves):
 <p><b>Modul/teknik.</b> {esc(', '.join(moduls) if moduls else '-')}</p>
 <p><b>Metodologi.</b> {html.escape(METODOLOGI)}</p></div>
 <h2>3. Ringkasan Risiko</h2>
-<table><thead><tr><th>ID</th><th>Alert</th><th>Risiko</th><th>CVSS (indikatif)</th><th>Keyakinan</th><th>Instance</th></tr></thead>
+<table><thead><tr><th>ID</th><th>Alert</th><th>Risiko</th><th>CVSS v3.1</th><th>Keyakinan</th><th>Instance</th></tr></thead>
 <tbody>{toc_rows}</tbody></table>
 <h2>4. Rincian Temuan</h2>{blocks}
 {lulus_section}
@@ -548,7 +588,7 @@ def write_html(path, findings, counts, when, cves):
 <table><thead><tr><th>CVE</th><th>Paket/Lokasi</th><th>Severity</th></tr></thead><tbody>{cve_rows}</tbody></table>
 <h2>6. Lampiran</h2>
 <div class="note"><p><b>Tooling &amp; acuan.</b> {esc('; '.join(TOOLS))}. Acuan: OWASP Top 10 2021, OWASP API Security Top 10 2023, OWASP ASVS, OWASP Risk Rating Methodology.</p>
-<p><b>Catatan CVSS.</b> Skor CVSS bersifat indikatif (pemetaan kualitatif dari OWASP Risk Rating); vektor CVSS final perlu diverifikasi manual per temuan.</p>
+<p><b>Catatan CVSS.</b> Skor CVSS bersifat indikatif (pemetaan kualitatif dari OWASP Risk Rating + vektor v3.1 representatif per jenis temuan); skor+vektor final tetap perlu diverifikasi manual per konteks target.</p>
 <p><b>Batasan &amp; pertanggungjawaban.</b> {html.escape(BATASAN)}</p></div>
 </main>
 <footer>{credit_html}</footer>
@@ -599,7 +639,7 @@ def write_slides(path, findings, counts, when, cves):
         slides.append(f"""<section class="slide" style="border-top:7px solid {col}">
           <div class="fid">{esc(finding_id(i))} &nbsp;·&nbsp;
             <span class="badge" style="background:{col}">{esc(a['severity'].upper())}</span>
-            &nbsp;·&nbsp; CVSS {esc(cvss_band(a['severity']))} &nbsp;·&nbsp;
+            &nbsp;·&nbsp; CVSS {esc(cvss_score(a['kind'], a['severity']))} &nbsp;·&nbsp;
             {len(a['instances'])} instance</div>
           <h2>{esc(a['nama'])}</h2>
           <p><b>Dampak.</b> {esc(kb['dampak'])}</p>
