@@ -1,0 +1,34 @@
+# Salin ke mass_assignment.yml. Kredensial dari env var.
+#
+# DESTRUKTIF tapi REVERSIBEL: tiap penulisan dicatat ke jurnal rollback dan
+# dipulihkan OTOMATIS sebagai fase terakhir setelah laporan dibuat. Untuk memulihkan
+# ulang secara manual: `python audit.py rollback`.
+#
+# Pakai akun peran RENDAH dan objek MILIKNYA sendiri yang memang boleh ia ubah.
+#   export MA_USER=... MA_PASS=...
+base_url: "${TARGET_BASE_URL}"
+auth:
+  # Laravel Sanctum (SPA, session cookie). Untuk token statis, pakai:
+  #   header: "Authorization"
+  #   value: "${MA_TOKEN}"   # mis. "Bearer xxx"
+  sanctum:
+    enabled: true
+    csrf_path: "/sanctum/csrf-cookie"
+    origin: "${TARGET_BASE_URL}"   # wajib cocok SANCTUM_STATEFUL_DOMAINS
+  login:
+    method: POST
+    path: "/api/login"
+    body: { email: "${MA_USER}", password: "${MA_PASS}" }
+
+targets:
+  - name: "Eskalasi role via update profil sendiri"
+    get:    { path: "/api/me" }          # dibaca untuk snapshot nilai asli
+    data_path: "data"                     # lokasi objek di respons JSON (opsional)
+    update: { method: PATCH, path: "/api/me" }
+    inject: { role: "admin", is_admin: true }   # field terlarang yang dicoba
+    fields: ["role", "is_admin"]          # field yang disnapshot & dipulihkan
+  # - name: "Pindah tenant via update objek milik sendiri"
+  #   get:    { path: "/api/reports/<id-milik-sendiri>" }
+  #   update: { method: PUT, path: "/api/reports/<id-milik-sendiri>" }
+  #   inject: { company_id: "<company-lain>" }
+  #   fields: ["company_id"]

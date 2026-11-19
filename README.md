@@ -18,6 +18,7 @@ solusinya, dan rujukan ke OWASP/BSSN.
 | `clientleak` | Cache response sensitif, secret/endpoint yang nyangkut di bundle JS & HTML, source map, file kebuka (`.env`, `.git/`, dump, backup) — tetap jalan walau app-nya nggak pakai JS |
 | `upload` | Nolak file upload berbahaya: PDF ber-JS, polyglot, double extension, kegedean |
 | `auth-policy` | Kekuatan password, captcha harus regenerate tiap gagal |
+| `mass-assignment` | Mass assignment / privilege escalation (BOPLA): nyuntik field terlarang (`role`, `is_admin`, `company_id`) ke objek milik sendiri. **Destruktif tapi reversibel** — tiap tulisan dicatat ke jurnal & dipulihkan otomatis setelah laporan (`audit.py rollback` buat replay) |
 | `cors` | CORS misconfiguration: reflected origin, wildcard+credentials, Origin `null` diterima |
 | `open-redirect` | Parameter pengalih (`next`/`url`/`redirect`/…) yang mengarah ke host luar |
 | `tls` / `headers` | Protokol/cipher TLS usang, security header yang kurang atau malah bocorin info |

@@ -60,6 +60,7 @@ def collect(d: Path):
     # --- runner kit ---
     for name, modul in (("authz.json", "authz-matrix"),
                         ("upload.json", "upload-safety"),
+                        ("mass_assignment.json", "mass-assignment"),
                         ("auth_policy.json", "auth-policy"),
                         ("client_leak.json", "client-leak"),
                         ("cors.json", "cors"),
@@ -151,7 +152,10 @@ BATASAN = (
     "Laporan ini hasil automation, bukan pengganti pentest manual. Temuan scanner "
     "(misalnya ZAP) bisa false positive dan wajib diverifikasi sebelum severity final "
     "dikunci. Celah logika bisnis cuma ketangkep kalau test-nya ditulis khusus. "
-    "Cakupannya sebatas target & endpoint yang di-config pas dijalanin."
+    "Cakupannya sebatas target & endpoint yang di-config pas dijalanin. "
+    "Uji destruktif (mis. mass-assignment) menulis ke target lalu DIPULIHKAN otomatis "
+    "ke keadaan semula sebagai fase terakhir setelah laporan ini dibuat; log pemulihan "
+    "ada di reports/rollback.json, dan `python audit.py rollback` memulihkan ulang bila perlu."
 )
 
 # Kredit pembuat kit — selalu ikut di SETIAP laporan, apa pun yang memakainya.
@@ -170,6 +174,7 @@ KIND_LABEL = {
     "client-cache": "Respons sensitif dapat di-cache",
     "js-leak": "Kebocoran rahasia/endpoint di aset klien",
     "upload-accepted": "Upload berkas berbahaya diterima",
+    "mass-assignment": "Mass assignment / eskalasi properti objek (BOPLA)",
     "weak-password": "Kebijakan sandi lemah",
     "captcha-static": "Captcha tidak regenerasi",
     "missing-header": "Header keamanan tidak diset",
