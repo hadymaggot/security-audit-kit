@@ -175,9 +175,11 @@ def main():
                 ok, note = classify(expected, status)
             if not ok:
                 failures += 1
+            full = (ep.get("base_url") or base_url).rstrip("/") + ep["path"]
             results.append({
                 "endpoint": ep["name"], "role": role, "expected": expected,
                 "status": status, "ok": ok, "note": note,
+                "url": f"{ep.get('method', 'GET')} {full}",
             })
 
     # Uji header palsu. Satu blok atau daftar blok — mis. lewat gateway sebagai role
@@ -196,11 +198,14 @@ def main():
             ok = status in (401, 403)
             if not ok:
                 failures += 1
+            full = (base or base_url).rstrip("/") + ep["path"]
             target = f"{base.rstrip('/')}{ep['path']}" if base else ep["path"]
+            inj = ",".join(sorted(fh.get("inject", {}))) or "-"
             results.append({
                 "endpoint": f"[forged] {target}", "role": fh["as_role"],
                 "expected": "deny", "status": status, "ok": ok,
                 "note": "" if ok else "HEADER PALSU TEMBUS — X-Auth-* klien dipercaya",
+                "url": f"{ep.get('method', 'GET')} {full}  (inject: {inj})",
             })
 
     # Laporan.

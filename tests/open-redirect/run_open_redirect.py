@@ -78,13 +78,14 @@ def main():
                     r = s.get(url, timeout=20, allow_redirects=False)
                 except Exception as exc:  # noqa: BLE001
                     results.append({"label": f"redirect {p}?{param}", "status": -1,
-                                    "ok": True, "note": f"skip: {exc}"})
+                                    "ok": True, "note": f"skip: {exc}", "url": f"GET {url}"})
                     continue
                 loc = r.headers.get("Location", "")
                 if 300 <= r.status_code < 400 and is_external(loc, evil_host):
                     results.append({"label": f"open redirect {p}?{param}",
                                     "status": r.status_code, "ok": False,
-                                    "note": f"Location -> {loc} (host luar)"})
+                                    "note": f"Location -> {loc} (host luar)",
+                                    "url": f"GET {url}"})
                 # Kalau tak redirect ke host luar: aman, tak dicatat sebagai temuan.
 
     failures = sum(1 for r in results if not r["ok"])

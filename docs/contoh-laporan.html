@@ -1,0 +1,149 @@
+<!doctype html><html lang="id"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Laporan Uji Keamanan</title>
+<style>
+ body{font-family:system-ui,Segoe UI,sans-serif;margin:0;background:#f6f7f9;color:#1b1f24;line-height:1.5}
+ header{background:#14233b;color:#fff;padding:24px 20px} h1{margin:0;font-size:20px}
+ .sub{opacity:.85;font-size:13px;margin-top:4px} .sub a{color:#9ec5ff}
+ main{max-width:1000px;margin:0 auto;padding:20px}
+ h2{border-bottom:2px solid #e3e7ec;padding-bottom:6px;margin-top:32px}
+ .note{background:#fff;border-left:4px solid #14233b;padding:12px 14px;border-radius:6px;font-size:14px}
+ .cards{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}
+ .card{flex:1;min-width:110px;background:#fff;border-left:5px solid;border-radius:8px;padding:12px 14px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+ .card .n{font-size:26px;font-weight:700} .card .l{font-size:11px;letter-spacing:.05em;color:#555}
+ .card.zero{opacity:.45}
+ .finding{background:#fff;border-radius:8px;padding:14px 16px;margin:14px 0;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+ .finding h3{margin:0 0 8px;font-size:16px} .finding p{margin:6px 0;font-size:14px}
+ .badge{color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;margin-right:8px;vertical-align:middle}
+ pre{background:#0f1b2d;color:#e6edf3;padding:10px 12px;border-radius:6px;overflow:auto;font-size:13px}
+ code{background:#eef1f5;padding:1px 5px;border-radius:4px;font-size:12px;word-break:break-all}
+ .ref{color:#555;font-size:12px} table{width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.06);margin:8px 0}
+ th,td{text-align:left;padding:10px 12px;border-bottom:1px solid #eceff3;font-size:14px;vertical-align:top} th{background:#eef1f5;font-size:12px;text-transform:uppercase}
+ table.inst td{font-size:13px} table.inst code{background:#f3f5f8}
+ footer{max-width:1000px;margin:0 auto;padding:16px 20px 40px;color:#555;font-size:12px;border-top:1px solid #e3e7ec}
+ footer a{color:#14233b}
+</style>
+<header><h1>Laporan Hasil Uji Keamanan (Otomatis)</h1>
+<div class="sub">Dibuat 2026-11-19 07:52 · Security Audit Kit — dibuat oleh <b>hadymaggot</b> · <a href='https://github.com/hadymaggot/security-audit-kit' target='_blank' rel='noopener'>https://github.com/hadymaggot/security-audit-kit</a></div></header>
+<main>
+<div class="note" style="border-left-color:#c67b00;margin-bottom:12px"><b>Catatan:</b> ini <b>contoh output</b> dari data fiktif (host <code>demo.example.test</code>, endpoint, temuan, dan CVE dibuat untuk ilustrasi), bukan hasil audit sistem nyata. Dibuat dengan <code>python audit.py report</code>.</div>
+<h2>1. Metodologi</h2><div class="note">Testing dijalankan otomatis dan non-destruktif ke target yang berwenang diuji. Acuannya OWASP Top 10 2021, OWASP ASVS, dan OWASP Risk Rating Methodology (severity = Likelihood x Impact). Tooling-nya OWASP ZAP, Trivy, dan testssl.sh, ditambah rangkaian regression test buat access control, upload, dan password policy.</div>
+<h2>2. Ringkasan Risiko</h2><div class="cards"><div class='card' style='border-color:#7c1313'><div class='n' style='color:#7c1313'>3</div><div class='l'>CRITICAL</div></div><div class='card' style='border-color:#b4232a'><div class='n' style='color:#b4232a'>4</div><div class='l'>HIGH</div></div><div class='card zero' style='border-color:#c67b00'><div class='n' style='color:#c67b00'>0</div><div class='l'>MEDIUM</div></div><div class='card' style='border-color:#2d7d46'><div class='n' style='color:#2d7d46'>3</div><div class='l'>LOW</div></div><div class='card zero' style='border-color:#555'><div class='n' style='color:#555'>0</div><div class='l'>INFO</div></div><div class='card' style='border-color:#2d7d46'><div class='n' style='color:#2d7d46'>12</div><div class='l'>LULUS</div></div></div>
+<p>Total alert: <b>6</b> · Total CVE terdeteksi: <b>2</b>.</p>
+<table><thead><tr><th>#</th><th>Alert</th><th>Risiko</th><th>Keyakinan</th><th>Instance</th></tr></thead>
+<tbody><tr><td>1</td><td><a href='#alert-1'>Header identitas (X-Auth-*) dipercaya dari klien</a></td><td><span class='badge' style='background:#7c1313'>CRITICAL</span></td><td>Tinggi</td><td>2</td></tr><tr><td>2</td><td><a href='#alert-2'>Dependensi dengan kerentanan (CVE)</a></td><td><span class='badge' style='background:#7c1313'>CRITICAL</span></td><td>Tinggi</td><td>2</td></tr><tr><td>3</td><td><a href='#alert-3'>IDOR — akses objek milik entitas lain</a></td><td><span class='badge' style='background:#b4232a'>HIGH</span></td><td>Tinggi</td><td>2</td></tr><tr><td>4</td><td><a href='#alert-4'>Upload berkas berbahaya diterima</a></td><td><span class='badge' style='background:#b4232a'>HIGH</span></td><td>Tinggi</td><td>1</td></tr><tr><td>5</td><td><a href='#alert-5'>Header keamanan tidak diset</a></td><td><span class='badge' style='background:#2d7d46'>LOW</span></td><td>Tinggi</td><td>2</td></tr><tr><td>6</td><td><a href='#alert-6'>Captcha tidak regenerasi</a></td><td><span class='badge' style='background:#2d7d46'>LOW</span></td><td>Tinggi</td><td>1</td></tr></tbody></table>
+<h2>3. Rincian Temuan & Rekomendasi</h2>
+        <div class="finding" id="alert-1" style="border-left:5px solid #7c1313">
+          <h3><span class="badge" style="background:#7c1313">CRITICAL</span>
+              1. Header identitas (X-Auth-*) dipercaya dari klien</h3>
+          <p><b>Risiko:</b> CRITICAL &nbsp;·&nbsp;
+             <b>Keyakinan:</b> Tinggi &nbsp;·&nbsp;
+             <b>Sumber/plugin:</b> authz-matrix (<code>forged-header</code>)
+             &nbsp;·&nbsp; <b>CVE/CWE:</b> -</p>
+          <p><b>Deskripsi.</b> Klien dapat menyuntik header otorisasi internal (mis. X-Auth-Roles) dan gateway/reverse proxy tidak menimpanya, sehingga hak akses naik.</p>
+          <p><b>Instance diuji (2):</b></p>
+          <table class="inst"><thead><tr><th>#</th><th>Endpoint diuji (bukti)</th>
+            <th>Konteks</th><th>HTTP</th><th>Catatan</th></tr></thead>
+            <tbody><tr><td>1</td><td><code>GET http://demo.example.test:18002/api/users  (inject: X-Auth-Roles,X-Auth-User-Id)</code></td><td>[forged] admin via port langsung</td><td>200</td><td>Role &#x27;anon&#x27;, respons HTTP 200. X-Auth-Roles: admin palsu diterima; daftar user kebuka</td></tr><tr><td>2</td><td><code>GET http://demo.example.test:18004/api/roles  (inject: X-Auth-Roles)</code></td><td>[forged] role management via port langsung</td><td>200</td><td>Role &#x27;anon&#x27;, respons HTTP 200. service hilir percaya header mentah tanpa verifikasi</td></tr></tbody></table>
+          <p><b>Dampak.</b> Bypass otorisasi total hanya dengan menambahkan header pada request.</p>
+          <p><b>Justifikasi severity.</b> Likelihood tinggi (cukup edit header) x Impact tinggi (menyamar sebagai admin).</p>
+          <p><b>Solusi & contoh.</b></p><ul><li>Konfigurasikan reverse proxy untuk SELALU menghapus lalu menyetel ulang header X-Auth-* dari sumber tepercaya; jangan teruskan nilai dari klien.</li><li>Contoh (Traefik forwardAuth): pakai authResponseHeaders agar hanya nilai dari service auth yang diteruskan ke backend.</li><li>Backend juga harus memverifikasi token/sesi, tidak mempercayai header mentah.</li></ul>
+          <p class="ref"><b>Referensi:</b> OWASP A01:2021 Broken Access Control; BSSN Perban No.4/2021 Pasal 26 huruf b (manajemen sesi)</p>
+        </div>
+        <div class="finding" id="alert-2" style="border-left:5px solid #7c1313">
+          <h3><span class="badge" style="background:#7c1313">CRITICAL</span>
+              2. Dependensi dengan kerentanan (CVE)</h3>
+          <p><b>Risiko:</b> CRITICAL &nbsp;·&nbsp;
+             <b>Keyakinan:</b> Tinggi &nbsp;·&nbsp;
+             <b>Sumber/plugin:</b> trivy-cve (<code>vuln-dependency</code>)
+             &nbsp;·&nbsp; <b>CVE/CWE:</b> CVE-2024-4068, CVE-2023-3824</p>
+          <p><b>Deskripsi.</b> Komponen/dependensi versi usang dengan kerentanan yang telah terdaftar (CVE).</p>
+          <p><b>Instance diuji (2):</b></p>
+          <table class="inst"><thead><tr><th>#</th><th>Endpoint diuji (bukti)</th>
+            <th>Konteks</th><th>HTTP</th><th>Catatan</th></tr></thead>
+            <tbody><tr><td>1</td><td><code>-</code></td><td>CVE-2024-4068 — braces</td><td>-</td><td>Paket braces 3.0.2 di package-lock.json. Perbaikan: 3.0.3. braces ReDoS via regex</td></tr><tr><td>2</td><td><code>-</code></td><td>CVE-2023-3824 — php</td><td>-</td><td>Paket php 8.1.2 di composer.lock. Perbaikan: 8.1.22. php buffer overflow</td></tr></tbody></table>
+          <p><b>Dampak.</b> Bergantung CVE: dari kebocoran info hingga eksekusi kode jarak jauh (RCE) lewat pustaka yang rentan.</p>
+          <p><b>Justifikasi severity.</b> Mengikuti skor CVSS pada CVE terkait; eksploit publik menaikkan likelihood.</p>
+          <p><b>Solusi & contoh.</b></p><ul><li>Perbarui paket ke versi perbaikan (fixed version) yang tertera pada temuan.</li><li>Bila belum ada perbaikan, terapkan mitigasi/pin versi aman &amp; pantau rilis.</li><li>Otomatiskan: Dependabot/Renovate + gerbang CI (trivy/osv-scanner) agar CVE baru cepat terdeteksi.</li></ul>
+          <p class="ref"><b>Referensi:</b> OWASP A06:2021 Vulnerable and Outdated Components; NVD / CVE; BSSN Perban No.4/2021 (komponen usang)</p>
+        </div>
+        <div class="finding" id="alert-3" style="border-left:5px solid #b4232a">
+          <h3><span class="badge" style="background:#b4232a">HIGH</span>
+              3. IDOR — akses objek milik entitas lain</h3>
+          <p><b>Risiko:</b> HIGH &nbsp;·&nbsp;
+             <b>Keyakinan:</b> Tinggi &nbsp;·&nbsp;
+             <b>Sumber/plugin:</b> authz-matrix (<code>idor</code>)
+             &nbsp;·&nbsp; <b>CVE/CWE:</b> -</p>
+          <p><b>Deskripsi.</b> Referensi objek langsung (ID pada URL/parameter) tidak diverifikasi kepemilikannya, sehingga data milik akun lain bisa diakses.</p>
+          <p><b>Instance diuji (2):</b></p>
+          <table class="inst"><thead><tr><th>#</th><th>Endpoint diuji (bukti)</th>
+            <th>Konteks</th><th>HTTP</th><th>Catatan</th></tr></thead>
+            <tbody><tr><td>1</td><td><code>GET http://demo.example.test/api/reports/1042</code></td><td>IDOR laporan milik unit lain</td><td>200</td><td>Role &#x27;operator&#x27;, respons HTTP 200. operator unit A membaca laporan unit B</td></tr><tr><td>2</td><td><code>GET http://demo.example.test/api/analytics/dashboard/company/88?year=2024</code></td><td>IDOR dashboard perusahaan lain</td><td>200</td><td>Role &#x27;operator&#x27;, respons HTTP 200. tak ada cek kepemilikan company</td></tr></tbody></table>
+          <p><b>Dampak.</b> Kebocoran/putaran data antar pengguna atau antar perusahaan.</p>
+          <p><b>Justifikasi severity.</b> Likelihood sedang–tinggi (ID mudah ditebak) x Impact tinggi (data pribadi/perusahaan lain terungkap).</p>
+          <p><b>Solusi & contoh.</b></p><ul><li>Verifikasi di server bahwa objek yang diminta memang milik pengguna/scope yang sedang login sebelum mengembalikannya.</li><pre>    // contoh: batasi query dengan pemilik, jangan hanya by-id
+    SELECT * FROM doc WHERE id = :id AND company_id = :currentCompany;</pre><li>Pertimbangkan ID tak-terprediksi (UUID/ULID) sebagai lapis tambahan, bukan pengganti cek otorisasi.</li></ul>
+          <p class="ref"><b>Referensi:</b> OWASP A01:2021 Broken Access Control; BSSN Perban No.4/2021 Pasal 26 huruf g (proteksi data)</p>
+        </div>
+        <div class="finding" id="alert-4" style="border-left:5px solid #b4232a">
+          <h3><span class="badge" style="background:#b4232a">HIGH</span>
+              4. Upload berkas berbahaya diterima</h3>
+          <p><b>Risiko:</b> HIGH &nbsp;·&nbsp;
+             <b>Keyakinan:</b> Tinggi &nbsp;·&nbsp;
+             <b>Sumber/plugin:</b> upload-safety (<code>upload-accepted</code>)
+             &nbsp;·&nbsp; <b>CVE/CWE:</b> -</p>
+          <p><b>Deskripsi.</b> Berkas berbahaya (mis. PDF ber-JavaScript, polyglot, ekstensi ganda, melebihi batas) diterima server karena validasi lemah.</p>
+          <p><b>Instance diuji (1):</b></p>
+          <table class="inst"><thead><tr><th>#</th><th>Endpoint diuji (bukti)</th>
+            <th>Konteks</th><th>HTTP</th><th>Catatan</th></tr></thead>
+            <tbody><tr><td>1</td><td><code>POST http://demo.example.test/api/reports/77/attachments  (file=&#x27;a.pdf&#x27;, type=application/pdf)</code></td><td>PDF berisi JavaScript</td><td>201</td><td>respons HTTP 201. DITERIMA padahal harus ditolak; tak ada pemindaian isi berkas</td></tr></tbody></table>
+          <p><b>Dampak.</b> Stored XSS saat file dibuka pengguna lain, penyimpanan konten berbahaya, potensi pencurian sesi.</p>
+          <p><b>Justifikasi severity.</b> Likelihood sedang (perlu menyusun file) x Impact tinggi (eksekusi skrip pada konteks korban).</p>
+          <p><b>Solusi & contoh.</b></p><ul><li>Validasi tipe file berdasarkan ISI (magic bytes), bukan hanya ekstensi/Content-Type dari klien.</li><li>Terapkan allowlist ekstensi &amp; batas ukuran di server; tolak ekstensi ganda.</li><li>Bersihkan/normalkan nama file (hindari path traversal), simpan dengan nama acak dan sajikan lewat Content-Disposition: attachment.</li><li>Untuk PDF: tolak/strip objek /JavaScript &amp; /OpenAction. Terapkan CSP ketat pada halaman yang menampilkan konten upload.</li></ul>
+          <p class="ref"><b>Referensi:</b> OWASP A03:2021 Injection; OWASP File Upload Cheat Sheet; BSSN Perban No.4/2021 Pasal 26 huruf d (validasi input)</p>
+        </div>
+        <div class="finding" id="alert-5" style="border-left:5px solid #2d7d46">
+          <h3><span class="badge" style="background:#2d7d46">LOW</span>
+              5. Header keamanan tidak diset</h3>
+          <p><b>Risiko:</b> LOW &nbsp;·&nbsp;
+             <b>Keyakinan:</b> Tinggi &nbsp;·&nbsp;
+             <b>Sumber/plugin:</b> headers (<code>missing-header</code>)
+             &nbsp;·&nbsp; <b>CVE/CWE:</b> -</p>
+          <p><b>Deskripsi.</b> Security header respons tidak dikonfigurasi (atau header pembocor info seperti Server/X-Powered-By masih tampil).</p>
+          <p><b>Instance diuji (2):</b></p>
+          <table class="inst"><thead><tr><th>#</th><th>Endpoint diuji (bukti)</th>
+            <th>Konteks</th><th>HTTP</th><th>Catatan</th></tr></thead>
+            <tbody><tr><td>1</td><td><code>GET http://demo.example.test/</code></td><td>Content-Security-Policy</td><td>200</td><td>respons HTTP 200. header tidak ada</td></tr><tr><td>2</td><td><code>GET http://demo.example.test/</code></td><td>Strict-Transport-Security</td><td>200</td><td>respons HTTP 200. HSTS tidak diset</td></tr></tbody></table>
+          <p><b>Dampak.</b> Memudahkan clickjacking, MIME sniffing, XSS, dan fingerprinting server.</p>
+          <p><b>Justifikasi severity.</b> Likelihood rendah–sedang x Impact rendah (umumnya enabler, bukan celah tunggal).</p>
+          <p><b>Solusi & contoh.</b></p><ul><li>Set header di reverse proxy/framework:</li><pre>    Strict-Transport-Security: max-age=31536000; includeSubDomains
+    Content-Security-Policy: default-src &#x27;self&#x27;
+    X-Content-Type-Options: nosniff
+    X-Frame-Options: DENY
+    Referrer-Policy: strict-origin-when-cross-origin</pre><li>Kosongkan/hapus header Server dan X-Powered-By.</li></ul>
+          <p class="ref"><b>Referensi:</b> OWASP A05:2021 Security Misconfiguration; OWASP Secure Headers Project</p>
+        </div>
+        <div class="finding" id="alert-6" style="border-left:5px solid #2d7d46">
+          <h3><span class="badge" style="background:#2d7d46">LOW</span>
+              6. Captcha tidak regenerasi</h3>
+          <p><b>Risiko:</b> LOW &nbsp;·&nbsp;
+             <b>Keyakinan:</b> Tinggi &nbsp;·&nbsp;
+             <b>Sumber/plugin:</b> auth-policy (<code>captcha-static</code>)
+             &nbsp;·&nbsp; <b>CVE/CWE:</b> -</p>
+          <p><b>Deskripsi.</b> Nilai captcha tidak diperbarui setelah percobaan gagal / dapat dipakai ulang.</p>
+          <p><b>Instance diuji (1):</b></p>
+          <table class="inst"><thead><tr><th>#</th><th>Endpoint diuji (bukti)</th>
+            <th>Konteks</th><th>HTTP</th><th>Catatan</th></tr></thead>
+            <tbody><tr><td>1</td><td><code>GET http://demo.example.test/api/captcha</code></td><td>captcha-regenerasi</td><td>-</td><td>token captcha berulang</td></tr></tbody></table>
+          <p><b>Dampak.</b> Captcha tak efektif menahan otomasi/brute-force.</p>
+          <p><b>Justifikasi severity.</b> Likelihood sedang x Impact rendah (lapis tambahan, bukan satu-satunya).</p>
+          <p><b>Solusi & contoh.</b></p><ul><li>Regenerasi token &amp; tantangan captcha setiap percobaan gagal; sekali pakai dengan masa berlaku singkat.</li><li>Padukan dengan rate-limit dan lockout per-akun.</li></ul>
+          <p class="ref"><b>Referensi:</b> OWASP A07:2021 Identification &amp; Authentication Failures</p>
+        </div>
+<h2>Kontrol yang Lolos (LULUS: 12)</h2><p>Pemeriksaan yang diuji dan berperilaku benar — bukan temuan; bukti cakupan uji.</p><table><thead><tr><th>Pemeriksaan</th><th>Modul</th><th>Endpoint diuji</th><th>HTTP</th></tr></thead><tbody><tr><td>Daftar pengguna (admin only)</td><td>authz-matrix</td><td><code>GET http://demo.example.test/api/users</code></td><td>200</td></tr><tr><td>Daftar pengguna (admin only)</td><td>authz-matrix</td><td><code>GET http://demo.example.test/api/users</code></td><td>403</td></tr><tr><td>Kelola role (admin only)</td><td>authz-matrix</td><td><code>GET http://demo.example.test/api/roles</code></td><td>403</td></tr><tr><td>[forged] admin via gateway</td><td>authz-matrix</td><td><code>GET http://demo.example.test/api/users  (inject: X-Auth-Roles)</code></td><td>403</td></tr><tr><td>Polyglot GIF+PHP</td><td>upload-safety</td><td><code>POST http://demo.example.test/api/reports/77/attachments  (file=&#x27;a.pdf&#x27;, type=application/pdf)</code></td><td>422</td></tr><tr><td>Ekstensi ganda berakhir .php</td><td>upload-safety</td><td><code>POST http://demo.example.test/api/reports/77/attachments  (file=&#x27;a.pdf.php&#x27;, type=application/pdf)</code></td><td>422</td></tr><tr><td>Melebihi batas ukuran</td><td>upload-safety</td><td><code>POST http://demo.example.test/api/reports/77/attachments  (file=&#x27;big.pdf&#x27;, type=application/pdf)</code></td><td>422</td></tr><tr><td>PDF sah (kontrol)</td><td>upload-safety</td><td><code>POST http://demo.example.test/api/reports/77/attachments  (file=&#x27;ok.pdf&#x27;, type=application/pdf)</code></td><td>201</td></tr><tr><td>ganti sandi sandi lemah 12345678</td><td>auth-policy</td><td><code>POST http://demo.example.test/api/auth/change-password</code></td><td>422</td></tr><tr><td>ganti sandi sandi lemah password</td><td>auth-policy</td><td><code>POST http://demo.example.test/api/auth/change-password</code></td><td>422</td></tr><tr><td>ganti sandi kontrol sandi kuat</td><td>auth-policy</td><td><code>POST http://demo.example.test/api/auth/change-password</code></td><td>422</td></tr><tr><td>X-Content-Type-Options</td><td>headers</td><td><code>GET http://demo.example.test/</code></td><td>200</td></tr></tbody></table>
+<h2>4. Daftar CVE</h2>
+<table><thead><tr><th>CVE</th><th>Paket/Lokasi</th><th>Severity</th></tr></thead><tbody><tr><td><a href='https://nvd.nist.gov/vuln/detail/CVE-2024-4068' target='_blank' rel='noopener'>CVE-2024-4068</a></td><td>CVE-2024-4068 — braces</td><td><span class='badge' style='background:#b4232a'>HIGH</span></td></tr><tr><td><a href='https://nvd.nist.gov/vuln/detail/CVE-2023-3824' target='_blank' rel='noopener'>CVE-2023-3824</a></td><td>CVE-2023-3824 — php</td><td><span class='badge' style='background:#7c1313'>CRITICAL</span></td></tr></tbody></table>
+<h2>5. Batasan & Pertanggungjawaban</h2><div class="note">Laporan ini hasil automation, bukan pengganti pentest manual. Temuan scanner (misalnya ZAP) bisa false positive dan wajib diverifikasi sebelum severity final dikunci. Celah logika bisnis cuma ketangkep kalau test-nya ditulis khusus. Cakupannya sebatas target &amp; endpoint yang di-config pas dijalanin.</div>
+</main>
+<footer>Security Audit Kit — dibuat oleh <b>hadymaggot</b> · <a href='https://github.com/hadymaggot/security-audit-kit' target='_blank' rel='noopener'>https://github.com/hadymaggot/security-audit-kit</a></footer>
+</html>
