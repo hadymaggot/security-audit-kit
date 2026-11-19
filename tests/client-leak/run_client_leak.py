@@ -133,6 +133,28 @@ def _capture_shot(page, bc, reports_dir, p):
                                     full_page=bc.get("full_page"))
 
 
+def sanctum_cookies(cfg, base, origin, http=requests.Session):
+    """Login Laravel Sanctum (cookie sesi) lewat requests -> daftar cookie untuk konteks Chromium.
+
+    Config: auth.sanctum {enabled, csrf_path, origin} + auth.login {method, path, body}.
+    Mengembalikan [] bila Sanctum tak dikonfigurasi. Raise RuntimeError bila login gagal."""
+    a = cfg.get("auth") or {}
+    san = a.get("sanctum") if (a.get("sanctum") or {}).get("enabled") else None
+    if not san:
+        return []
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    import _sanctum
+    s = http()
+    _sanctum.prime_csrf(s, base, san)
+    lg = a.get("login")
+    if lg:
+        r = s.request(lg.get("method", "POST"), base + lg["path"], json=lg.get("body") or {},
+                      headers=_sanctum.auth_headers(s, san.get("origin")), timeout=20)
+        if r.status_code >= 400:
+            raise RuntimeError(f"login Sanctum untuk browser gagal: HTTP {r.status_code}")
+    return [{"name": c.name, "value": c.value, "url": origin} for c in s.cookies]
+
+
 def check_browser_cache(cfg, base, paths, reports_dir=None):
     """Konfirmasi via browser sungguhan (Playwright/Chromium) bahwa respons sensitif
     benar-benar tersimpan di cache browser — cek header saja belum membuktikannya.
@@ -157,6 +179,10 @@ def check_browser_cache(cfg, base, paths, reports_dir=None):
     origin = "{0.scheme}://{0.netloc}".format(urlparse(start))
     out = []
     try:
+        cookies = sanctum_cookies(cfg, base, origin)       # sesi login (opsional) untuk browser
+    except Exception as exc:  # noqa: BLE001
+        return skip(str(exc)[:200])
+    try:
         with sync_playwright() as pw:
             browser = pw.chromium.launch()
             try:
@@ -164,6 +190,8 @@ def check_browser_cache(cfg, base, paths, reports_dir=None):
                 ctx = browser.new_context(
                     extra_http_headers=headers or None,
                     ignore_https_errors=os.environ.get("SAK_INSECURE_TLS") == "1")
+                if cookies:
+                    ctx.add_cookies(cookies)
                 page = ctx.new_page()
                 page.goto(start, timeout=30000)
                 landed = "{0.scheme}://{0.netloc}".format(urlparse(page.url))

@@ -19,6 +19,11 @@ header_probe_path: "/"
 
 # Direktori repo kode (untuk scanner statis: trivy, semgrep, gitleaks).
 code_path: "."
+# Jalankan satu tool per jalan (hemat memori): `python audit.py deps gitleaks|semgrep|trivy`.
+# Semgrep di repo besar/bind mount Windows bisa sangat lambat — persempit ke direktori sumber:
+# semgrep_paths: ["services/iam/app", "frontend-vue/src"]   # default: seluruh repo
+# semgrep_exclude: ["legacy"]                               # tambahan di atas vendor/node_modules/dist/docs
+# semgrep_timeout_minutes: 20                               # batas dinding; container dihentikan bila lewat
 
 # Jaringan Docker untuk scanner berbasis container (ZAP, testssl) — OPSIONAL.
 # Perlu bila target hanya terjangkau dari jaringan tertentu, terutama target `localhost`:

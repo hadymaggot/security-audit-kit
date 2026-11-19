@@ -158,6 +158,34 @@ def collect(d: Path):
                                      None, ev, lulus=False, override_sev=sev,
                                      cve=[v.get("VulnerabilityID")]))
 
+    # --- gitleaks (secret di kode/riwayat git; nilai sudah di-redact oleh gitleaks) ---
+    data = load(d / "gitleaks.json")
+    if isinstance(data, list):
+        for g in data:
+            where = f"{g.get('File', '?')}:{g.get('StartLine', '?')}"
+            ev = (f"Aturan {g.get('RuleID', '?')} cocok di {where}"
+                  + (f" (commit {str(g.get('Commit'))[:8]})" if g.get("Commit") else "") + ". "
+                  + plain_text(g.get("Description", ""), 160) + " Nilai secret tidak dicantumkan.")
+            findings.append(norm("gitleaks", f"{g.get('RuleID', 'secret')} — {where}", None, ev,
+                                 lulus=False, override_sev="high", kind_hint="leaked-secret",
+                                 url=where))
+
+    # --- semgrep (SAST) ---
+    data = load(d / "semgrep.json")
+    if isinstance(data, dict):
+        sev_map = {"ERROR": "high", "WARNING": "medium", "INFO": "low"}
+        for r in data.get("results", []) or []:
+            ex = r.get("extra", {}) or {}
+            where = f"{r.get('path', '?')}:{(r.get('start') or {}).get('line', '?')}"
+            short = str(r.get("check_id", "?")).split(".")[-1]
+            cwe = ex.get("metadata", {}).get("cwe", []) if isinstance(ex.get("metadata"), dict) else []
+            cwe = [cwe] if isinstance(cwe, str) else list(cwe or [])
+            cwe = [re.match(r"CWE-\d+", c).group(0) for c in cwe if re.match(r"CWE-\d+", str(c))]
+            findings.append(norm("semgrep", f"{short} — {where}", None,
+                                 plain_text(ex.get("message", ""), 300), lulus=False,
+                                 override_sev=sev_map.get(str(ex.get("severity", "")).upper(), "medium"),
+                                 cve=cwe, kind_hint="sast-finding", url=where))
+
     # --- testssl (sebagian ber-CVE) ---
     data = load(d / "testssl.json")
     if data and isinstance(data, list):
@@ -261,6 +289,7 @@ KIND_LABEL = {
     "exposed-service": "Port/layanan terekspos ke publik",
     "leaked-secret": "Kredensial/secret bocor di source/aset",
     "recon-finding": "Temuan recon aktif (nuclei)",
+    "sast-finding": "Temuan analisis statis kode (SAST/semgrep)",
     "zap-generic": "Temuan pemindai pasif (ZAP)",
 }
 
@@ -318,6 +347,7 @@ KIND_CVSS = {
     "vuln-dependency": (7.5, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"),
     "exposed-service": (7.5, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"),
     "recon-finding": (7.5, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"),
+    "sast-finding": (5.3, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"),
     "cors-misconfig": (6.5, "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:N/A:N"),
     "open-redirect": (6.1, "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N"),
     "tls-weak": (5.9, "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N"),

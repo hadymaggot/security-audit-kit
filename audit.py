@@ -234,36 +234,76 @@ def mod_headers(tgt):
     return 1 if miss else 0
 
 
-def mod_deps(tgt):
+DEPS_TOOLS = ("gitleaks", "semgrep", "trivy")
+
+
+def semgrep_cmd(tgt, repo, out, name):
+    """Perintah docker semgrep. targets.yml (opsional): semgrep_paths (subdirektori sumber yang
+    dipindai; default seluruh repo), semgrep_exclude (pola tambahan)."""
+    excl = ["vendor", "node_modules", "dist", "build", "docs"] + list(tgt.get("semgrep_exclude", []))
+    cmd = ["docker", "run", "--rm", "--name", name, "-v", f"{repo}:/src:ro", "-v", f"{out}:/out",
+           "-w", "/src", "-e", "SEMGREP_SEND_METRICS=off", "semgrep/semgrep:latest",
+           "semgrep", "scan", "--config", "p/owasp-top-ten", "--config", "p/security-audit",
+           "--severity", "ERROR", "--metrics=off", "--json-output", "/out/semgrep.json"]
+    for e in excl:
+        cmd += ["--exclude", e]
+    return cmd + list(tgt.get("semgrep_paths") or ["."])
+
+
+def run_semgrep(tgt, repo, out, runner=None):
+    """Jalankan semgrep dengan batas waktu dinding (semgrep_timeout_minutes, default 25): bila lewat,
+    container dihentikan dan hasil dilaporkan sebagai tidak lengkap (rc 1) — tidak menggantung."""
+    import subprocess
+    name = f"sak-semgrep-{os.getpid()}"
+    cmd = semgrep_cmd(tgt, repo, out, name)
+    minutes = float(tgt.get("semgrep_timeout_minutes", 25))
+    print("+ " + " ".join(cmd))
+    try:
+        return (runner or subprocess.run)(cmd, timeout=minutes * 60).returncode
+    except subprocess.TimeoutExpired:
+        subprocess.call(["docker", "rm", "-f", name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        print(f"semgrep melewati batas {minutes:g} menit dan dihentikan — persempit `semgrep_paths` "
+              "di targets.yml (mis. [\"services/iam/app\", \"frontend-vue/src\"]).", file=sys.stderr)
+        return 1
+
+
+def deps_selection(sub):
+    """Tool yang dijalankan: satu tool bila `sub` salah satunya, selain itu semua (urutan ringan->berat)."""
+    return (sub,) if sub in DEPS_TOOLS else DEPS_TOOLS
+
+
+def mod_deps(tgt, sub="all"):
+    """Scanner kode/dependensi. `python audit.py deps [gitleaks|semgrep|trivy]` — satu tool per
+    jalan (hemat memori); tanpa argumen menjalankan ketiganya berurutan."""
     if not have_docker():
         return 2
     repo = dockervol(Path(tgt.get("code_path", ".")))
-    rc = 0
-    print("== gitleaks ==")
-    rc |= run(["docker", "run", "--rm", "-v", f"{repo}:/repo:ro", "-w", "/repo",
-               "zricethezav/gitleaks:latest", "detect", "--source", "/repo",
-               "--redact", "--no-banner", "--exit-code", "0",
-               "--log-opts=--no-renames"])
-    print("== semgrep ==")
-    rc |= run(["docker", "run", "--rm", "-v", f"{repo}:/src:ro", "-w", "/src",
-               "-e", "SEMGREP_SEND_METRICS=off", "semgrep/semgrep:latest",
-               "semgrep", "scan", "--config", "p/owasp-top-ten",
-               "--config", "p/security-audit", "--severity", "ERROR",
-               "--metrics=off", "--exclude", "vendor", "--exclude", "node_modules"])
-    print("== trivy (CVE dependensi & rahasia) ==")
-    cache = dockervol(Path.home() / ".cache" / "sak-trivy")
-    (Path.home() / ".cache" / "sak-trivy").mkdir(parents=True, exist_ok=True)
     out = dockervol(reports_dir())
-    # Tabel ke konsol untuk dibaca langsung.
-    rc |= run(["docker", "run", "--rm", "-v", f"{repo}:/repo:ro",
-               "-v", f"{cache}:/root/.cache/trivy", "aquasec/trivy:latest",
-               "fs", "/repo", "--scanners", "vuln,secret",
-               "--severity", "HIGH,CRITICAL", "--ignore-unfixed"])
-    # JSON lengkap (semua severity) untuk laporan CVE.
-    run(["docker", "run", "--rm", "-v", f"{repo}:/repo:ro",
-         "-v", f"{cache}:/root/.cache/trivy", "-v", f"{out}:/out",
-         "aquasec/trivy:latest", "fs", "/repo", "--scanners", "vuln",
-         "--format", "json", "--output", "/out/trivy.json"])
+    rc = 0
+    sel = deps_selection(sub)
+    if "gitleaks" in sel:
+        print("== gitleaks ==")
+        rc |= run(["docker", "run", "--rm", "-v", f"{repo}:/repo:ro", "-v", f"{out}:/out",
+                   "-w", "/repo", "zricethezav/gitleaks:latest", "detect", "--source", "/repo",
+                   "--redact", "--no-banner", "--exit-code", "0", "--log-opts=--no-renames",
+                   "--report-format", "json", "--report-path", "/out/gitleaks.json"])
+    if "semgrep" in sel:
+        print("== semgrep ==")
+        rc |= run_semgrep(tgt, repo, out)
+    if "trivy" in sel:
+        print("== trivy (CVE dependensi & rahasia) ==")
+        cache = dockervol(Path.home() / ".cache" / "sak-trivy")
+        (Path.home() / ".cache" / "sak-trivy").mkdir(parents=True, exist_ok=True)
+        # Tabel ke konsol untuk dibaca langsung.
+        rc |= run(["docker", "run", "--rm", "-v", f"{repo}:/repo:ro",
+                   "-v", f"{cache}:/root/.cache/trivy", "aquasec/trivy:latest",
+                   "fs", "/repo", "--scanners", "vuln,secret",
+                   "--severity", "HIGH,CRITICAL", "--ignore-unfixed"])
+        # JSON lengkap (semua severity) untuk laporan CVE.
+        run(["docker", "run", "--rm", "-v", f"{repo}:/repo:ro",
+             "-v", f"{cache}:/root/.cache/trivy", "-v", f"{out}:/out",
+             "aquasec/trivy:latest", "fs", "/repo", "--scanners", "vuln",
+             "--format", "json", "--output", "/out/trivy.json"])
     return 0  # informatif; tak menggagalkan
 
 
@@ -370,7 +410,7 @@ def main():
                                        "cors", "open-redirect", "mass-assignment",
                                        "webstack", "injection", "cookie-flags", "response-leak", "openapi-coverage", "ratelimit", "session-mgmt", "captcha", "jwt", "ssrf", "recon", "rollback", "report"])
     ap.add_argument("sub", nargs="?", default="baseline",
-                    help="subperintah untuk 'zap': baseline|api|full")
+                    help="subperintah: 'zap' baseline|api|full; 'deps' gitleaks|semgrep|trivy (satu tool)")
     args = ap.parse_args()
     tgt = load_targets()
 
@@ -381,7 +421,7 @@ def main():
     if args.module == "headers":
         return mod_headers(tgt)
     if args.module == "deps":
-        return mod_deps(tgt)
+        return mod_deps(tgt, args.sub)
     if args.module == "authz":
         rc = mod_py(ROOT / "tests" / "authz-matrix" / "run_authz_matrix.py",
                     ROOT / "tests" / "authz-matrix" / "authz_matrix.yml", "authz.json")
