@@ -20,6 +20,12 @@ browser_cache:
   enabled: false
   start_path: "/"                 # halaman se-origin tempat probe dijalankan;
                                   # ganti bila "/" dialihkan ke SSO/origin lain
+  # Bukti: tangkap screenshot halaman sensitif HANYA saat jadi temuan, disimpan ke
+  # reports/evidence/ dan disematkan di laporan & slide.
+  screenshot: true               # set false untuk mematikan
+  full_page: false               # default viewport (ter-crop ke area terlihat)
+  # selector: "#konten"          # crop ke elemen tertentu (opsional)
+  # clip: { x: 0, y: 0, width: 1024, height: 400 }   # crop ke region (opsional)
 
 # B. Aset JS yang disisir. Kosongkan untuk mengandalkan auto-discover dari halaman.
 #    (Aman untuk app TANPA JS — bila tak ada bundle, cek ini otomatis kosong.)

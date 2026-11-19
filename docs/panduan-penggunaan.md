@@ -140,6 +140,8 @@ Setelah `report` atau `all`, hasil tersimpan di:
 - `reports/laporan.md` — isi yang sama dalam format Markdown.
 - `reports/laporan-slides.html` — varian presentasi (slide deck) mandiri untuk paparan
   ringkas ke stakeholder; navigasi dengan panah kiri/kanan.
+- `reports/evidence/` — screenshot bukti (mis. dari modul `clientleak` berbasis browser),
+  disematkan di laporan & slide. Folder ini harus menyertai berkas laporan saat dibagikan.
 
 Lihat contoh output pada [contoh-laporan.md](contoh-laporan.md) /
 [contoh-laporan.html](contoh-laporan.html).

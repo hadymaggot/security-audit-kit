@@ -43,14 +43,14 @@ CLIENT_LEAK_KIND = {"cache": "client-cache", "browser-cache": "client-cache", "j
 
 
 def norm(modul, judul, status, evidence, lulus, override_sev=None, cve=None,
-         kind_hint=None, url=None):
+         kind_hint=None, url=None, screenshot=None):
     kind = kind_hint or R.classify(modul, judul)
     kb = R.lookup(kind)
     sev = "lulus" if lulus else (override_sev or kb["severity"]).lower()
     return {
         "modul": modul, "judul": judul, "kind": kind, "lulus": lulus,
         "severity": sev, "status": status, "evidence": evidence,
-        "url": url or "", "cve": cve or [], "kb": kb,
+        "url": url or "", "screenshot": screenshot or "", "cve": cve or [], "kb": kb,
     }
 
 
@@ -86,7 +86,8 @@ def collect(d: Path):
             elif modul == "headers":
                 hint = "missing-header"
             findings.append(norm(modul, label, r.get("status"), ev.strip(), ok,
-                                 kind_hint=hint, url=r.get("url")))
+                                 kind_hint=hint, url=r.get("url"),
+                                 screenshot=r.get("screenshot")))
 
     # --- OWASP ZAP ---
     for zf in ("zap-baseline.json", "zap-api.json", "zap-full.json"):
@@ -331,6 +332,8 @@ def write_md(path, findings, counts, when, cves):
             ctx = inst.get("judul", "")
             st = inst["status"] if inst["status"] not in (None, "") else "-"
             ev = (inst.get("evidence") or "").replace("|", "\\|").replace("\n", " ")[:160]
+            if inst.get("screenshot"):
+                ev = (ev + f" ![bukti]({inst['screenshot']})").strip()
             url = (inst.get("url") or "-").replace("|", "\\|")
             L.append(f"  | {j} | `{url}` | {ctx} | {st} | {ev} |")
         L += [
@@ -407,11 +410,18 @@ def write_html(path, findings, counts, when, cves):
         for rec in kb["rekomendasi"]:
             recs += (f"<pre>{esc(rec)}</pre>" if ("\n" in rec or "    " in rec)
                      else f"<li>{esc(rec)}</li>")
+        def _cell(inst):
+            cell = esc(inst.get("evidence") or "")
+            ss = inst.get("screenshot")
+            if ss:
+                cell += (f"<div class='shotwrap'><a href='{esc(ss)}' target='_blank' "
+                         f"rel='noopener'><img class='shot' src='{esc(ss)}' alt='bukti'></a></div>")
+            return cell
         inst_rows = "".join(
             f"<tr><td>{j}</td><td><code>{esc(inst.get('url') or '-')}</code></td>"
             f"<td>{esc(inst.get('judul', ''))}</td>"
             f"<td>{esc(inst['status'] if inst['status'] not in (None, '') else '-')}</td>"
-            f"<td>{esc(inst.get('evidence') or '')}</td></tr>"
+            f"<td>{_cell(inst)}</td></tr>"
             for j, inst in enumerate(a["instances"], 1))
         cve = ", ".join(a["cve"]) if a["cve"] else "-"
         col = SEV_COLOR[a["severity"]]
@@ -482,6 +492,8 @@ def write_html(path, findings, counts, when, cves):
  .ref{{color:#555;font-size:12px}} table{{width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.06);margin:8px 0}}
  th,td{{text-align:left;padding:10px 12px;border-bottom:1px solid #eceff3;font-size:14px;vertical-align:top}} th{{background:#eef1f5;font-size:12px;text-transform:uppercase}}
  table.inst td{{font-size:13px}} table.inst code{{background:#f3f5f8}}
+ .shot{{max-width:280px;max-height:170px;border:1px solid #ccd;border-radius:6px;margin-top:6px;display:block}}
+ .shotwrap{{margin-top:4px}}
  footer{{max-width:1000px;margin:0 auto;padding:16px 20px 40px;color:#555;font-size:12px;border-top:1px solid #e3e7ec}}
  footer a{{color:#14233b}}
  .klas{{display:inline-block;background:#b4232a;color:#fff;font-size:11px;font-weight:700;letter-spacing:.08em;padding:3px 10px;border-radius:4px;margin-top:8px}}
@@ -558,6 +570,10 @@ def write_slides(path, findings, counts, when, cves):
         kb = a["kb"]
         rec1 = esc(kb["rekomendasi"][0]) if kb.get("rekomendasi") else ""
         col = SEV_COLOR[a["severity"]]
+        shot = next((inst["screenshot"] for inst in a["instances"]
+                     if inst.get("screenshot")), "")
+        shot_html = (f"<div class='shotwrap'><img class='shot' src='{esc(shot)}' "
+                     f"alt='bukti'></div>" if shot else "")
         slides.append(f"""<section class="slide" style="border-top:7px solid {col}">
           <div class="fid">{esc(finding_id(i))} &nbsp;·&nbsp;
             <span class="badge" style="background:{col}">{esc(a['severity'].upper())}</span>
@@ -565,7 +581,7 @@ def write_slides(path, findings, counts, when, cves):
             {len(a['instances'])} instance</div>
           <h2>{esc(a['nama'])}</h2>
           <p><b>Dampak.</b> {esc(kb['dampak'])}</p>
-          <p><b>Rekomendasi utama.</b> {rec1}</p></section>""")
+          <p><b>Rekomendasi utama.</b> {rec1}</p>{shot_html}</section>""")
 
     slides.append(f"""<section class="slide cover"><h2>Terima kasih</h2>
       <p class="meta">Laporan lengkap: <code>laporan.html</code>. Dokumen bersifat {esc(KLASIFIKASI)}.</p>
@@ -592,6 +608,7 @@ def write_slides(path, findings, counts, when, cves):
  .fid{{font-size:2vh;color:#555;margin-bottom:1vh}} code{{background:#0003;padding:1px 6px;border-radius:4px}}
  #nav{{position:fixed;bottom:2vh;right:3vw;color:#8aa;font-size:1.8vh;z-index:9}}
  #nav button{{background:#ffffff22;color:inherit;border:1px solid #ffffff44;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:1.8vh}}
+ .shot{{max-height:34vh;max-width:70vw;border:1px solid #ccd;border-radius:8px;margin-top:2vh}} .shotwrap{{margin-top:1vh}}
 </style>
 <div id="deck">{deck}</div>
 <div id="nav"><button onclick="go(-1)">‹</button> <span id="pg"></span> <button onclick="go(1)">›</button></div>
