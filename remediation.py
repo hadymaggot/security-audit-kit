@@ -156,6 +156,28 @@ KB = {
         "referensi": ["OWASP API3:2023 Broken Object Property Level Authorization",
                       "CWE-915 Improperly Controlled Modification of Object Attributes"],
     },
+    "sql-injection": {
+        "deskripsi": "Input pengguna disusun langsung ke query SQL tanpa parameterisasi, "
+                     "sehingga penyerang dapat mengubah logika query (error-based, "
+                     "boolean-based, atau time-based).",
+        "dampak": "Pembacaan/perubahan data di luar wewenang, bypass autentikasi, hingga "
+                  "potensi RCE tergantung konfigurasi DBMS.",
+        "severity": "High",
+        "severity_dasar": "Likelihood sedang–tinggi (vektor klasik, tooling melimpah) x "
+                          "Impact tinggi (kerahasiaan & integritas data). Deteksi otomatis "
+                          "wajib diverifikasi manual sebelum severity final dikunci.",
+        "rekomendasi": [
+            "Gunakan prepared statement / parameterized query (bind parameter), jangan "
+            "merangkai string query dari input.",
+            "    // Laravel: Model::where('x', $input) / DB::select('... = ?', [$input])\n"
+            "    // JANGAN DB::raw(\"... = '$input'\").",
+            "Terapkan allowlist tipe/format input dan least-privilege pada akun DB.",
+            "Pakai ORM/query builder dengan benar; hindari raw query berisi input mentah.",
+        ],
+        "referensi": ["OWASP A03:2021 Injection",
+                      "CWE-89 SQL Injection",
+                      "OWASP Testing Guide WSTG-INPV-05"],
+    },
     "server-vuln": {
         "deskripsi": "Versi web server/komponen yang terdeteksi dari banner cocok dengan "
                      "kerentanan yang telah terdaftar (CVE), mis. Apache mod_http2 atau "
@@ -353,6 +375,8 @@ def classify(modul: str, judul: str) -> str:
         return "mass-assignment"
     if modul == "webstack":
         return "server-vuln" if j.startswith("versi rentan") else "missing-header"
+    if modul == "injection":
+        return "sql-injection"
     if modul == "auth-policy":
         if "captcha" in j:
             return "captcha-static"

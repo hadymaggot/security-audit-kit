@@ -66,6 +66,7 @@ def collect(d: Path):
                         ("cors.json", "cors"),
                         ("open_redirect.json", "open-redirect"),
                         ("webstack.json", "webstack"),
+                        ("injection.json", "injection"),
                         ("headers.json", "headers")):
         data = load(d / name)
         if not data:
@@ -183,6 +184,7 @@ KIND_LABEL = {
     "missing-header": "Header keamanan tidak diset",
     "tls-weak": "Konfigurasi TLS lemah",
     "server-vuln": "Web server versi rentan (CVE diketahui)",
+    "sql-injection": "SQL Injection (A03)",
     "vuln-dependency": "Dependensi dengan kerentanan (CVE)",
     "cors-misconfig": "CORS salah konfigurasi",
     "open-redirect": "Open redirect",
