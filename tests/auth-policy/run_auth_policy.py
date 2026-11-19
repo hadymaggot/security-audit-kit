@@ -197,6 +197,25 @@ def main():
             results.append({"check": f"{label} kontrol sandi kuat", "status": status,
                             "ok": ok, "note": note, "url": ep_url})
 
+        # Kontrol positif: sandi kuat TAK boleh kena error sandi — kalau kena, uji di
+        # atas tak bermakna (endpoint menolak apa pun). Template sebaiknya membuat
+        # request gagal di field LAIN agar tak ada yang tersimpan.
+        strong = cfg.get("strong_password")
+        if strong:
+            try:
+                r = post(chk, body_for(strong))
+                ok = r.status_code == 429 or not password_error(r, field)
+                note = "skip: rate limit" if r.status_code == 429 else (
+                    "" if ok else "sandi kuat pun ditolak — uji sandi lemah tak bermakna")
+            except Exception as exc:  # noqa: BLE001
+                ok, note, r = False, f"galat: {exc}", None
+            if not ok:
+                failures += 1
+            status = r.status_code if r is not None else -1
+            print(f"  kontrol sandi kuat     HTTP {status}  {'ok' if ok else 'XX ' + note}")
+            results.append({"check": f"{label} kontrol sandi kuat", "status": status,
+                            "ok": ok, "note": note})
+
     # 2. Captcha harus regenerasi (token baru tiap terbit).
     cap = cfg.get("captcha")
     if cap:
