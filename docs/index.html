@@ -331,8 +331,8 @@ python audit.py all                                # scan + laporan</code></pre>
    "\\__ \\ (__ / _ \\| .` | .` | _||   /",
    "|___/\\___/_/ \\_\\_|\\_|_|\\_|___|_|_\\"
  ];
- var api = new URLSearchParams(location.search).get("api") || localStorage.getItem("sak_api") || "https://security-audit-kit-scanner.saptohadi.workers.dev";
- if(api) localStorage.setItem("sak_api", api);
+ // backend tetap (Worker). ?api= hanya untuk self-host; tanpa override localStorage yang lengket.
+ var api = new URLSearchParams(location.search).get("api") || "https://security-audit-kit-scanner.saptohadi.workers.dev";
  var stage=document.getElementById("stage");
  function logEl(){return document.getElementById("log")}
  function esc(s){return String(s).replace(/[&<>]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;"}[c]})}
@@ -352,8 +352,7 @@ python audit.py all                                # scan + laporan</code></pre>
      out("<span style='color:var(--primary)'>"+BANNER.map(esc).join("\n")+"</span>");
      out("pasif &middot; non-intrusif &mdash; security headers, cookie flags, CORS, banner-&gt;CVE","mut");
      out("uji hanya target yang Anda miliki/berwenang. tidak mengirim payload / menulis data.","mut");
-     if(!api) out("backend belum diset — ketik: api https://...workers.dev","mut"); // URL disembunyikan saat aktif
-     out("perintah: &lt;url&gt; · api &lt;url&gt; · clear · help","mut");
+     out("perintah: &lt;url&gt; · clear · help","mut");
    }
    setTimeout(function(){document.getElementById("in").focus()},300);
  }
@@ -366,11 +365,10 @@ python audit.py all                                # scan + laporan</code></pre>
  function run(cmd){
    out("<span class='mut'>scan&gt;</span> "+esc(cmd)); var c=cmd.trim(); if(!c)return;
    if(c==="clear"){logEl().innerHTML="";logEl().removeAttribute("data-init");openScan();return;}
-   if(c==="help"){out("ketik URL (mis. https://contoh.example) untuk memindai; 'api &lt;url&gt;' set backend; 'clear' bersihkan.","mut");return;}
-   if(c.indexOf("api ")===0){api=c.slice(4).trim();localStorage.setItem("sak_api",api);out("backend diset: "+esc(api),"ok");return;}
+   if(c==="help"){out("ketik URL target (mis. https://contoh.example) untuk memindai; 'clear' bersihkan layar.","mut");return;}
    var url=c.replace(/^scan\s+/,"");
    if(!/^https?:\/\//.test(url)){out("URL harus diawali http(s)://","bad");return;}
-   if(!api){out("backend belum diset. ketik: api https://...workers.dev","bad");return;}
+   if(!api){out("backend tidak tersedia.","bad");return;}
    scan(url);
  }
  function scan(url){
