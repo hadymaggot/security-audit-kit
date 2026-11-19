@@ -152,7 +152,7 @@ Nach `report` oder `all` liegen die Ergebnisse unter:
 Beispielausgabe siehe [contoh-laporan.md](contoh-laporan.md) /
 [contoh-laporan.html](contoh-laporan.html).
 
-Der Abschnitt **Bestandene Controls (LULUS)** listet die geprüften und korrekt arbeitenden
+Der Abschnitt **Bestandene Controls (PASS)** listet die geprüften und korrekt arbeitenden
 Prüfungen auf — ein Nachweis des Prüfumfangs, kein Befund.
 
 ## 6. Rollback (destruktive Module)

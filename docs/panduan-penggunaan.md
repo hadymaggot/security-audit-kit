@@ -148,7 +148,7 @@ Setelah `report` atau `all`, hasil tersimpan di:
 Lihat contoh output pada [contoh-laporan.md](contoh-laporan.md) /
 [contoh-laporan.html](contoh-laporan.html).
 
-Bagian **Kontrol yang Lolos (LULUS)** merinci pemeriksaan yang diuji dan berperilaku
+Bagian **Kontrol yang Lolos (PASS)** merinci pemeriksaan yang diuji dan berperilaku
 benar — bukti cakupan uji, bukan temuan.
 
 ## 6. Rollback (modul destruktif)

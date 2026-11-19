@@ -24,10 +24,15 @@ from pathlib import Path
 import remediation as R
 
 SEV_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4, "lulus": 5}
-SEV_COLOR = {"critical": "#7c1313", "high": "#b4232a", "medium": "#c67b00",
-             "low": "#2d7d46", "info": "#555", "lulus": "#2d7d46"}
+SEV_COLOR = {"critical": "#c0392b", "high": "#e8710a", "medium": "#d4a017",
+             "low": "#2f6feb", "info": "#6b7280", "lulus": "#1f9d57"}
 SEV_EMOJI = {"critical": "🔴", "high": "🟠", "medium": "🟡",
-             "low": "🟢", "info": "⚪", "lulus": "✅"}
+             "low": "🔵", "info": "⚪", "lulus": "🟢"}
+# Label severity yang ditampilkan ke pembaca (kontrol lolos = PASS).
+SEV_LABEL = {"critical": "CRITICAL", "high": "HIGH", "medium": "MEDIUM",
+             "low": "LOW", "info": "INFO", "lulus": "PASS"}
+def sev_label(s):
+    return SEV_LABEL.get(s, str(s).upper())
 
 
 def load(path: Path):
@@ -294,7 +299,7 @@ def write_md(path, findings, counts, when, cves):
         f"| {SEV_EMOJI['medium']} Medium | {counts['medium']} |",
         f"| {SEV_EMOJI['low']} Low | {counts['low']} |",
         f"| {SEV_EMOJI['info']} Info | {counts['info']} |",
-        f"| {SEV_EMOJI['lulus']} Lulus (kontrol OK) | {counts['lulus']} |",
+        f"| {SEV_EMOJI['lulus']} PASS (kontrol lolos) | {counts['lulus']} |",
         "", f"Total alert: **{len(alerts)}** · Total CVE: **{len(cves)}**.", "",
         "## 2. Ruang Lingkup & Metodologi", "",
         f"- **Target:** {tgt_name} ({tgt_url}).",
@@ -354,7 +359,7 @@ def write_md(path, findings, counts, when, cves):
     # Kontrol yang lolos — bukti cakupan uji.
     lulus = [f for f in findings if f["lulus"]]
     if lulus:
-        L += [f"### Kontrol yang Lolos (LULUS: {len(lulus)})", "",
+        L += [f"### Kontrol yang Lolos (PASS: {len(lulus)})", "",
               "Pemeriksaan yang diuji dan berperilaku benar (bukan temuan) — bukti cakupan uji.", "",
               "| Pemeriksaan | Modul | Endpoint diuji | HTTP |", "|---|---|---|---|"]
         for f in lulus:
@@ -389,7 +394,7 @@ def write_html(path, findings, counts, when, cves):
     cards = "".join(
         f"<div class='card{' zero' if not counts[s] else ''}' style='border-color:{SEV_COLOR[s]}'>"
         f"<div class='n' style='color:{SEV_COLOR[s]}'>{counts[s]}</div>"
-        f"<div class='l'>{s.upper()}</div></div>" for s in SEV_ORDER)
+        f"<div class='l'>{sev_label(s)}</div></div>" for s in SEV_ORDER)
 
     tgt_name, tgt_url = read_target()
     moduls = sorted({f["modul"] for f in findings})
@@ -455,7 +460,7 @@ def write_html(path, findings, counts, when, cves):
         f"<td>{esc(f['status'] if f['status'] not in (None, '') else '-')}</td></tr>"
         for f in lulus)
     lulus_section = (
-        f"<h2>Kontrol yang Lolos (LULUS: {len(lulus)})</h2>"
+        f"<h2>Kontrol yang Lolos (PASS: {len(lulus)})</h2>"
         f"<p>Pemeriksaan yang diuji dan berperilaku benar — bukan temuan; bukti cakupan uji.</p>"
         f"<table><thead><tr><th>Pemeriksaan</th><th>Modul</th>"
         f"<th>Endpoint diuji</th><th>HTTP</th></tr></thead><tbody>{lulus_rows}</tbody></table>"
@@ -557,7 +562,7 @@ def write_slides(path, findings, counts, when, cves):
     cards = "".join(
         f"<div class='scard' style='border-color:{SEV_COLOR[s]}'>"
         f"<div class='n' style='color:{SEV_COLOR[s]}'>{counts[s]}</div>"
-        f"<div class='l'>{s.upper()}</div></div>"
+        f"<div class='l'>{sev_label(s)}</div></div>"
         for s in ("critical", "high", "medium", "low", "info"))
     slides.append(f"""<section class="slide"><h2>Ringkasan Risiko</h2>
       <div class="scards">{cards}</div>
