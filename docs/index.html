@@ -344,7 +344,7 @@ python audit.py all                                # scan + laporan</code></pre>
      logEl().dataset.init="1";
      out("Open Scanner (pasif) — pemeriksaan non-intrusif: security headers, cookie flags, CORS, banner-&gt;CVE.","mut");
      out("Tidak mengirim payload serangan / menulis data. Uji hanya target yang Anda miliki/berwenang.","mut");
-     out(api?("backend: "+esc(api)):"backend belum diset — ketik: api https://...workers.dev","mut");
+     if(!api) out("backend belum diset — ketik: api https://...workers.dev","mut"); // URL disembunyikan saat aktif
      out("perintah: &lt;url&gt; · api &lt;url&gt; · clear · help","mut");
    }
    setTimeout(function(){document.getElementById("in").focus()},300);
@@ -385,7 +385,7 @@ python audit.py all                                # scan + laporan</code></pre>
        var a=out("► <a id='genrep'>klik untuk generate laporan HTML</a>");
        a.querySelector("#genrep").addEventListener("click",function(){genReport(res.j)});
      })
-     .catch(function(err){out("tidak bisa menghubungi backend: "+esc(err),"bad")});
+     .catch(function(err){out("tidak bisa menghubungi backend ("+esc(api)+"): "+esc(err),"bad")}); // URL hanya muncul saat error
  }
  function genReport(data){
    var f=data.findings||[]; var cnt={critical:0,high:0,medium:0,low:0,info:0,lulus:0};

@@ -71,7 +71,7 @@
             info:"var(--i)",lulus:"var(--ok)"};
  var out = document.getElementById("out");
  document.getElementById("cfg").innerHTML = api
-   ? "Backend: <code>" + api.replace(/</g,"&lt;") + "</code>"
+   ? ""
    : "Backend belum dikonfigurasi. Deploy Worker (lihat <code>worker/README.md</code>) " +
      "lalu buka halaman dengan <code>?api=https://...workers.dev</code>.";
 
@@ -108,7 +108,7 @@
        if(!res.ok){ out.innerHTML = "<div class='note'>"+esc(res.j.error||"Gagal.")+"</div>"; }
        else render(res.j);
      }).catch(function(err){
-       out.innerHTML = "<div class='note'>Tidak bisa menghubungi backend: "+esc(err)+"</div>";
+       out.innerHTML = "<div class='note'>Tidak bisa menghubungi backend ("+esc(api)+"): "+esc(err)+"</div>";
      }).finally(function(){ btn.disabled = false; });
  });
 </script>
