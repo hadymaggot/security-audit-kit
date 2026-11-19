@@ -138,6 +138,8 @@ Setelah `report` atau `all`, hasil tersimpan di:
   rincian tiap temuan beserta instance (endpoint yang diuji sebagai bukti), tingkat
   keyakinan, dampak, justifikasi severity, rekomendasi, dan referensi.
 - `reports/laporan.md` — isi yang sama dalam format Markdown.
+- `reports/laporan-slides.html` — varian presentasi (slide deck) mandiri untuk paparan
+  ringkas ke stakeholder; navigasi dengan panah kiri/kanan.
 
 Lihat contoh output pada [contoh-laporan.md](contoh-laporan.md) /
 [contoh-laporan.html](contoh-laporan.html).

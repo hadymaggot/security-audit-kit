@@ -73,7 +73,7 @@ laporan akhir: [docs/contoh-laporan.md](docs/contoh-laporan.md).
 | [docs/panduan-penggunaan.md](docs/panduan-penggunaan.md) | Panduan step-by-step: instalasi, konfigurasi, autentikasi, menjalankan scan, membaca laporan, rollback, troubleshooting |
 | [docs/metodologi.md](docs/metodologi.md) | Metodologi uji & acuan standar (OWASP, ASVS, Risk Rating) |
 | [docs/temuan-to-test-mapping.md](docs/temuan-to-test-mapping.md) | Menerjemahkan temuan laporan pentest menjadi kasus uji per modul |
-| [docs/contoh-laporan.md](docs/contoh-laporan.md) · [contoh-laporan.html](docs/contoh-laporan.html) | Contoh output laporan (data fiktif) — gaya ZAP, bukti endpoint, kontrol LULUS |
+| [docs/contoh-laporan.md](docs/contoh-laporan.md) · [contoh-laporan.html](docs/contoh-laporan.html) · [slide](docs/contoh-laporan-slides.html) | Contoh output laporan (data fiktif) — format konsultan + varian presentasi/slide |
 | [CONTRIBUTING.md](CONTRIBUTING.md) · [SECURITY.md](SECURITY.md) · [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) | Kontribusi, kebijakan keamanan, kode etik |
 
 ## Kontribusi
