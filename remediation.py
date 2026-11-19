@@ -344,6 +344,56 @@ KB = {
         ],
         "referensi": ["OWASP ZAP", "OWASP Top 10 2021"],
     },
+    "sensitive-data-exposure": {
+        "deskripsi": "Respons API memuat data sensitif (sandi/hash, secret, token, kunci "
+                     "pribadi, atau data rahasia lain) yang seharusnya tidak dikirim ke klien.",
+        "dampak": "Kredensial atau secret yang bocor dapat dipakai untuk pengambilalihan akun, "
+                  "akses ke layanan pihak ketiga, atau serangan lanjutan.",
+        "severity": "High",
+        "severity_dasar": "Likelihood tinggi (cukup memanggil endpoint) x Impact tinggi "
+                          "(kebocoran kredensial/secret).",
+        "rekomendasi": [
+            "Jangan serialisasi field sensitif: pakai whitelist field eksplisit (API "
+            "Resource/DTO) alih-alih mengembalikan model utuh.",
+            "Contoh Laravel: sembunyikan di model dan gunakan Resource.",
+            "    protected $hidden = ['password', 'remember_token', 'two_factor_secret',\n"
+            "                          'two_factor_recovery_codes'];",
+            "Cabut (revoke) dan rotasi secret yang sudah terlanjur terekspos.",
+            "Terapkan authorization per field pada respons yang sama untuk peran berbeda.",
+        ],
+        "referensi": ["OWASP API3:2023 Broken Object Property Level Authorization",
+                      "OWASP A02:2021 Cryptographic Failures",
+                      "CWE-200, CWE-201, CWE-522"],
+    },
+    "verbose-error": {
+        "deskripsi": "Respons (terutama error) membocorkan detail implementasi: stack trace, "
+                     "path berkas server, versi kerangka kerja, atau pesan SQL.",
+        "dampak": "Detail internal mempermudah pemetaan teknologi dan pengembangan serangan "
+                  "terarah (mis. injeksi, eksploitasi versi rentan).",
+        "severity": "Medium",
+        "severity_dasar": "Likelihood sedang (mudah dipicu) x Impact rendah-sedang "
+                          "(informasi pendukung serangan, bukan kompromi langsung).",
+        "rekomendasi": [
+            "Matikan mode debug di luar lokal (Laravel: APP_DEBUG=false; Django: DEBUG=False).",
+            "Kembalikan pesan error generik + ID korelasi; simpan detail hanya di log server.",
+            "Contoh Laravel (bootstrap/app.php): render JSON generik untuk request API.",
+            "    $exceptions->render(fn (Throwable $e, Request $r) => $r->is('api/*')\n"
+            "        ? response()->json(['message' => 'Terjadi kesalahan.'], 500) : null);",
+        ],
+        "referensi": ["OWASP A05:2021 Security Misconfiguration",
+                      "OWASP API8:2023 Security Misconfiguration", "CWE-209, CWE-215"],
+    },
+    "internal-info-leak": {
+        "deskripsi": "Respons memuat alamat IP internal atau hostname jaringan privat.",
+        "dampak": "Membantu pemetaan topologi jaringan internal untuk SSRF atau pivot.",
+        "severity": "Low",
+        "severity_dasar": "Informasi pendukung; dampak langsung rendah.",
+        "rekomendasi": [
+            "Hapus alamat/hostname internal dari respons dan header.",
+            "Gunakan nama layanan publik atau ID opak alih-alih IP internal.",
+        ],
+        "referensi": ["OWASP A05:2021 Security Misconfiguration", "CWE-200"],
+    },
     "cookie-flags": {
         "deskripsi": "Cookie sesi/autentikasi tidak memakai atribut keamanan lengkap "
                      "(HttpOnly, Secure, SameSite) atau berumur terlalu panjang.",
@@ -483,6 +533,12 @@ def classify(modul: str, judul: str) -> str:
         return "open-redirect"
     if modul == "cookie-flags":
         return "cookie-flags"
+    if modul == "response-leak":
+        if "debug" in j or "verbose" in j:
+            return "verbose-error"
+        if "internal" in j:
+            return "internal-info-leak"
+        return "sensitive-data-exposure"
     if modul == "recon":
         if j.startswith("secret"):
             return "leaked-secret"

@@ -92,6 +92,7 @@ def collect(d: Path):
                         ("webstack.json", "webstack"),
                         ("injection.json", "injection"),
                         ("cookie_flags.json", "cookie-flags"),
+                        ("response_leak.json", "response-leak"),
                         ("headers.json", "headers")):
         data = load(d / name)
         if not data:
@@ -108,6 +109,8 @@ def collect(d: Path):
             hint = None
             if modul == "client-leak":
                 hint = CLIENT_LEAK_KIND.get(r.get("kind"))
+            elif modul == "response-leak":
+                hint = r.get("kind")
             elif modul == "headers":
                 hint = "missing-header"
             findings.append(norm(modul, label, r.get("status"), ev.strip(), ok,
@@ -228,6 +231,9 @@ KIND_LABEL = {
     "cors-misconfig": "CORS salah konfigurasi",
     "open-redirect": "Open redirect",
     "cookie-flags": "Atribut keamanan cookie tidak lengkap",
+    "sensitive-data-exposure": "Data sensitif terekspos di respons API",
+    "verbose-error": "Respons verbose/debug membocorkan detail implementasi",
+    "internal-info-leak": "Alamat/hostname internal bocor di respons",
     "recon-subdomain": "Aset/subdomain terpetakan (recon)",
     "exposed-service": "Port/layanan terekspos ke publik",
     "leaked-secret": "Kredensial/secret bocor di source/aset",
@@ -298,6 +304,9 @@ KIND_CVSS = {
     "recon-subdomain": (5.3, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"),
     "client-cache": (4.3, "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:L/I:N/A:N"),
     "cookie-flags": (4.2, "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:L/I:L/A:N"),
+    "sensitive-data-exposure": (7.5, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"),
+    "verbose-error": (5.3, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"),
+    "internal-info-leak": (3.7, "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N"),
     "missing-header": (3.7, "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N"),
     "captcha-static": (3.7, "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:L/A:N"),
 }
