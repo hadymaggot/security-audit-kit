@@ -62,8 +62,8 @@ def test_json_gitleaks_dan_semgrep_ditulis_ke_out(monkeypatch, tmp_path):
     assert "--report-path" in c and c[c.index("--report-path") + 1] == "/out/gitleaks.json"
     assert any(x.endswith(":/out") for x in c)                 # volume keluaran terpasang
     _, s = _run_deps(monkeypatch, tmp_path, "semgrep")
-    c = s[0]
-    assert "--json-output" in c and c[c.index("--json-output") + 1] == "/out/semgrep.json"
+    script = s[0][-1]
+    assert "--json-output /out/semgrep.json" in script and "/out" in " ".join(s[0])
 
 
 def test_repo_dipasang_read_only(monkeypatch, tmp_path):
@@ -106,13 +106,23 @@ def test_report_toleran_json_rusak_atau_kosong(tmp_path):
 
 
 # ── semgrep: opsi path/exclude dan batas waktu ──────────────────────────────
-def test_semgrep_cmd_paths_exclude_dan_nama():
+def test_semgrep_cmd_menyalin_path_lalu_memindai_di_container():
     c = AU.semgrep_cmd({"semgrep_paths": ["services/iam/app", "frontend-vue/src"],
                         "semgrep_exclude": ["legacy"]}, "R", "O", "sak-x")
-    assert c[c.index("--name") + 1] == "sak-x" and c[-2:] == ["services/iam/app", "frontend-vue/src"]
-    ex = [c[i + 1] for i, x in enumerate(c) if x == "--exclude"]
-    assert {"vendor", "node_modules", "dist", "docs", "legacy"} <= set(ex)
-    assert AU.semgrep_cmd({}, "R", "O", "n")[-1] == "."                    # default seluruh repo
+    assert c[c.index("--name") + 1] == "sak-x" and "--entrypoint" in c and c[c.index("--entrypoint") + 1] == "sh"
+    script = c[-1]
+    # salin hanya path terpilih (tar) ke /tmp/scan lalu pindai di sana (bukan dari akar repo bind mount)
+    assert "tar -C /src" in script and "services/iam/app" in script and "frontend-vue/src" in script
+    assert "-C /tmp/scan -xf -" in script and "cd /tmp/scan" in script and "-w /src" not in " ".join(c)
+    for e in ("vendor", "node_modules", "dist", "docs", "legacy"):
+        assert f"--exclude={e}" in script and f"--exclude {e}" in script
+    assert "--no-git-ignore" in script and "--timeout 20" in script
+    assert AU.semgrep_cmd({}, "R", "O", "n")[-1].count(" .") >= 1               # default memindai "."
+
+
+def test_semgrep_cmd_mengutip_path_berspasi():
+    script = AU.semgrep_cmd({"semgrep_paths": ["dir dengan spasi/app"]}, "R", "O", "n")[-1]
+    assert "'dir dengan spasi/app'" in script
 
 
 def test_run_semgrep_timeout_menghentikan_container(monkeypatch):
