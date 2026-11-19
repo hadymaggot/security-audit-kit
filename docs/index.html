@@ -111,7 +111,10 @@
  #log .ln{margin:1px 0} #log .ok{color:var(--primary)} #log .bad{color:#ff8a3d} #log .mut{color:rgba(255,255,255,.6)} #log a{color:var(--secondary);cursor:pointer;text-decoration:underline}
  /* prompt elegan + input mengalir di dalam log (seperti terminal sungguhan) */
  .cliln{display:flex;align-items:baseline;margin:5px 0 0}
- .cli{flex:1;min-width:0;background:transparent;border:0;outline:0;color:var(--text);font-family:var(--mono);font-size:12.5px;caret-color:var(--primary);padding:0;margin-left:.6ch}
+ .cli{width:1ch;min-width:1ch;background:transparent;border:0;outline:0;color:var(--text);font-family:var(--mono);font-size:12.5px;caret-color:transparent;padding:0;margin-left:.6ch;white-space:pre}
+ .blockcur{display:inline-block;width:.55ch;height:1.1em;background:var(--primary);vertical-align:-.18em;margin-left:0;flex:0 0 auto;animation:tblink 1.05s step-end infinite}
+ @keyframes tblink{0%,100%{opacity:1}50%{opacity:0}}
+ #meas{position:absolute;left:-9999px;top:0;visibility:hidden;white-space:pre;font-family:var(--mono);font-size:12.5px}
  .pr{white-space:nowrap} .pr .pu{color:var(--primary);font-weight:700} .pr .pd{color:rgba(255,255,255,.38)} .pr .pp{color:var(--secondary)} .pr .pa{color:var(--primary);font-weight:700}
 
  /* mobile: terminal turun ke bawah */
@@ -329,10 +332,10 @@ python audit.py all                                # scan + laporan</code></pre>
  var SEVC={critical:"#ff6b6b",high:"#ff8a3d",medium:"#ffcf5c",low:"#5aa9ff",info:"#9bb39b",lulus:"#7AC55A",ok:"#7AC55A"};
  function sevLabel(s){s=(""+(s||"")).toLowerCase();return (s==="lulus"||s==="ok")?"PASS":s.toUpperCase();}
  var BANNER=[
-   " ___  ___   _   _  _ _  _ ___ ___ ",
-   "/ __|/ __| /_\\ | \\| | \\| | __| _ \\",
-   "\\__ \\ (__ / _ \\| .` | .` | _||   /",
-   "|___/\\___/_/ \\_\\_|\\_|_|\\_|___|_|_\\"
+   "  ___  ___  ___  ___   _   _  _ _  _ ___ ___",
+   " / _ \\| _ \\/ __|/ __| /_\\ | \\| | \\| | __| _ \\",
+   "| (_) |  _/\\__ \\ (__ / _ \\| .` | .` | _||   /",
+   " \\___/|_|  |___/\\___/_/ \\_\\_|\\_|_|\\_|___|_|_\\"
  ];
  // backend tetap (Worker). ?api= hanya untuk self-host; tanpa override localStorage yang lengket.
  var api = new URLSearchParams(location.search).get("api") || "https://security-audit-kit-scanner.saptohadi.workers.dev";
@@ -353,9 +356,8 @@ python audit.py all                                # scan + laporan</code></pre>
    if(!logEl().dataset.init){
      logEl().dataset.init="1";
      out("<span style='color:var(--primary)'>"+BANNER.map(esc).join("\n")+"</span>");
-     out("pasif &middot; non-intrusif &mdash; security headers, cookie flags, CORS, banner-&gt;CVE","mut");
-     out("uji hanya target yang Anda miliki/berwenang. tidak mengirim payload / menulis data.","mut");
-     out("perintah: &lt;url&gt; · clear · help","mut");
+     out("<span style='font-size:10.5px;color:var(--secondary);opacity:.9'>by: Security Audit Kit — hadymaggot</span>");
+     out("<span class='mut'>ketik <span style='color:var(--primary)'>help</span> untuk bantuan.</span>");
    }
    ensurePrompt();
  }
@@ -367,31 +369,74 @@ python audit.py all                                # scan + laporan</code></pre>
 
  // ---- prompt elegan + input mengalir di dalam log (seperti terminal) ----
  function promptEl(){ return "<span class='pr'><span class='pu'>me</span><span class='pd'>@ahadizapto</span> <span class='pp'>~</span> <span class='pa'>❯</span></span>"; }
+ var _meas=null;
+ function fitCli(inp){ if(!_meas){_meas=document.createElement("span");_meas.id="meas";document.body.appendChild(_meas);} _meas.textContent=inp.value||""; inp.style.width=Math.max(1,_meas.offsetWidth+1)+"px"; }
  function addPrompt(){
    var d=document.createElement("div"); d.className="ln cliln";
-   d.innerHTML=promptEl()+"<input class='cli' autocomplete='off' autocorrect='off' autocapitalize='off' spellcheck='false' aria-label='perintah scanner'>";
+   d.innerHTML=promptEl()+"<input class='cli' autocomplete='off' autocorrect='off' autocapitalize='off' spellcheck='false' aria-label='perintah scanner'><span class='blockcur'></span>";
    logEl().appendChild(d);
    var inp=d.querySelector(".cli");
    inp.addEventListener("keydown",function(e){ if(e.key==="Enter"){ e.preventDefault(); submitCmd(inp); } });
+   inp.addEventListener("input",function(){ fitCli(inp); }); fitCli(inp);
    logEl().scrollTop=logEl().scrollHeight; setTimeout(function(){inp.focus();},0);
  }
+ function printHelp(){
+   out("<span style='color:var(--secondary)'>OPSCANNER</span> — open scanner pasif (Security Audit Kit)");
+   out("");
+   out("<span style='color:var(--secondary)'>PENGGUNAAN</span>");
+   out("  <span style='color:var(--primary)'>&lt;url&gt;</span>    pindai target, mis. https://contoh.example");
+   out("  <span style='color:var(--primary)'>help</span>     tampilkan bantuan ini");
+   out("  <span style='color:var(--primary)'>clear</span>    bersihkan layar");
+   out("");
+   out("<span style='color:var(--secondary)'>ARGUMEN</span>");
+   out("  <span style='color:var(--primary)'>--active</span>, <span style='color:var(--primary)'>-a</span>   konfirmasi scan aktif/intrusif (ditampilkan sebagai perintah CLI, bukan via demo)");
+   out("");
+   out("<span style='color:var(--secondary)'>CAKUPAN</span> (pasif · non-intrusif)");
+   out("  security headers · cookie flags · CORS · banner&rarr;CVE · clientleak");
+   out("");
+   out("<span style='color:var(--secondary)'>CATATAN</span>");
+   out("  uji hanya target milik/berwenang Anda. tidak mengirim payload / menulis data.","mut");
+ }
  function ensurePrompt(){ var i=logEl().querySelector(".cliln .cli"); if(i){setTimeout(function(){i.focus();},10);} else addPrompt(); }
+ var pendingActive=null; // url yang menunggu konfirmasi scan aktif
  function submitCmd(inp){
    var v=inp.value, line=inp.closest(".cliln");
    line.className="ln"; line.innerHTML=promptEl()+" "+esc(v); // echo jadi statis
+   if(pendingActive!==null){ answerActive(v); ensurePrompt(); return; }
    var pending=run(v);
    if(!pending) ensurePrompt();
+ }
+ function answerActive(v){
+   var ans=(v||"").trim().toLowerCase(), t=pendingActive; pendingActive=null;
+   if(ans==="y"||ans==="ya"||ans==="yes") activeInstructions(t); else out("dibatalkan.","mut");
  }
  logEl().addEventListener("click",function(e){ if(e.target.closest("a,button,input"))return; var i=logEl().querySelector(".cliln .cli"); if(i)i.focus(); });
 
  function run(cmd){
    var c=cmd.trim(); if(!c)return false;
    if(c==="clear"){logEl().innerHTML="";logEl().removeAttribute("data-init");openScan();return false;}
-   if(c==="help"){out("ketik URL target (mis. https://contoh.example) untuk memindai; 'clear' bersihkan layar.","mut");return false;}
-   var url=c.replace(/^scan\s+/,"");
+   if(c==="help"){printHelp();return false;}
+   c=c.replace(/^scan\s+/,"");
+   var toks=c.split(/\s+/), url=toks[0];
+   var active=toks.slice(1).some(function(x){return x==="--active"||x==="-a"||x==="--aktif";});
    if(!/^https?:\/\//.test(url)){out("URL harus diawali http(s)://","bad");return false;}
+   if(active){ askActive(url); return false; } // konfirmasi dulu
    if(!api){out("backend tidak tersedia.","bad");return false;}
    scan(url); return true; // async: prompt baru ditambah setelah scan selesai
+ }
+ function askActive(url){
+   pendingActive=url;
+   out("<span class='bad'>! scan AKTIF/intrusif</span> pada <span style='color:var(--secondary)'>"+esc(url)+"</span>");
+   out("hanya untuk target yang Anda miliki/berwenang uji. lanjutkan? [y/N]","mut");
+ }
+ function activeInstructions(url){
+   out("scan aktif tidak dijalankan via demo publik ini (mencegah penyalahgunaan).","mut");
+   out("jalankan di mesin Anda — set base_url target di config/targets.yml, lalu:");
+   out("  <span style='color:var(--primary)'>python audit.py injection</span>       # SQLi error/boolean/time-based");
+   out("  <span style='color:var(--primary)'>python audit.py open-redirect</span>");
+   out("  <span style='color:var(--primary)'>python audit.py authz</span>           # access control / IDOR (kredensial per role)");
+   out("  <span style='color:var(--primary)'>python audit.py upload</span>");
+   out("kredensial lewat environment variable. panduan: docs/panduan-penggunaan.md","mut");
  }
  function scan(url){
    var host=url; try{host=new URL(url).hostname;}catch(e){}
