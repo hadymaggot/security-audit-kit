@@ -107,12 +107,16 @@
  .red{background:#ff5f56}.yellow{background:#ffbd2e}.green{background:#27c93f}
  button.term-btn{appearance:none;border:0;padding:0;cursor:pointer;position:relative}
  button.red:hover::after,button.red:focus-visible::after{content:"\00d7";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;line-height:1;color:rgba(0,0,0,.6)}
- .terminal-title{flex:1;text-align:center;font-family:var(--mono);font-size:.78rem;color:rgba(255,255,255,.7)} #log{flex:1;min-height:0;overflow:auto;padding:13px 15px;font-family:var(--mono);font-size:12.5px;line-height:1.55;white-space:pre-wrap;word-break:break-word;cursor:text}
+ .terminal-title{flex:1;text-align:center;font-family:var(--mono);font-size:.78rem;color:rgba(255,255,255,.7)} #log{flex:1;min-height:0;overflow:auto;padding:13px 15px;font-family:var(--mono);font-size:12.5px;line-height:1.55;white-space:pre-wrap;word-break:break-word;cursor:text;scrollbar-width:thin;scrollbar-color:rgba(122,197,90,.35) transparent;overflow-x:hidden}
+ #log::-webkit-scrollbar{width:6px}
+ #log::-webkit-scrollbar-track{background:transparent}
+ #log::-webkit-scrollbar-thumb{background:rgba(122,197,90,.35);border-radius:999px}
+ #log::-webkit-scrollbar-thumb:hover{background:rgba(122,197,90,.6)}
  #log .ln{margin:1px 0} #log .ok{color:var(--primary)} #log .bad{color:#ff8a3d} #log .mut{color:rgba(255,255,255,.6)} #log a{color:var(--secondary);cursor:pointer;text-decoration:underline}
  /* prompt elegan + input mengalir di dalam log (seperti terminal sungguhan) */
- .cliln{display:flex;align-items:baseline;margin:5px 0 0}
- .cli{width:1ch;min-width:0;background:transparent;border:0;outline:0;color:var(--text);font-family:var(--mono);font-size:12.5px;caret-color:transparent;padding:0;margin-left:1ch;white-space:pre}
- .blockcur{display:inline-block;width:1ch;height:1.05em;background:var(--primary);transform:translateY(.2em);margin-left:0;flex:0 0 auto;animation:tblink 1s step-end infinite}
+ .cliln{display:flex;align-items:baseline;margin:5px 0 0;position:relative}
+ .cli{flex:1;min-width:0;background:transparent;border:0;outline:0;color:var(--text);font-family:var(--mono);font-size:12.5px;caret-color:transparent;padding:0;margin-left:1ch;white-space:pre}
+ .blockcur{position:absolute;width:1ch;height:1.05em;background:var(--primary);pointer-events:none;animation:tblink 1s step-end infinite}
  @keyframes tblink{0%,100%{opacity:1}50%{opacity:0}}
  #meas{position:absolute;left:-9999px;top:0;visibility:hidden;white-space:pre;font-family:var(--mono);font-size:12.5px}
  .pr{white-space:nowrap} .pr .pu{color:var(--primary);font-weight:700} .pr .pd{color:rgba(255,255,255,.38)} .pr .pp{color:var(--secondary)} .pr .pa{color:var(--primary);font-weight:700}
@@ -370,21 +374,39 @@ python audit.py all                                # scan + laporan</code></pre>
  // ---- prompt elegan + input mengalir di dalam log (seperti terminal) ----
  function promptEl(){ return "<span class='pr'><span class='pu'>me</span><span class='pd'>@ahadizapto</span><span class='pa'>#</span></span>"; }
  var _meas=null;
- function fitCli(inp){ if(!_meas){_meas=document.createElement("span");_meas.id="meas";document.body.appendChild(_meas);} _meas.textContent=inp.value||""; inp.style.width=Math.max(1,_meas.offsetWidth+1)+"px"; }
+ function measW(s){ if(!_meas){_meas=document.createElement("span");_meas.id="meas";document.body.appendChild(_meas);} _meas.textContent=s||""; return _meas.offsetWidth; }
+ function updateCur(inp){ var cur=inp.parentNode&&inp.parentNode.querySelector(".blockcur"); if(!cur)return;
+   var pos=(inp.selectionStart!=null)?inp.selectionStart:(inp.value||"").length;
+   var cx=measW((inp.value||"").slice(0,pos));
+   cur.style.left=(inp.offsetLeft+cx)+"px";
+   cur.style.top=(inp.offsetTop+(inp.offsetHeight-cur.offsetHeight)/2)+"px"; }
  var cmdHist=[], histPos=0; // riwayat perintah (panah atas/bawah)
- function setInput(inp,val){ inp.value=val||""; fitCli(inp); var p=inp.value.length; try{inp.setSelectionRange(p,p);}catch(e){} }
+ function setInput(inp,val){ inp.value=val||""; var p=inp.value.length; try{inp.setSelectionRange(p,p);}catch(e){} updateCur(inp); }
+ var COMMANDS=["help","clear"];
+ function hintLine(text){ var p=logEl().querySelector(".cliln"), d=document.createElement("div"); d.className="ln mut"; d.textContent=text; if(p)logEl().insertBefore(d,p); else out(text,"mut"); logEl().scrollTop=logEl().scrollHeight; }
+ function complete(inp){
+   var parts=(inp.value||"").split(/\s+/), last=parts[parts.length-1]||"", opts;
+   if(parts.length<=1){ opts=COMMANDS.filter(function(x){return x.indexOf(last)===0;}); if(last&&"https://".indexOf(last)===0)opts.push("https://"); }
+   else { opts=["--active"].filter(function(x){return x.indexOf(last)===0;}); if(last.charAt(0)==="-"&&!opts.length)opts=["--active"]; }
+   if(opts.length===1){ parts[parts.length-1]=opts[0]; var trail=(parts.length<=1&&opts[0]!=="https://")?" ":""; setInput(inp, parts.join(" ")+trail); }
+   else if(opts.length>1){ hintLine(opts.join("   ")); }
+ }
  function addPrompt(){
    var d=document.createElement("div"); d.className="ln cliln";
    d.innerHTML=promptEl()+"<input class='cli' autocomplete='off' autocorrect='off' autocapitalize='off' spellcheck='false' aria-label='perintah scanner'><span class='blockcur'></span>";
    logEl().appendChild(d);
    var inp=d.querySelector(".cli");
    inp.addEventListener("keydown",function(e){
-     if(e.key==="Enter"){ e.preventDefault(); submitCmd(inp); }
-     else if(e.key==="ArrowUp"){ e.preventDefault(); if(histPos>0){ histPos--; setInput(inp, cmdHist[histPos]); } }
-     else if(e.key==="ArrowDown"){ e.preventDefault(); if(histPos<cmdHist.length){ histPos++; setInput(inp, histPos<cmdHist.length?cmdHist[histPos]:""); } }
+     if(e.ctrlKey&&(e.key==="l"||e.key==="L")){ e.preventDefault(); var val=inp.value; logEl().innerHTML=""; addPrompt(); var ni=logEl().querySelector(".cliln .cli"); if(ni){setInput(ni,val);ni.focus();} return; }
+     if(e.key==="Enter"){ e.preventDefault(); submitCmd(inp); return; }
+     if(e.key==="Tab"){ e.preventDefault(); complete(inp); return; }
+     if(e.key==="ArrowUp"){ e.preventDefault(); if(histPos>0){ histPos--; setInput(inp, cmdHist[histPos]); } return; }
+     if(e.key==="ArrowDown"){ e.preventDefault(); if(histPos<cmdHist.length){ histPos++; setInput(inp, histPos<cmdHist.length?cmdHist[histPos]:""); } return; }
    });
-   inp.addEventListener("input",function(){ fitCli(inp); }); fitCli(inp);
-   logEl().scrollTop=logEl().scrollHeight; setTimeout(function(){inp.focus();},0);
+   inp.addEventListener("keyup",function(){ updateCur(inp); });
+   inp.addEventListener("input",function(){ updateCur(inp); });
+   inp.addEventListener("click",function(){ updateCur(inp); });
+   logEl().scrollTop=logEl().scrollHeight; setTimeout(function(){inp.focus(); updateCur(inp);},0);
  }
  function printHelp(){
    out("<span style='color:var(--secondary)'>OPSCANNER</span> — open scanner pasif (Security Audit Kit)");
