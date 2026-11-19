@@ -44,11 +44,8 @@
    height:100vh;overflow:hidden;display:flex;flex-direction:column;
    background:radial-gradient(760px 420px at 50% -10%, rgba(122,197,90,.08), transparent 62%), var(--dark);
  }
- /* latar: grid samar statis (halus, tidak ramai) */
- body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
-   background:linear-gradient(rgba(122,197,90,.04) 1px,transparent 1px) 0 0/38px 38px,
-             linear-gradient(90deg,rgba(122,197,90,.04) 1px,transparent 1px) 0 0/38px 38px;
-   mask:radial-gradient(80% 70% at 50% 42%,#000,transparent 92%);-webkit-mask:radial-gradient(80% 70% at 50% 42%,#000,transparent 92%)}
+ /* latar: jaringan titik-garis (network) digambar di canvas */
+ #net{position:fixed;inset:0;z-index:0;pointer-events:none;mask:radial-gradient(90% 85% at 50% 45%,#000,transparent 100%);-webkit-mask:radial-gradient(90% 85% at 50% 45%,#000,transparent 100%)}
  a{color:var(--primary);text-decoration:none} a:hover{text-decoration:underline}
  @keyframes cardIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
  @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
@@ -59,7 +56,9 @@
  .topbar .sp{margin-left:auto}
 
  .stage{position:relative;z-index:2;flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(0,640px) 0fr;justify-content:center;align-items:center;gap:0;padding:0 1.2rem 1.3rem;transition:grid-template-columns .5s cubic-bezier(.4,0,.2,1),gap .5s ease}
- .stage.scanning{grid-template-columns:minmax(0,520px) minmax(0,560px);gap:1.3rem}
+ .stage.scanning{grid-template-columns:minmax(0,600px) minmax(0,660px);gap:1.5rem}
+ /* saat split: kartu dan terminal sama tinggi, sejajar */
+ .stage.scanning .card{height:min(82vh,640px);max-height:min(82vh,640px)}
 
  .card{min-width:0;width:100%;max-height:100%;overflow:auto;justify-self:center;
    background:linear-gradient(180deg,rgba(27,31,27,.9),rgba(18,18,18,.92));
@@ -88,19 +87,19 @@
  .mods{display:flex;flex-wrap:wrap;gap:.38rem;margin:0 0 1.35rem}
  .mods span{font-size:.73rem;color:#d4ddd4;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:7px;padding:.2rem .5rem}
  .foot{display:flex;flex-wrap:wrap;gap:.7rem;align-items:center;justify-content:space-between;border-top:1px solid rgba(122,197,90,.14);padding-top:.9rem;font-size:.79rem;color:var(--muted)}
- .foot a{color:var(--primary)} .foot .lang img{vertical-align:-3px;margin-right:1px}
+ .foot a{color:var(--primary)} .foot .lang{display:inline-flex;align-items:center;gap:.5rem} .foot .lang img{vertical-align:-3px;border-radius:2px} .foot .lang .sep{opacity:.5;margin-left:.1rem}
 
  /* panel scanner (terminal) — muncul saat Open scanner */
  .scanpanel{min-width:0;width:100%;overflow:hidden;opacity:0;transform:translateX(26px);pointer-events:none;
    transition:opacity .4s ease,transform .4s ease}
  .stage.scanning .scanpanel{opacity:1;transform:none;pointer-events:auto}
- .termcard{display:flex;flex-direction:column;height:min(74vh,560px);background-color:var(--terminal-bg);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+ .termcard{display:flex;flex-direction:column;height:min(82vh,640px);background-color:var(--terminal-bg);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5)}
  .terminal-header{display:flex;align-items:center;background-color:rgba(60,60,60,.6);padding:.5rem 1rem;border-bottom:1px solid rgba(122,197,90,.3)}
- .terminal-buttons{display:flex;gap:.4rem} .term-btn{width:12px;height:12px;border-radius:50%}
+ .terminal-buttons{display:flex;gap:.4rem;align-items:center} .term-btn{width:12px;height:12px;border-radius:50%}
  .red{background:#ff5f56}.yellow{background:#ffbd2e}.green{background:#27c93f}
- .terminal-title{flex:1;text-align:center;font-family:var(--mono);font-size:.78rem;color:rgba(255,255,255,.7)}
- .term-x{background:none;border:0;color:rgba(255,255,255,.7);font-size:17px;cursor:pointer;line-height:1;padding:0 2px}
- #log{flex:1;overflow:auto;padding:13px 15px;font-family:var(--mono);font-size:12.5px;white-space:pre-wrap;word-break:break-word}
+ button.term-btn{appearance:none;border:0;padding:0;cursor:pointer;position:relative}
+ button.red:hover::after,button.red:focus-visible::after{content:"\00d7";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;line-height:1;color:rgba(0,0,0,.6)}
+ .terminal-title{flex:1;text-align:center;font-family:var(--mono);font-size:.78rem;color:rgba(255,255,255,.7)} #log{flex:1;overflow:auto;padding:13px 15px;font-family:var(--mono);font-size:12.5px;white-space:pre-wrap;word-break:break-word}
  #log .ln{margin:1px 0} #log .ok{color:var(--primary)} #log .bad{color:#ff8a3d} #log .mut{color:rgba(255,255,255,.6)} #log a{color:var(--secondary);cursor:pointer;text-decoration:underline}
  #il{display:flex;align-items:center;gap:8px;border-top:1px solid rgba(122,197,90,.3);padding:8px 13px;background:rgba(19,19,19,.8)}
  #il .p{color:var(--primary);font-family:var(--mono)} #il input{flex:1;background:transparent;border:0;outline:0;color:var(--text);font-family:var(--mono);font-size:13px}
@@ -110,13 +109,14 @@
    body{height:auto;overflow:auto}
    .stage{grid-template-columns:1fr;grid-template-rows:auto 0fr;justify-content:stretch;transition:grid-template-rows .5s cubic-bezier(.4,0,.2,1),gap .5s ease}
    .stage.scanning{grid-template-columns:1fr;grid-template-rows:auto 1fr;gap:1rem}
-   .card{max-height:none}
+   .card,.stage.scanning .card{height:auto;max-height:none}
    .scanpanel{transform:translateY(16px)} .stage.scanning .scanpanel{transform:none}
    .termcard{height:72vh}
  }
 </style>
 </head>
 <body>
+<canvas id="net" aria-hidden="true"></canvas>
 <header class="topbar">
   <a href="https://hadymaggot.github.io/">&larr; Beranda</a>
   <a class="sp" href="https://github.com/hadymaggot/security-audit-kit"><i class="fab fa-github"></i> GitHub</a>
@@ -152,10 +152,10 @@ python audit.py all                                # scan + laporan</code></pre>
 
     <div class="foot">
       <span class="lang">
-        <img src="https://flagcdn.com/id.svg" width="17" alt="ID"><a href="https://github.com/hadymaggot/security-audit-kit/blob/main/README.md">ID</a> ·
-        <img src="https://flagcdn.com/gb.svg" width="17" alt="EN"><a href="https://github.com/hadymaggot/security-audit-kit/blob/main/README.en.md">EN</a> ·
-        <img src="https://flagcdn.com/de.svg" width="17" alt="DE"><a href="https://github.com/hadymaggot/security-audit-kit/blob/main/README.de.md">DE</a>
-        · <a href="https://github.com/hadymaggot/security-audit-kit/blob/main/docs/panduan-penggunaan.md">Panduan</a>
+        <a href="https://github.com/hadymaggot/security-audit-kit/blob/main/README.md" title="Indonesia"><img src="https://flagcdn.com/id.svg" width="20" alt="Indonesia"></a>
+        <a href="https://github.com/hadymaggot/security-audit-kit/blob/main/README.en.md" title="English"><img src="https://flagcdn.com/gb.svg" width="20" alt="English"></a>
+        <a href="https://github.com/hadymaggot/security-audit-kit/blob/main/README.de.md" title="Deutsch"><img src="https://flagcdn.com/de.svg" width="20" alt="Deutsch"></a>
+        <span class="sep">·</span> <a href="https://github.com/hadymaggot/security-audit-kit/blob/main/docs/panduan-penggunaan.md">Panduan</a>
       </span>
       <span>dibuat oleh <a href="https://hadymaggot.github.io/">hadymaggot</a></span>
     </div>
@@ -164,9 +164,8 @@ python audit.py all                                # scan + laporan</code></pre>
   <aside class="scanpanel" aria-hidden="true">
     <div class="termcard">
       <div class="terminal-header">
-        <div class="terminal-buttons"><span class="term-btn red"></span><span class="term-btn yellow"></span><span class="term-btn green"></span></div>
+        <div class="terminal-buttons"><button class="term-btn red" type="button" onclick="closeScan()" aria-label="Tutup scanner" title="Tutup"></button><span class="term-btn yellow"></span><span class="term-btn green"></span></div>
         <div class="terminal-title">bash ~ open-scanner (pasif)</div>
-        <button class="term-x" type="button" onclick="closeScan()" aria-label="Tutup">&times;</button>
       </div>
       <div id="log"></div>
       <div id="il"><span class="p">scan&gt;</span><input id="in" autocomplete="off" spellcheck="false" placeholder="ketik URL target lalu Enter, atau 'help'"></div>
@@ -177,6 +176,34 @@ python audit.py all                                # scan + laporan</code></pre>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
 <script>
+ // ===== latar jaringan titik-garis (network) =====
+ (function(){
+   var c=document.getElementById("net"); if(!c||!c.getContext)return;
+   var ctx=c.getContext("2d"); var W,H,DPR,nodes=[],raf;
+   var reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion:reduce)").matches;
+   function size(){
+     DPR=Math.min(window.devicePixelRatio||1,2);
+     W=c.width=Math.floor(innerWidth*DPR); H=c.height=Math.floor(innerHeight*DPR);
+     c.style.width=innerWidth+"px"; c.style.height=innerHeight+"px";
+     var n=Math.round(Math.min(90,(innerWidth*innerHeight)/16000)); nodes=[];
+     for(var i=0;i<n;i++){nodes.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.28*DPR,vy:(Math.random()-.5)*.28*DPR});}
+   }
+   function frame(){
+     ctx.clearRect(0,0,W,H); var link=140*DPR;
+     for(var i=0;i<nodes.length;i++){ var p=nodes[i];
+       if(!reduce){ p.x+=p.vx; p.y+=p.vy; if(p.x<0||p.x>W)p.vx*=-1; if(p.y<0||p.y>H)p.vy*=-1; }
+       ctx.beginPath(); ctx.arc(p.x,p.y,1.3*DPR,0,6.283); ctx.fillStyle="rgba(122,197,90,.5)"; ctx.fill();
+       for(var j=i+1;j<nodes.length;j++){ var q=nodes[j]; var dx=p.x-q.x,dy=p.y-q.y,d=dx*dx+dy*dy;
+         if(d<link*link){ var a=(1-Math.sqrt(d)/link)*.16;
+           ctx.strokeStyle="rgba(122,197,90,"+a.toFixed(3)+")"; ctx.lineWidth=DPR;
+           ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(q.x,q.y); ctx.stroke(); } }
+     }
+     if(!reduce) raf=requestAnimationFrame(frame);
+   }
+   size(); frame();
+   var t; addEventListener("resize",function(){clearTimeout(t);t=setTimeout(function(){cancelAnimationFrame(raf);size();frame();},200);});
+ })();
+
  try{ if(window.hljs){ document.querySelectorAll("pre code").forEach(function(el){ hljs.highlightElement(el); }); } }catch(e){}
  document.querySelectorAll("[data-copy]").forEach(function(btn){
    btn.addEventListener("click",function(){
