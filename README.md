@@ -64,6 +64,15 @@ Lebih detail ada di [docs/metodologi.md](docs/metodologi.md) dan
 [docs/temuan-to-test-mapping.md](docs/temuan-to-test-mapping.md). Contoh bentuk
 laporan akhir: [docs/contoh-laporan.md](docs/contoh-laporan.md).
 
+## Dokumentasi
+
+| Dokumen | Isi |
+|---|---|
+| [docs/metodologi.md](docs/metodologi.md) | Metodologi uji & acuan standar (OWASP, ASVS, Risk Rating) |
+| [docs/temuan-to-test-mapping.md](docs/temuan-to-test-mapping.md) | Nerjemahin temuan laporan pentest jadi kasus uji per modul |
+| [docs/contoh-laporan.md](docs/contoh-laporan.md) · [contoh-laporan.html](docs/contoh-laporan.html) | Contoh output laporan (data fiktif) — gaya ZAP, bukti endpoint, kontrol LULUS |
+| [CONTRIBUTING.md](CONTRIBUTING.md) · [SECURITY.md](SECURITY.md) · [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) | Kontribusi, kebijakan keamanan, kode etik |
+
 ## Kontribusi
 
 Alur kontribusi, cara nambah check, dan konvensi commit ada di
