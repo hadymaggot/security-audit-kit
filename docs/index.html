@@ -323,7 +323,8 @@ python audit.py all                                # scan + laporan</code></pre>
    });
  });
 
- var SEVC={critical:"#ff6b6b",high:"#ff8a3d",medium:"#ffcf5c",low:"#7AC55A",info:"#9bb39b",lulus:"#7AC55A"};
+ var SEVC={critical:"#ff6b6b",high:"#ff8a3d",medium:"#ffcf5c",low:"#7AC55A",info:"#9bb39b",lulus:"#7AC55A",ok:"#7AC55A"};
+ function sevLabel(s){s=(""+(s||"")).toLowerCase();return (s==="lulus"||s==="ok")?"OK":s.toUpperCase();}
  var api = new URLSearchParams(location.search).get("api") || localStorage.getItem("sak_api") || "https://security-audit-kit-scanner.saptohadi.workers.dev";
  if(api) localStorage.setItem("sak_api", api);
  var stage=document.getElementById("stage");
@@ -380,7 +381,7 @@ python audit.py all                                # scan + laporan</code></pre>
        var f=res.j.findings||[]; var fail=f.filter(function(x){return !x.ok});
        out("selesai: "+fail.length+" temuan dari "+f.length+" pemeriksaan.", fail.length?"bad":"ok");
        f.forEach(function(x){ var col=SEVC[x.severity]||"#9bb39b";
-         out("<span style='color:"+col+"'>["+esc((x.severity||"").toUpperCase())+"]</span> ["+esc(x.module)+"] "+esc(x.check)+(x.note?" — "+esc(x.note):"")+(x.cve&&x.cve.length?" ("+esc(x.cve.join(", "))+")":"")); });
+         out("<span style='color:"+col+"'>["+esc(sevLabel(x.severity))+"]</span> ["+esc(x.module)+"] "+esc(x.check)+(x.note?" — "+esc(x.note):"")+(x.cve&&x.cve.length?" ("+esc(x.cve.join(", "))+")":"")); });
        if(res.j.notice)out(esc(res.j.notice),"mut");
        var a=out("► <a id='genrep'>klik untuk generate laporan HTML</a>");
        a.querySelector("#genrep").addEventListener("click",function(){genReport(res.j)});
@@ -388,25 +389,45 @@ python audit.py all                                # scan + laporan</code></pre>
      .catch(function(err){out("tidak bisa menghubungi backend ("+esc(api)+"): "+esc(err),"bad")}); // URL hanya muncul saat error
  }
  function genReport(data){
-   var f=data.findings||[]; var cnt={critical:0,high:0,medium:0,low:0,info:0,lulus:0};
-   f.forEach(function(x){var s=x.ok?"lulus":(x.severity||"info");cnt[s]=(cnt[s]||0)+1});
-   var rows=f.map(function(x){var col=SEVC[x.severity]||"#9bb39b";
-     return "<tr><td><b style='color:"+col+"'>"+esc((x.severity||"").toUpperCase())+"</b></td><td>"+esc(x.module)+"</td><td>"+esc(x.check)+"</td><td>"+esc(x.note||"")+"</td><td>"+esc((x.cve||[]).join(", "))+"</td></tr>";
+   var SEVR={critical:"#e5484d",high:"#f76808",medium:"#ffb224",low:"#30a46c",info:"#8b8d98",lulus:"#30a46c",ok:"#30a46c"};
+   var ord={critical:0,high:1,medium:2,low:3,info:4,lulus:5,ok:5};
+   var f=(data.findings||[]).slice(); var cnt={critical:0,high:0,medium:0,low:0,info:0,lulus:0};
+   function key(x){return x.ok?"lulus":(x.severity||"info");}
+   f.sort(function(a,b){var ka=ord[key(a)],kb=ord[key(b)];return (ka==null?9:ka)-(kb==null?9:kb);});
+   f.forEach(function(x){var s=key(x);cnt[s]=(cnt[s]||0)+1});
+   var fail=f.filter(function(x){return !x.ok}).length;
+   var chips=[["critical","Critical"],["high","High"],["medium","Medium"],["low","Low"],["info","Info"],["lulus","OK"]].map(function(p){
+     return "<div class='chip'><span class='dot' style='background:"+SEVR[p[0]]+"'></span><b>"+(cnt[p[0]]||0)+"</b> "+p[1]+"</div>";
    }).join("");
-   var cards=["critical","high","medium","low","info","lulus"].map(function(s){
-     return "<div class='cc' style='border-color:"+(SEVC[s]||"#555")+"'><div class='n' style='color:"+(SEVC[s]||"#555")+"'>"+(cnt[s]||0)+"</div><div class='l'>"+s.toUpperCase()+"</div></div>";
+   var rows=f.map(function(x){var k=key(x),c=SEVR[k]||"#8b8d98";
+     return "<div class='find' style='border-left-color:"+c+"'><span class='badge' style='background:"+c+"'>"+esc(sevLabel(k))+"</span>"+
+       "<div class='fbody'><div class='fh'>"+esc(x.module)+" &middot; "+esc(x.check)+"</div>"+
+       (x.note?"<div class='fn'>"+esc(x.note)+"</div>":"")+
+       (x.cve&&x.cve.length?"<div class='fcve'>"+esc(x.cve.join(", "))+"</div>":"")+"</div></div>";
    }).join("");
-   var html="<!doctype html><html lang='id'><meta charset='utf-8'><title>Laporan Scan Pasif — "+esc(data.target)+"</title>"+
-     "<style>body{font-family:system-ui,sans-serif;background:#121212;color:#f2f2f2;margin:0}"+
-     "header{background:rgba(60,60,60,.6);border-bottom:1px solid rgba(122,197,90,.3);padding:22px 20px}h1{margin:0;font-size:20px;color:#7AC55A}main{max-width:900px;margin:0 auto;padding:20px}"+
-     ".cards{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}.cc{flex:1;min-width:100px;background:#171717;border-left:5px solid;border-radius:8px;padding:10px 12px;text-align:center}.cc .n{font-size:24px;font-weight:700}.cc .l{font-size:11px;color:#9bb39b}"+
-     "table{width:100%;border-collapse:collapse;background:#171717;border-radius:8px;overflow:hidden}th,td{padding:8px 10px;border-bottom:1px solid #2a2f2a;text-align:left;font-size:14px;vertical-align:top}th{background:#1b1b1b;color:#7AC55A}"+
-     "footer{color:#9bb39b;font-size:12px;padding:20px;text-align:center}code{background:#0c0f0c;padding:1px 5px;border-radius:4px}</style>"+
-     "<header><h1>Laporan Scan Pasif</h1><div style='color:#9bb39b;font-size:13px'>Target: <code>"+esc(data.target)+"</code> · "+esc(data.scanned_at||"")+"</div></header>"+
-     "<main><div class='cards'>"+cards+"</div>"+
-     "<table><thead><tr><th>Severity</th><th>Modul</th><th>Pemeriksaan</th><th>Catatan</th><th>CVE</th></tr></thead><tbody>"+rows+"</tbody></table>"+
-     "<p style='color:#9bb39b;font-size:13px'>"+esc(data.notice||"")+"</p></main>"+
-     "<footer>Security Audit Kit — dibuat oleh hadymaggot · pemeriksaan pasif, bukan pengganti audit mendalam.</footer></html>";
+   var html="<!doctype html><html lang='id'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"+
+     "<title>Laporan Scan Pasif — "+esc(data.target)+"</title><style>"+
+     "*{box-sizing:border-box}body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;color:#1b2420;background:#eef1ee}"+
+     ".wrap{max-width:860px;margin:0 auto;background:#fff;min-height:100vh;box-shadow:0 0 40px rgba(0,0,0,.08)}"+
+     "header{background:linear-gradient(135deg,#1c2b22,#2f6f3e);color:#fff;padding:26px 30px}"+
+     ".brand{font:600 12px/1 ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase;color:#bfe6b6;margin-bottom:10px}"+
+     "header h1{margin:0;font-size:22px;word-break:break-all}.sub{margin-top:9px;font-size:13px;color:#d6ebd0;display:flex;gap:10px;flex-wrap:wrap;align-items:center}"+
+     ".pasif{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:999px;padding:2px 10px;font-size:11px;font-weight:600;letter-spacing:.05em}"+
+     "main{padding:24px 30px}.lead{font-size:14px;color:#44524b;margin:0 0 18px}.lead code{background:#f0f3f0;padding:1px 6px;border-radius:4px}"+
+     ".chips{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 22px}.chip{display:flex;align-items:center;gap:6px;background:#f4f7f4;border:1px solid #e2e8e2;border-radius:999px;padding:5px 12px;font-size:13px}.chip .dot{width:9px;height:9px;border-radius:50%}"+
+     ".find{display:flex;gap:12px;align-items:flex-start;border:1px solid #e6ebe6;border-left-width:5px;border-radius:10px;padding:12px 14px;margin:0 0 10px;background:#fff}"+
+     ".badge{color:#fff;font:700 11px/1 ui-monospace,monospace;letter-spacing:.04em;padding:5px 8px;border-radius:6px;white-space:nowrap;margin-top:1px}"+
+     ".fbody{min-width:0}.fh{font-weight:600;font-size:14.5px}.fn{color:#4a564f;font-size:13.5px;margin-top:3px}.fcve{font:12px ui-monospace,monospace;color:#b4531a;margin-top:4px}"+
+     ".notice{background:#f4f7f4;border:1px solid #e2e8e2;border-radius:10px;padding:12px 14px;font-size:13px;color:#44524b;margin-top:16px}"+
+     "footer{padding:20px 30px;color:#7b857e;font-size:12px;border-top:1px solid #eef1ee;text-align:center}"+
+     "@media print{body{background:#fff}.wrap{box-shadow:none}}</style></head><body><div class='wrap'>"+
+     "<header><div class='brand'>Security Audit Kit · Laporan Scan Pasif</div><h1>"+esc(data.target)+"</h1>"+
+     "<div class='sub'><span>"+esc(data.scanned_at||"")+"</span><span class='pasif'>PASIF · NON-INTRUSIF</span></div></header>"+
+     "<main><p class='lead'><b>"+fail+"</b> temuan dari <b>"+f.length+"</b> pemeriksaan pasif pada <code>"+esc(data.target)+"</code>.</p>"+
+     "<div class='chips'>"+chips+"</div>"+rows+
+     "<div class='notice'>"+esc(data.notice||"")+"</div></main>"+
+     "<footer>Dibuat oleh <b>hadymaggot</b> · Security Audit Kit · pemeriksaan pasif, bukan pengganti audit mendalam.</footer>"+
+     "</div></body></html>";
    var blob=new Blob([html],{type:"text/html"}); window.open(URL.createObjectURL(blob),"_blank");
    out("laporan dibuka di tab baru.","ok");
  }
