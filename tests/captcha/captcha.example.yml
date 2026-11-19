@@ -1,0 +1,13 @@
+# Salin ke captcha.yml. Analisis STATIS tantangan captcha (GET) — tidak menyelesaikan atau
+# mengirim jawaban captcha. Memeriksa apakah respons sudah membocorkan jawabannya.
+base_url: "${TARGET_BASE_URL}"
+
+endpoint: { method: GET, path: "/api/captcha" }
+
+# Lokasi objek tantangan di respons JSON (kosongkan bila berada di akar).
+data_path: "data"
+
+# Jumlah tantangan yang diambil (untuk memeriksa keacakan posisi target). Endpoint captcha
+# biasanya dibatasi laju; naikkan delay_seconds bila perlu.
+samples: 2
+delay_seconds: 0
