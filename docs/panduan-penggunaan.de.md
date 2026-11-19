@@ -1,4 +1,4 @@
-[🇮🇩 Indonesia](panduan-penggunaan.md) · [🇬🇧 English](panduan-penggunaan.en.md) · **🇩🇪 Deutsch**
+[<img src="https://flagcdn.com/id.svg" width="18" alt="ID"> Indonesia](panduan-penggunaan.md) · [<img src="https://flagcdn.com/gb.svg" width="18" alt="EN"> English](panduan-penggunaan.en.md) · **<img src="https://flagcdn.com/de.svg" width="18" alt="DE"> Deutsch**
 
 # Benutzerhandbuch — Schritt für Schritt
 

@@ -1,4 +1,4 @@
-**🇮🇩 Indonesia** · [🇬🇧 English](temuan-to-test-mapping.en.md) · [🇩🇪 Deutsch](temuan-to-test-mapping.de.md)
+**<img src="https://flagcdn.com/id.svg" width="18" alt="ID"> Indonesia** · [<img src="https://flagcdn.com/gb.svg" width="18" alt="EN"> English](temuan-to-test-mapping.en.md) · [<img src="https://flagcdn.com/de.svg" width="18" alt="DE"> Deutsch](temuan-to-test-mapping.de.md)
 
 # Menerjemahkan laporan pentest menjadi test
 

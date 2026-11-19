@@ -1,4 +1,4 @@
-[🇮🇩 Indonesia](temuan-to-test-mapping.md) · [🇬🇧 English](temuan-to-test-mapping.en.md) · **🇩🇪 Deutsch**
+[<img src="https://flagcdn.com/id.svg" width="18" alt="ID"> Indonesia](temuan-to-test-mapping.md) · [<img src="https://flagcdn.com/gb.svg" width="18" alt="EN"> English](temuan-to-test-mapping.en.md) · **<img src="https://flagcdn.com/de.svg" width="18" alt="DE"> Deutsch**
 
 # Einen Pentest-Bericht in Tests übersetzen
 

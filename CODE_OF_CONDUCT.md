@@ -1,4 +1,4 @@
-**🇮🇩 Indonesia** · [🇬🇧 English](CODE_OF_CONDUCT.en.md) · [🇩🇪 Deutsch](CODE_OF_CONDUCT.de.md)
+**<img src="https://flagcdn.com/id.svg" width="18" alt="ID"> Indonesia** · [<img src="https://flagcdn.com/gb.svg" width="18" alt="EN"> English](CODE_OF_CONDUCT.en.md) · [<img src="https://flagcdn.com/de.svg" width="18" alt="DE"> Deutsch](CODE_OF_CONDUCT.de.md)
 
 # Kode Etik Kontributor
 

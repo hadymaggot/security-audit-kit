@@ -1,4 +1,4 @@
-[🇮🇩 Indonesia](metodologi.md) · **🇬🇧 English** · [🇩🇪 Deutsch](metodologi.de.md)
+[<img src="https://flagcdn.com/id.svg" width="18" alt="ID"> Indonesia](metodologi.md) · **<img src="https://flagcdn.com/gb.svg" width="18" alt="EN"> English** · [<img src="https://flagcdn.com/de.svg" width="18" alt="DE"> Deutsch](metodologi.de.md)
 
 # Methodology
 

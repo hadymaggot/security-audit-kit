@@ -1,4 +1,4 @@
-[🇮🇩 Indonesia](panduan-penggunaan.md) · **🇬🇧 English** · [🇩🇪 Deutsch](panduan-penggunaan.de.md)
+[<img src="https://flagcdn.com/id.svg" width="18" alt="ID"> Indonesia](panduan-penggunaan.md) · **<img src="https://flagcdn.com/gb.svg" width="18" alt="EN"> English** · [<img src="https://flagcdn.com/de.svg" width="18" alt="DE"> Deutsch](panduan-penggunaan.de.md)
 
 # Usage Guide — Step by Step
 
