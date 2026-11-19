@@ -382,7 +382,7 @@ python audit.py all                                # scan + laporan</code></pre>
    cur.style.top=(inp.offsetTop+(inp.offsetHeight-cur.offsetHeight)/2)+"px"; }
  var cmdHist=[], histPos=0; // riwayat perintah (panah atas/bawah)
  function setInput(inp,val){ inp.value=val||""; var p=inp.value.length; try{inp.setSelectionRange(p,p);}catch(e){} updateCur(inp); }
- var COMMANDS=["help","clear"];
+ var COMMANDS=["scan","help","clear"];
  // multi-match Tab: echo baris saat ini, cetak opsi di bawahnya, lalu gambar ulang prompt (input dipertahankan) — seperti shell
  function showOpts(inp,opts){
    var val=inp.value, line=inp.closest(".cliln");
@@ -420,9 +420,10 @@ python audit.py all                                # scan + laporan</code></pre>
    out("<span style='color:var(--secondary)'>OPSCANNER</span> — open scanner pasif (Security Audit Kit)");
    out("");
    out("<span style='color:var(--secondary)'>PENGGUNAAN</span>");
-   out("  <span style='color:var(--primary)'>&lt;url&gt;</span>    pindai target, mis. https://contoh.example");
-   out("  <span style='color:var(--primary)'>help</span>     tampilkan bantuan ini");
-   out("  <span style='color:var(--primary)'>clear</span>    bersihkan layar");
+   out("  <span style='color:var(--primary)'>scan &lt;url&gt;</span>  pindai target, mis. scan https://contoh.example");
+   out("  <span style='color:var(--primary)'>&lt;url&gt;</span>       (sama — kata 'scan' opsional)");
+   out("  <span style='color:var(--primary)'>help</span>        tampilkan bantuan ini");
+   out("  <span style='color:var(--primary)'>clear</span>       bersihkan layar");
    out("");
    out("<span style='color:var(--secondary)'>ARGUMEN</span>");
    out("  <span style='color:var(--primary)'>--active</span>, <span style='color:var(--primary)'>-a</span>   konfirmasi scan aktif/intrusif (ditampilkan sebagai perintah CLI, bukan via demo)");
@@ -454,6 +455,7 @@ python audit.py all                                # scan + laporan</code></pre>
    var c=cmd.trim(); if(!c)return false;
    if(c==="clear"){logEl().innerHTML="";logEl().removeAttribute("data-init");openScan();return false;}
    if(c==="help"){printHelp();return false;}
+   if(c==="scan"){out("penggunaan: scan &lt;url&gt; — mis. scan https://contoh.example","mut");return false;}
    c=c.replace(/^scan\s+/,"");
    var toks=c.split(/\s+/), url=toks[0];
    var active=toks.slice(1).some(function(x){return x==="--active"||x==="-a"||x==="--aktif";});
