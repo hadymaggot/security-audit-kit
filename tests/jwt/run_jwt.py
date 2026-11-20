@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""Uji keamanan JWT (regresi defensif) pada API yang memakai JSON Web Token.
+"""JWT security tests (defensive regression) for APIs using JSON Web Tokens.
 
-Token milik sendiri diperoleh dari login yang sah (atau dari env var), lalu:
-  A. ANALISIS STATIS (offline): algoritma 'none', klaim exp hilang / umur token terlalu panjang,
-     klaim sensitif di payload, keberadaan header kid/jku/x5u/jwk, dan secret HS256/384/512
-     yang LEMAH (kamus kecil; secret tidak pernah dicetak utuh).
-  B. PROBE PEMALSUAN (online, terhadap endpoint terlindungi): token dengan alg=none, tanda tangan
-     dibuang, dan payload diubah dengan tanda tangan lama. Server yang benar harus menolak
-     semuanya (401/403). Token asli harus diterima (baseline).
-Hanya endpoint GET yang dikonfigurasi yang dipanggil; tidak ada operasi tulis.
+Uses your own token, obtained from a legitimate login (or an env var), then:
+  A. STATIC ANALYSIS (offline): 'none' algorithm, missing exp claim / overly long token
+     lifetime, sensitive claims in the payload, kid/jku/x5u/jwk headers, and WEAK
+     HS256/384/512 secrets (small wordlist; the secret is never printed in full).
+  B. FORGERY PROBES (online, against a protected endpoint): token with alg=none, stripped
+     signature, and a modified payload with the old signature. A correct server must reject
+     all of them (401/403). The genuine token must be accepted (baseline).
+Only the configured GET endpoint is called; there are no write operations.
 
-Konfigurasi di jwt.yml. Pakai:
+Configured in jwt.yml. Usage:
     python run_jwt.py --config jwt.yml [--json out.json]
 """
 from __future__ import annotations
@@ -29,7 +29,7 @@ from pathlib import Path
 import requests
 import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import _color as C  # noqa: E402  (warna ANSI konsol lintas-modul di tests/)
+import _color as C  # noqa: E402  (shared console ANSI colors in tests/)
 
 ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 JWT_RE = re.compile(r"^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*$")
@@ -50,7 +50,7 @@ def expand(v):
     return v
 
 
-# ── utilitas JWT ────────────────────────────────────────────────────────────
+# ── JWT helpers ─────────────────────────────────────────────────────────────
 def b64d(s):
     return base64.urlsafe_b64decode(s + "=" * (-len(s) % 4))
 
@@ -60,7 +60,7 @@ def b64e(b):
 
 
 def parse(token):
-    """(header, payload, parts) atau None bila bukan JWT yang valid."""
+    """(header, payload, parts), or None if not a valid JWT."""
     if not JWT_RE.match(token or ""):
         return None
     parts = token.split(".")
@@ -81,7 +81,7 @@ def build(header, payload, signature=""):
 
 
 def crack_hs(token, wordlist):
-    """Cari secret lemah untuk token HS*. Return secret atau None."""
+    """Look up a weak secret for an HS* token. Returns the secret or None."""
     p = parse(token)
     if not p:
         return None
@@ -101,7 +101,7 @@ def mask(s):
     return f"{s[:1]}***{s[-1:]} (panjang {len(s)})" if len(s) > 2 else f"*** (panjang {len(s)})"
 
 
-# ── analisis statis ─────────────────────────────────────────────────────────
+# ── static analysis ─────────────────────────────────────────────────────────
 def static_rows(header, payload, token, cfg, url, now=None):
     rows = []
 
@@ -163,9 +163,9 @@ def static_rows(header, payload, token, cfg, url, now=None):
     return rows
 
 
-# ── probe pemalsuan ─────────────────────────────────────────────────────────
+# ── forgery probes ──────────────────────────────────────────────────────────
 def forged_variants(header, payload, parts):
-    """[(nama, token)] — semua harus DITOLAK server."""
+    """[(name, token)]; the server must REJECT all of them."""
     out = []
     for a in ("none", "None", "NONE"):
         out.append((f"alg={a} tanpa tanda tangan", build({**header, "alg": a}, payload, "")))
@@ -180,7 +180,7 @@ def forged_variants(header, payload, parts):
 
 
 def probe_rows(token, send, cfg, url):
-    """send(token)->status. Return daftar baris hasil probe."""
+    """send(token) -> status. Returns the probe result rows."""
     p = parse(token)
     if not p:
         return []
@@ -202,7 +202,7 @@ def probe_rows(token, send, cfg, url):
     return rows
 
 
-# ── token dan jaringan ──────────────────────────────────────────────────────
+# ── token and network ───────────────────────────────────────────────────────
 def dig(obj, dotted):
     cur = obj
     for part in (dotted or "").split("."):

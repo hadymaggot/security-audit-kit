@@ -1,35 +1,35 @@
 #!/usr/bin/env python3
-"""Uji kebijakan autentikasi: kekuatan sandi, regen captcha, timeout sesi.
+"""Auth policy tests: password strength, captcha regeneration, session timeout.
 
-Defensif & non-destruktif: hanya memverifikasi bahwa aturan ditegakkan, tanpa
-brute-force atau serangan. Konfigurasi lewat auth_policy.yml:
+Defensive and non-destructive: only verifies that rules are enforced, no
+brute force or attacks. Configured via auth_policy.yml:
 
     base_url: "${TARGET_BASE_URL}"
-    register:                      # opsional — uji penolakan sandi lemah saat daftar
+    register:                      # optional: weak password rejected at signup
       path: "/api/auth/register"
       template: { email: "probe{rand}@example.test", name: "probe" }
       password_field: "password"
-    captcha:                       # opsional — captcha harus berubah tiap gagal
+    captcha:                       # optional: captcha must change on each issue
       issue_path: "/api/captcha"
       token_field: "data.id"
     weak_passwords: ["12345678", "password", "aaaaaaaa", "qwerty12"]
 
-Opsional:
-    login: { path: "/api/login", body: {...} }   # sesi untuk uji yang butuh auth
-    password_checks:               # selain/menggantikan 'register'
+Optional:
+    login: { path: "/api/login", body: {...} }   # session for authenticated checks
+    password_checks:               # in addition to / instead of 'register'
       - name: "ganti sandi"
         path: "/api/auth/change-password"
-        authenticated: true        # pakai sesi 'login'
-        template: { current_password: "salah-sengaja" }   # gagal di field lain → tak tersimpan
+        authenticated: true        # use the 'login' session
+        template: { current_password: "salah-sengaja" }   # fails on another field, nothing saved
         password_field: "password"
         confirm_field: "password_confirmation"
-    strong_password: "..."         # kontrol: sandi kuat tak boleh kena error sandi
-    delay_seconds: 20              # jeda antar request, hormati rate limit
+    strong_password: "..."         # control: a strong password must not get a password error
+    delay_seconds: 20              # pause between requests to respect rate limits
 
-Sandi lemah dianggap ditolak hanya bila 422 memuat error DI field sandi. 429
-dicatat sebagai skip (tak bisa disimpulkan), bukan kegagalan.
+A weak password counts as rejected only if the 422 has an error ON the password
+field. 429 is recorded as skip (inconclusive), not a failure.
 
-Pakai: python run_auth_policy.py --config auth_policy.yml
+Usage: python run_auth_policy.py --config auth_policy.yml
 """
 from __future__ import annotations
 
@@ -45,8 +45,8 @@ import requests
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import _sanctum  # noqa: E402  (helper auth Sanctum lintas-modul di tests/)
-import _color as C  # noqa: E402  (warna ANSI konsol lintas-modul di tests/)
+import _sanctum  # noqa: E402  (shared Sanctum auth helper in tests/)
+import _color as C  # noqa: E402  (shared console ANSI colors in tests/)
 
 ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 
@@ -68,11 +68,11 @@ def dig(obj, dotted):
 
 
 def password_error(resp, field):
-    """True bila respons menolak dengan error DI field sandi.
+    """True if the response rejects with an error ON the password field.
 
-    Laravel membalas 422 {"errors": {field: [...]}}. 422 karena field lain (captcha,
-    email, dsb.) bukan bukti kebijakan sandi ditegakkan. Bila respons tak memuat
-    daftar error per field, jatuh ke kode status saja.
+    Laravel replies 422 {"errors": {field: [...]}}. A 422 caused by another field
+    (captcha, email, ...) does not prove the password policy is enforced. Without
+    per-field errors, falls back to the status code alone.
     """
     if resp.status_code not in (400, 422):
         return False
@@ -86,7 +86,7 @@ def password_error(resp, field):
 
 
 def password_checks(cfg):
-    """Daftar uji kebijakan sandi; blok 'register' lama tetap didukung."""
+    """Password policy checks; the legacy 'register' block is still supported."""
     checks = list(cfg.get("password_checks") or [])
     if cfg.get("register"):
         checks.insert(0, {"name": "register", **cfg["register"]})
@@ -105,7 +105,7 @@ def main():
     failures = 0
     results = []
 
-    # Sesi + auth Sanctum opsional (register sering butuh CSRF + Origin stateful).
+    # Optional Sanctum auth; register often needs CSRF + a stateful Origin.
     sess = requests.Session()
     sanctum = (cfg.get("sanctum") or {})
     sanctum = sanctum if sanctum.get("enabled") else None
@@ -115,7 +115,7 @@ def main():
     def auth_h():
         return _sanctum.auth_headers(sess, sanctum.get("origin")) if sanctum else {}
 
-    # Sesi login (opsional) — untuk uji yang butuh autentikasi, mis. ganti sandi.
+    # Optional login session for authenticated checks (e.g. change password).
     authed = None
     login = cfg.get("login")
     if login:
@@ -130,7 +130,7 @@ def main():
             print(f"login gagal: HTTP {r.status_code}", file=sys.stderr)
             return 2
 
-    delay = float(cfg.get("delay_seconds", 0))   # jeda antar request (rate limit)
+    delay = float(cfg.get("delay_seconds", 0))   # pause between requests (rate limit)
     first = [True]
 
     def post(chk, body):
@@ -142,7 +142,7 @@ def main():
         return s.request(chk.get("method", "POST"), base + chk["path"], json=body,
                          headers=h, timeout=20)
 
-    # 1. Sandi lemah harus ditolak — DENGAN error di field sandi, bukan field lain.
+    # 1. Weak passwords must be rejected with an error on the password field, not another.
     for chk in password_checks(cfg):
         label = chk.get("name", chk["path"])
         field = chk.get("password_field", "password")
@@ -165,7 +165,7 @@ def main():
                 failures += 1
                 continue
             if r.status_code == 429:
-                # Rate limit = tak bisa disimpulkan, bukan bukti sandi lemah lolos.
+                # Rate limited: inconclusive, not proof that a weak password passed.
                 print(f"  password {pw!r:<16} HTTP 429  skip (rate limit)")
                 results.append({"check": f"{label} password lemah {pw}", "status": 429,
                                 "ok": True, "note": "skip: rate limit", "url": ep_url})
@@ -179,9 +179,9 @@ def main():
                             "ok": rejected, "note": "" if rejected else "password lemah lolos",
                             "url": ep_url})
 
-        # Kontrol positif: sandi kuat TAK boleh kena error sandi — kalau kena, uji di
-        # atas tak bermakna (endpoint menolak apa pun). Template sebaiknya membuat
-        # request gagal di field LAIN agar tak ada yang tersimpan.
+        # Positive control: a strong password must NOT get a password error, otherwise
+        # the checks above are meaningless (endpoint rejects everything). The template
+        # should fail on ANOTHER field so nothing is saved.
         strong = cfg.get("strong_password")
         if strong:
             try:
@@ -198,9 +198,7 @@ def main():
             results.append({"check": f"{label} kontrol password kuat", "status": status,
                             "ok": ok, "note": note, "url": ep_url})
 
-        # Kontrol positif: sandi kuat TAK boleh kena error sandi — kalau kena, uji di
-        # atas tak bermakna (endpoint menolak apa pun). Template sebaiknya membuat
-        # request gagal di field LAIN agar tak ada yang tersimpan.
+        # Positive control (repeated block, same rationale as above).
         strong = cfg.get("strong_password")
         if strong:
             try:
@@ -217,7 +215,7 @@ def main():
             results.append({"check": f"{label} kontrol password kuat", "status": status,
                             "ok": ok, "note": note})
 
-    # 2. Captcha harus regenerasi (token baru tiap terbit).
+    # 2. Captcha must regenerate (new token on every issue).
     cap = cfg.get("captcha")
     if cap:
         print("\n== Regenerasi captcha ==")
