@@ -1,4 +1,4 @@
-"""Unit test login Sanctum untuk probe cache browser (client-leak) — session palsu, tanpa browser."""
+"""Unit tests for Sanctum login in the browser cache probe (client-leak): fake session, no browser."""
 import importlib.util
 import sys
 from pathlib import Path
@@ -64,7 +64,7 @@ CFG = {"auth": {"sanctum": {"enabled": True, "origin": ORIGIN},
                           "body": {"email": "e@x", "password": "p"}}}}
 
 
-def test_tanpa_sanctum_tidak_ada_cookie():
+def test_no_sanctum_no_cookies():
     assert CL.sanctum_cookies({}, BASE, ORIGIN, http=FakeSession) == []
     assert CL.sanctum_cookies({"auth": {"header": "Authorization", "value": "x"}}, BASE, ORIGIN,
                               http=FakeSession) == []
@@ -72,22 +72,22 @@ def test_tanpa_sanctum_tidak_ada_cookie():
                               http=FakeSession) == []
 
 
-def test_login_sanctum_menghasilkan_cookie_untuk_origin():
+def test_sanctum_login_yields_cookies_for_origin():
     cookies = CL.sanctum_cookies(CFG, BASE, ORIGIN, http=FakeSession)
     assert {"name": "app-session", "value": "sess1", "url": ORIGIN} in cookies
     assert any(c["name"] == "XSRF-TOKEN" for c in cookies)
     login = [c for c in FakeSession.calls if c[0] == "POST"][0]
     assert login[1] == BASE + "/api/login"
-    assert login[2]["Origin"] == ORIGIN and login[2]["X-XSRF-TOKEN"] == "tok="       # header stateful + CSRF
+    assert login[2]["Origin"] == ORIGIN and login[2]["X-XSRF-TOKEN"] == "tok="       # stateful header + CSRF
 
 
-def test_login_gagal_melempar():
+def test_login_failure_raises():
     FakeSession.login_status = 401
     with pytest.raises(RuntimeError, match="HTTP 401"):
         CL.sanctum_cookies(CFG, BASE, ORIGIN, http=FakeSession)
 
 
-def test_hanya_csrf_tanpa_blok_login():
+def test_csrf_only_without_login_block():
     cfg = {"auth": {"sanctum": {"enabled": True, "origin": ORIGIN}}}
     cookies = CL.sanctum_cookies(cfg, BASE, ORIGIN, http=FakeSession)
     assert cookies and not [c for c in FakeSession.calls if c[0] == "POST"]
