@@ -51,6 +51,25 @@ Credentials go through environment variables, not stored in files (the real `*.y
 files are gitignored). One entry point for every OS: `python audit.py <module>`. For
 short commands, use `make <module>` on Linux/macOS or `.\audit.ps1 <module>` on Windows.
 
+**Multiple projects (in parallel).** One kit installation can serve many projects at once; each
+project has its own `config/`, `tests/<module>/*.yml` and `reports/`, so they can be audited
+simultaneously from separate terminals:
+
+```bash
+python audit.py --project apple-gatrik init authz,upload   # creates projects/apple-gatrik/
+python audit.py --project apple-gatrik all                  # terminal 1
+python audit.py --project D:/audit/kumham all               # terminal 2 (folder anywhere)
+```
+
+Equivalent: the `SAK_PROJECT_DIR` environment variable, `make all PROJECT=...`, or
+`.\audit.ps1 all -Project ...`. The report author and company are set per project through the
+`report:` block in `targets.yml` (see the [guide](docs/panduan-penggunaan.en.md#multiple-projects-in-parallel)).
+
+`python audit.py` only works from the kit folder. From elsewhere use the full path
+(`python C:\GitHub\security-audit-kit\audit.py --project <folder> all`), `audit.ps1`, or define a
+`sak` shortcut in your PowerShell profile (`function sak { python C:\GitHub\security-audit-kit\audit.py @args }`);
+details in [Running from any directory](docs/panduan-penggunaan.en.md#running-from-any-directory).
+
 ## Structure
 
 ```

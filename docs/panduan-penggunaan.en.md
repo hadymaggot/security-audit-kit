@@ -132,6 +132,94 @@ rollback if there are any recorded destructive actions.
 - `make <module>` (Linux/macOS, if `make` is available).
 - `./audit.ps1 <module>` (Windows PowerShell).
 
+### Multiple projects (in parallel)
+
+By default the kit uses `config/`, `tests/<module>/*.yml` and `reports/` inside the kit folder
+itself (a single project). To audit several projects at once, give each project its own folder
+with `--project`:
+
+```
+python audit.py --project apple-gatrik init authz,upload,cookie-flags
+python audit.py --project apple-gatrik all
+```
+
+- **A bare name** (e.g. `apple-gatrik`) → `projects/<name>/` inside the kit (already
+  gitignored). **A path** (absolute, or relative to the working directory) → that folder.
+- `init` copies `config/targets.example.yml` and the example configs of the listed modules into the
+  project folder and creates `reports/`. Existing files are never overwritten.
+- Equivalent to `--project`: the `SAK_PROJECT_DIR` environment variable, `make <target>
+  PROJECT=<name|folder>`, and `.\audit.ps1 <module> -Project <name|folder>`.
+- Run each project in its own terminal. Credentials still come from environment variables, so each
+  terminal can use different values.
+
+#### Running from any directory
+
+`audit.py` lives in the kit folder, so `python audit.py` only works when the working directory is
+the kit folder. From elsewhere (e.g. `C:\GitHub`) it fails with `can't open file '...\audit.py'`.
+Use the full path to `audit.py`; the project folder can be anywhere because the config is read from
+the project folder, not from the working directory:
+
+```powershell
+# Windows PowerShell
+python C:\GitHub\security-audit-kit\audit.py --project C:\Users\sapto\sak-projects\apple-gatrik all
+
+# or via the wrapper (switches to the kit folder itself; a relative -Project is resolved from the caller's folder)
+& C:\GitHub\security-audit-kit\audit.ps1 all -Project C:\Users\sapto\sak-projects\apple-gatrik
+```
+
+```bash
+# Linux/macOS
+python3 /opt/security-audit-kit/audit.py --project ~/sak-projects/apple-gatrik all
+make -C /opt/security-audit-kit all PROJECT=/home/sapto/sak-projects/apple-gatrik   # absolute PROJECT
+```
+
+To avoid typing the long path, define a shortcut once:
+
+```powershell
+# Windows: add to your PowerShell profile (open it with: notepad $PROFILE)
+function sak { python C:\GitHub\security-audit-kit\audit.py @args }
+# then, from any folder:
+sak --project C:\Users\sapto\sak-projects\apple-gatrik all
+sak --project C:\Users\sapto\sak-projects\kumham headers
+```
+
+```bash
+# Linux/macOS: add to ~/.bashrc or ~/.zshrc
+alias sak='python3 /opt/security-audit-kit/audit.py'
+```
+
+Note: a relative project path (`--project ./proj` or `-Project .\proj`) is resolved from the
+directory the command is run in. With `make -C`, use an absolute path because `make` changes to the
+kit folder first. Keep project folders outside the kit folder (e.g. `~/sak-projects/<name>`) so
+they are not lost when the kit folder or a worktree is deleted.
+
+Things to keep in mind when running projects at the same time:
+
+- **Trivy** uses a shared DB cache (`~/.cache/sak-trivy`); runs from several projects are queued
+  automatically by a file lock (message "waiting for another project's trivy"). Set
+  `trivy_cache_dir` in `targets.yml` for a separate cache.
+- **RAM**: ZAP full, trivy and semgrep are fairly heavy; run them one after another when host
+  memory is limited.
+- **Same target**: do not run two destructive modules (mass-assignment, active ZAP with snapshot)
+  against the same target at the same time.
+
+### Report author and company
+
+The "Disusun oleh" (prepared by) row of the HTML, Markdown and slide reports comes from the
+`report:` block in the project's `targets.yml`; the Security Audit Kit credit stays on the "Alat"
+(tool) row.
+
+```yaml
+report:
+  prepared_by: "Sapto Hadi"                  # default: Sapto Hadi
+  organization: "PT. Wahana Reka Tekindo"    # default; use "" to hide it
+  contact: "wahanarekatekindo@gmail.com"     # default only when the organization is the default one; "" hides it
+  version: "1.0"                             # document version
+```
+
+The `SAK_REPORT_AUTHOR`, `SAK_REPORT_ORG` and `SAK_REPORT_CONTACT` environment variables override
+these values.
+
 ## 5. Reading the report
 
 After `report` or `all`, the results are stored in:
@@ -186,6 +274,9 @@ modules along with how to add their test cases.
 
 | Symptom | Possible cause & solution |
 |---|---|
+| `can't open file '...\audit.py'` | `audit.py` was run from outside the kit folder. Use the full path (`python C:\GitHub\security-audit-kit\audit.py ...`), `audit.ps1`, or the `sak` shortcut (see "Running from any directory"). |
+| `unrecognized arguments: --project` | The kit folder is out of date; run `git pull` in the kit folder. |
+| `<folder>\config\targets.yml belum ada (project: ...)` | The project folder has not been set up or the path is wrong: run `python audit.py --project <name\|folder> init`, or copy the config into that folder. |
 | `config/targets.yml belum ada` | Copy from `config/targets.example.yml`. |
 | `<config> belum ada — salin dari contoh .example-nya` | Copy the relevant module's `.example.yml` file. |
 | Sanctum login fails 500 "Session store not set" | `auth.sanctum.origin` does not yet match the server's `SANCTUM_STATEFUL_DOMAINS`. |
