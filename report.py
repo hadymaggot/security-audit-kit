@@ -21,9 +21,13 @@ import html
 import json
 import os
 import re
+import sys
 from pathlib import Path
 
 import remediation as R
+
+sys.path.insert(0, str(Path(__file__).resolve().parent / "tests"))
+import _color as C  # noqa: E402  (warna ANSI konsol; hanya untuk ringkasan di terminal)
 
 _TAG_RE = re.compile(r"</?[A-Za-z][^>]*>")
 
@@ -870,9 +874,13 @@ def main():
 
     gagal = sum(1 for f in findings if not f["lulus"])
     print(f"Laporan: {d/'laporan.html'} & {d/'laporan.md'} & {d/'laporan-slides.html'}")
-    print(f"Total {len(findings)} item, {gagal} perlu tindak lanjut, {len(cves)} CVE.")
-    print(f"  Critical {counts['critical']} · High {counts['high']} · "
-          f"Medium {counts['medium']} · Low {counts['low']} · Info {counts['info']}")
+    tindak = C.bad(gagal) if gagal else C.good(gagal)
+    print(f"Total {len(findings)} item, {tindak} perlu tindak lanjut, {len(cves)} CVE.")
+    # Severity berwarna hanya bila ada temuan; yang nol diredupkan.
+    ringkas = " · ".join(
+        C.severity(s, f"{s.capitalize()} {counts[s]}") if counts[s] else C.dim(f"{s.capitalize()} {counts[s]}")
+        for s in ("critical", "high", "medium", "low", "info"))
+    print(f"  {ringkas}")
     return 0
 
 

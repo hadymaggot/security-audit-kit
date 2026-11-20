@@ -21,6 +21,9 @@ from urllib.parse import urljoin
 
 import requests
 import yaml
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _color as C  # noqa: E402  (warna ANSI konsol lintas-modul di tests/)
 
 ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 
@@ -102,7 +105,7 @@ def main():
     print(f"{'PEMERIKSAAN':<44} {'HTTP':>5}  HASIL")
     print("-" * 74)
     for r in results:
-        mark = "ok " if r["ok"] else "XX "
+        mark = f"{C.good('ok')} " if r["ok"] else f"{C.bad('XX')} "
         print(f"{r['label'][:44]:<44} {str(r['status']):>5}  {mark}{r['note']}")
     print(f"\n{len(results)} cek, {failures} temuan.")
 

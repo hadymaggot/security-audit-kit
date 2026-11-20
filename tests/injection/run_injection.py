@@ -28,6 +28,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import _sanctum  # noqa: E402
+import _color as C  # noqa: E402  (warna ANSI konsol lintas-modul di tests/)
 
 ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 
@@ -178,7 +179,7 @@ def main():
         except Exception as exc:  # noqa: BLE001
             results.append({"check": name, "status": -1, "ok": True,
                             "note": f"skip: {exc}", "url": ev_url})
-            print(f"{name[:44]:<44} skip: {exc}")
+            print(f"{name[:44]:<44} {C.dim(f'skip: {exc}')}")
             continue
         if found:
             failures += 1
@@ -186,10 +187,10 @@ def main():
             detail = "; ".join(d for _, d, _ in found)
             results.append({"check": name, "status": found[0][2], "ok": False,
                             "note": f"SQLi ({teknik}): {detail}", "url": ev_url})
-            print(f"{name[:44]:<44} XX SQLi: {teknik}")
+            print(f"{name[:44]:<44} {C.bad(f'XX SQLi: {teknik}')}")
         else:
             results.append({"check": name, "status": 200, "ok": True, "note": "", "url": ev_url})
-            print(f"{name[:44]:<44} ok")
+            print(f"{name[:44]:<44} {C.good('ok')}")
 
     print(f"\n{failures} temuan.")
     if args.json:

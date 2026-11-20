@@ -220,6 +220,30 @@ report:
 The `SAK_REPORT_AUTHOR`, `SAK_REPORT_ORG` and `SAK_REPORT_CONTACT` environment variables override
 these values.
 
+### Console colors
+
+Statuses in the terminal are colored so they are easy to scan: `ok`/`PASS` green,
+`MISS`/`XX`/`FAIL`/`LEAK` red, `skip` and the executed commands (`+ docker run ...`) dimmed, and the
+severity summary at the end (Critical/High red, Medium yellow, Low cyan; zero counts are dimmed).
+Colors use standard ANSI codes, so they work in Windows Terminal, PowerShell 7, macOS Terminal /
+iTerm2 and Linux terminals. Colors **never** end up in the JSON files or the HTML/Markdown/slide
+reports.
+
+By default (`auto`) colors are only used when the output is an interactive terminal, so they are
+switched off automatically when redirected to a file or pipe, and in CI. To change this:
+
+| How | Effect |
+|---|---|
+| `--color always` (or just `--color`) | Force on, also into pipes (e.g. `\| less -R`) |
+| `--no-color` or `--color never` | Turn off |
+| env `NO_COLOR=1` | Turn off (the [no-color.org](https://no-color.org) standard) |
+| env `SAK_COLOR=always\|never\|auto` | Same as `--color`; overrides `NO_COLOR` and `FORCE_COLOR` |
+| env `FORCE_COLOR=1` / `CLICOLOR_FORCE=1` | Force on |
+
+Example: `python audit.py --project apple-gatrik --color always headers`. The option can be placed
+anywhere and is passed on to every module automatically. Git Bash (mintty) is often not detected as
+a terminal by Python; use `--color always` or `SAK_COLOR=always`.
+
 ## 5. Reading the report
 
 After `report` or `all`, the results are stored in:
@@ -274,6 +298,8 @@ modules along with how to add their test cases.
 
 | Symptom | Possible cause & solution |
 |---|---|
+| Odd text such as `←[32mok←[0m` or `^[[32m` appears | The terminal does not understand ANSI color codes (legacy console) or the output is viewed through a plain-text reader. Run with `--no-color` (or env `NO_COLOR=1`); on Windows 10+ use Windows Terminal or PowerShell 7. |
+| No colors at all | The output is redirected to a pipe/file, or the terminal is not detected (e.g. Git Bash). Use `--color always` or env `SAK_COLOR=always`; check that `NO_COLOR` is not set. |
 | `can't open file '...\audit.py'` | `audit.py` was run from outside the kit folder. Use the full path (`python C:\GitHub\security-audit-kit\audit.py ...`), `audit.ps1`, or the `sak` shortcut (see "Running from any directory"). |
 | `unrecognized arguments: --project` | The kit folder is out of date; run `git pull` in the kit folder. |
 | `<folder>\config\targets.yml belum ada (project: ...)` | The project folder has not been set up or the path is wrong: run `python audit.py --project <name\|folder> init`, or copy the config into that folder. |

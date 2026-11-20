@@ -26,6 +26,8 @@ from pathlib import Path
 
 import requests
 import yaml
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _color as C  # noqa: E402  (warna ANSI konsol lintas-modul di tests/)
 
 ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 ANSWER_KEY_RE = re.compile(r"(answer|solution|jawaban|expected|correct|target|gap_?x|x_?pos(ition)?)",
@@ -222,7 +224,7 @@ def main(argv=None):
         return 2
     failures = sum(1 for r in results if not r["ok"])
     for r in results:
-        print(f"[{'PASS' if r['ok'] else 'FAIL'}] {r['check']} — {r['note']}")
+        print(f"[{C.tag('PASS' if r['ok'] else 'FAIL')}] {r['check']} — {r['note']}")
     print(f"\n{len(results)} cek, {failures} temuan.")
     if args.json_out:
         Path(args.json_out).parent.mkdir(parents=True, exist_ok=True)

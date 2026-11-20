@@ -29,6 +29,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import _sanctum  # noqa: E402  (helper auth Sanctum lintas-modul di tests/)
+import _color as C  # noqa: E402  (warna ANSI konsol lintas-modul di tests/)
 
 ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 
@@ -180,7 +181,7 @@ def main():
         if accepted and cleanup:
             done = cleanup_accepted(sess, base, cleanup, r, req_headers())
             note = f"{note}; {done}" if note else done
-        print(f"{name:<34} {status:>5}  {verdict}" + (f"  [{note}]" if accepted and cleanup else ""))
+        print(f"{name:<34} {status:>5}  {C.status(verdict)}" + (f"  [{note}]" if accepted and cleanup else ""))
         results.append({"case": name, "status": status, "ok": ok, "note": note,
                         "url": evidence_url})
 

@@ -23,6 +23,8 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _color as C  # noqa: E402  (warna ANSI konsol lintas-modul di tests/)
 
 try:
     import yaml
@@ -452,7 +454,7 @@ def main(argv=None):
 
     for r in results:
         mark = "PASS" if r.get("ok", True) else (r.get("severity", "info").upper())
-        print(f"[{mark}] {r.get('check')} — {r.get('note', '')}")
+        print(f"[{C.tag(mark)}] {r.get('check')} — {r.get('note', '')}")
     print(f"\n{failures} temuan nyata, {len(results)} baris total.")
     return 1 if failures else 0
 

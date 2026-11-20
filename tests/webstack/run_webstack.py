@@ -28,6 +28,9 @@ from urllib.parse import urlparse
 
 import requests
 import yaml
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _color as C  # noqa: E402  (warna ANSI konsol lintas-modul di tests/)
 
 ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 # Nama produk + versi pada banner, mis. "Apache/2.4.70", "nginx/1.30.6".
@@ -188,7 +191,7 @@ def main():
     for url in dict.fromkeys(targets):
         for row in check_target(sess, url, known):
             results.append(row)
-            mark = "ok " if row["ok"] else "XX "
+            mark = f"{C.good('ok')} " if row["ok"] else f"{C.bad('XX')} "
             print(f"{row['check'][:44]:<44} {str(row['status']):>5}  {mark}{row['note']}")
 
     failures = sum(1 for r in results if not r["ok"])

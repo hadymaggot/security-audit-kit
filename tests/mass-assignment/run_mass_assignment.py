@@ -31,6 +31,7 @@ import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import _rollback  # noqa: E402
 import _sanctum  # noqa: E402
+import _color as C  # noqa: E402  (warna ANSI konsol lintas-modul di tests/)
 
 ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 
@@ -166,7 +167,7 @@ def main():
         if not ok:
             failures += 1
         note = "" if ok else f"field terlarang diterima: {', '.join(accepted)}"
-        mark = "ok " if ok else "XX "
+        mark = f"{C.good('ok')} " if ok else f"{C.bad('XX')} "
         print(f"{name[:40]:<40} {w.status_code:>5}  {mark}{note}")
         results.append({"check": name, "status": w.status_code, "ok": ok,
                         "note": note, "url": ev_url})
