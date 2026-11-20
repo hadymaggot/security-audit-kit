@@ -29,3 +29,7 @@ tests/*/session_mgmt.yml
 tests/*/captcha.yml
 tests/*/jwt.yml
 tests/*/ssrf.yml
+
+# Folder project multi-project di dalam kit (python audit.py --project <nama>): berisi config,
+# kredensial terkait, dan laporan per target — jangan pernah di-commit.
+projects/

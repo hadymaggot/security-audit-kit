@@ -92,7 +92,10 @@ def main():
         cfg = expand(yaml.safe_load(f))
 
     base = cfg["base_url"].rstrip("/")
-    reports = Path(cfg.get("reports_dir") or (Path(__file__).resolve().parents[2] / "reports"))
+    # Folder jurnal rollback: reports_dir eksplisit > folder --json (project aktif) > <kit>/reports.
+    reports = Path(cfg.get("reports_dir")
+                   or (Path(args.json).parent if args.json else None)
+                   or (Path(__file__).resolve().parents[2] / "reports"))
     try:
         sess, sanctum = build_session(base, cfg.get("auth") or {})
     except Exception as exc:  # noqa: BLE001

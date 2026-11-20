@@ -2,9 +2,12 @@
 # Semua target meneruskan ke `python audit.py`, jadi perilakunya identik lintas-OS.
 
 PYTHON ?= python3
+# Multi-project: make all PROJECT=apple-gatrik  (nama -> projects/<nama>, atau path folder)
+PROJECT ?=
+AUDIT = $(PYTHON) audit.py $(if $(PROJECT),--project "$(PROJECT)")
 
 .PHONY: help install audit all zap zap-api zap-full authz upload auth-policy \
-        clientleak tls headers deps report clean
+        clientleak tls headers deps report clean init
 
 help:
 	@echo "Target:"
@@ -22,37 +25,42 @@ help:
 	@echo "  make deps          - CVE dependensi + SAST + rahasia ter-commit"
 	@echo "  make report        - gabungkan hasil jadi reports/laporan.html"
 	@echo "  make clean         - hapus isi reports/"
+	@echo "  make init PROJECT=x MODULES=authz,upload - siapkan folder project"
+	@echo "  (semua target menerima PROJECT=<nama|folder> untuk multi-project paralel)"
 
 install:
 	$(PYTHON) -m pip install -r requirements.txt
 
 audit all:
-	$(PYTHON) audit.py all
+	$(AUDIT) all
 
 zap:
-	$(PYTHON) audit.py zap baseline
+	$(AUDIT) zap baseline
 zap-api:
-	$(PYTHON) audit.py zap api
+	$(AUDIT) zap api
 zap-full:
-	$(PYTHON) audit.py zap full
+	$(AUDIT) zap full
 
 authz:
-	$(PYTHON) audit.py authz
+	$(AUDIT) authz
 upload:
-	$(PYTHON) audit.py upload
+	$(AUDIT) upload
 auth-policy:
-	$(PYTHON) audit.py auth-policy
+	$(AUDIT) auth-policy
 clientleak:
-	$(PYTHON) audit.py clientleak
+	$(AUDIT) clientleak
 tls:
-	$(PYTHON) audit.py tls
+	$(AUDIT) tls
 headers:
-	$(PYTHON) audit.py headers
+	$(AUDIT) headers
 deps:
-	$(PYTHON) audit.py deps
+	$(AUDIT) deps
 report:
-	$(PYTHON) audit.py report
+	$(AUDIT) report
 
 clean:
-	$(PYTHON) -c "import shutil,glob,os; [os.remove(f) for f in glob.glob('reports/*') if os.path.isfile(f) and not f.endswith('.gitkeep')]"
-	@echo "reports/ dibersihkan."
+	$(AUDIT) clean
+
+# make init PROJECT=apple-gatrik MODULES=authz,upload
+init:
+	$(AUDIT) init $(MODULES)

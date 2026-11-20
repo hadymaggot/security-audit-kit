@@ -6,16 +6,25 @@
 #   .\audit.ps1 zap baseline
 #   .\audit.ps1 clientleak
 #   .\audit.ps1 report
+# Multi-project (paralel, satu terminal per project):
+#   .\audit.ps1 init authz,upload -Project apple-gatrik   # buat projects\apple-gatrik\
+#   .\audit.ps1 all -Project apple-gatrik
+#   .\audit.ps1 headers -Project D:\audit\kumham           # folder di mana saja
 
 param(
     [Parameter(Position = 0)]
     [string]$Module = "help",
+
+    # Nama project (-> <kit>\projects\<nama>) atau folder; setara `--project` / SAK_PROJECT_DIR.
+    [string]$Project = "",
 
     [Parameter(Position = 1, ValueFromRemainingArguments = $true)]
     [string[]]$Rest
 )
 
 $ErrorActionPreference = "Stop"
+# Path project relatif diselesaikan terhadap folder pemanggil, bukan folder kit.
+$env:SAK_CALLER_CWD = (Get-Location).Path
 Set-Location -Path $PSScriptRoot
 
 # Pilih interpreter Python yang tersedia.
@@ -23,10 +32,14 @@ $py = (Get-Command python -ErrorAction SilentlyContinue) `
     ?? (Get-Command python3 -ErrorAction SilentlyContinue)
 if (-not $py) { Write-Error "Python tidak ditemukan di PATH."; exit 2 }
 
+$projectArgs = @()
+if ($Project) { $projectArgs = @("--project", $Project) }
+
 switch ($Module) {
     "help" {
-        Write-Host "Perintah:"
+        Write-Host "Perintah (tambahkan -Project <nama|folder> untuk multi-project):"
         Write-Host "  .\audit.ps1 install        - pasang dependensi Python"
+        Write-Host "  .\audit.ps1 init a,b       - siapkan folder project (+ config modul a,b)"
         Write-Host "  .\audit.ps1 all            - semua modul + susun laporan"
         Write-Host "  .\audit.ps1 zap baseline   - OWASP ZAP passive"
         Write-Host "  .\audit.ps1 zap api        - OWASP ZAP dari OpenAPI"
@@ -44,14 +57,9 @@ switch ($Module) {
     "install" {
         & $py.Source -m pip install -r requirements.txt
     }
-    "clean" {
-        Get-ChildItem -Path "reports" -File -ErrorAction SilentlyContinue |
-            Where-Object { $_.Name -ne ".gitkeep" } | Remove-Item -Force
-        Write-Host "reports/ dibersihkan."
-    }
     default {
-        # Teruskan apa adanya: modul + argumen sisa (mis. 'zap baseline').
-        & $py.Source "audit.py" $Module @Rest
+        # Teruskan apa adanya: [--project X] modul + argumen sisa (mis. 'zap baseline').
+        & $py.Source "audit.py" @projectArgs $Module @Rest
         exit $LASTEXITCODE
     }
 }

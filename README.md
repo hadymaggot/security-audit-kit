@@ -50,6 +50,20 @@ Kredensial lewat environment variable, bukan ditaruh di file (file `*.yml` yang 
 masuk gitignore). Satu entry point untuk semua OS: `python audit.py <modul>`. Untuk perintah
 pendek, gunakan `make <modul>` di Linux/macOS atau `.\audit.ps1 <modul>` di Windows.
 
+**Multi-project (paralel).** Satu instalasi kit dapat melayani banyak project sekaligus; tiap
+project memiliki `config/`, `tests/<modul>/*.yml`, dan `reports/` sendiri sehingga dapat diaudit
+bersamaan dari terminal berbeda:
+
+```bash
+python audit.py --project apple-gatrik init authz,upload   # buat projects/apple-gatrik/
+python audit.py --project apple-gatrik all                  # terminal 1
+python audit.py --project D:/audit/kumham all               # terminal 2 (folder di mana saja)
+```
+
+Setara: env `SAK_PROJECT_DIR`, `make all PROJECT=...`, atau `.\audit.ps1 all -Project ...`.
+Penyusun dan perusahaan di laporan diatur per project lewat blok `report:` di `targets.yml`
+(lihat [panduan](docs/panduan-penggunaan.md#multi-project-paralel)).
+
 ## Struktur
 
 ```
