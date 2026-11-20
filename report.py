@@ -19,6 +19,7 @@ import argparse
 import datetime as dt
 import html
 import json
+import os
 import re
 from pathlib import Path
 
@@ -239,12 +240,18 @@ BATASAN = (
     "ada di reports/rollback.json, dan `python audit.py rollback` memulihkan ulang bila perlu."
 )
 
-# Kredit pembuat kit — selalu ikut di SETIAP laporan, apa pun yang memakainya.
-# Tanamkan di sini (bukan di config) supaya tak bisa dihapus lewat konfigurasi.
+# Kredit pembuat kit — selalu ikut di SETIAP laporan (baris "Alat" dan footer), apa pun yang
+# memakainya. Tanamkan di sini (bukan di config) supaya tak bisa dihapus lewat konfigurasi.
+# Penyusun laporan (penguji/organisasi) terpisah dan dinamis: lihat report_meta().
 KIT_NAME = "Security Audit Kit"
 KIT_AUTHOR = "hadymaggot"
 KIT_URL = "https://github.com/hadymaggot/security-audit-kit"
 CREDIT = f"{KIT_NAME} — dibuat oleh {KIT_AUTHOR} · {KIT_URL}"
+
+# Default penyusun & perusahaan penyusun laporan; timpa per project di targets.yml (blok
+# `report:`) atau lewat env SAK_REPORT_AUTHOR / SAK_REPORT_ORG.
+DEFAULT_AUTHOR = "Sapto Hadi"
+DEFAULT_ORG = "PT. Wahana Reka Tekindo"
 
 # Nama alert yang terbaca manusia per 'kind' (gaya ZAP: satu alert, banyak instance).
 KIND_LABEL = {
@@ -407,15 +414,52 @@ def finding_id(i):
     return f"SAK-{i:03d}"
 
 
-def read_target():
-    """Baca nama & base_url target dari config/targets.yml (best-effort)."""
+def targets_path():
+    """config/targets.yml milik project aktif (SAK_PROJECT_DIR dari `audit.py --project`),
+    atau milik folder kit bila tak diset."""
+    base = os.environ.get("SAK_PROJECT_DIR") or Path(__file__).resolve().parent
+    return Path(base) / "config" / "targets.yml"
+
+
+def read_config():
+    """Isi targets.yml (best-effort, {} bila tak ada/rusak)."""
     try:
         import yaml
-        p = Path(__file__).resolve().parent / "config" / "targets.yml"
+        p = targets_path()
         cfg = yaml.safe_load(p.read_text(encoding="utf-8")) if p.exists() else {}
-        return (cfg or {}).get("name") or "-", (cfg or {}).get("base_url") or "-"
+        return cfg if isinstance(cfg, dict) else {}
     except Exception:  # noqa: BLE001
-        return "-", "-"
+        return {}
+
+
+def read_target():
+    """Baca nama & base_url target dari targets.yml project aktif (best-effort)."""
+    cfg = read_config()
+    return cfg.get("name") or "-", cfg.get("base_url") or "-"
+
+
+def report_meta(cfg=None):
+    """Penyusun & perusahaan penyusun laporan, dinamis per project.
+
+    Sumber (prioritas): env SAK_REPORT_AUTHOR / SAK_REPORT_ORG / SAK_REPORT_CONTACT, lalu blok
+    `report:` di targets.yml (prepared_by, organization, contact, version). Perusahaan default
+    DEFAULT_ORG bila tak diset sama sekali; isi string kosong untuk menyembunyikannya."""
+    rc = ((read_config() if cfg is None else cfg) or {}).get("report") or {}
+    rc = rc if isinstance(rc, dict) else {}
+
+    def pick(env, key, default=""):
+        if env in os.environ:
+            return os.environ[env].strip()
+        return str(rc[key]).strip() if key in rc and rc[key] is not None else default
+
+    by = pick("SAK_REPORT_AUTHOR", "prepared_by", DEFAULT_AUTHOR)
+    org = pick("SAK_REPORT_ORG", "organization", DEFAULT_ORG)
+    contact = pick("SAK_REPORT_CONTACT", "contact")
+    line = " — ".join(x for x in (by, org) if x)
+    if line and contact:
+        line = f"{line} ({contact})"
+    return {"by": by, "org": org, "line": line, "version": str(rc.get("version") or "1.0"),
+            "custom": bool(line)}
 
 
 def exec_summary(alerts, counts):
@@ -440,15 +484,17 @@ def write_md(path, findings, counts, when, cves):
     gagal = [f for f in findings if not f["lulus"]]
     alerts = group_alerts(gagal)
     tgt_name, tgt_url = read_target()
+    meta = report_meta()
     moduls = sorted({f["modul"] for f in findings})
     L = [
         "# Laporan Hasil Uji Keamanan",
         "", f"**Klasifikasi:** {KLASIFIKASI}", "",
         "| | |", "|---|---|",
         f"| Dibuat | {when} |",
-        f"| Disusun oleh | {CREDIT} |",
+        f"| Disusun oleh | {meta['line'] or CREDIT} |",
+    ] + ([f"| Alat | {CREDIT} |"] if meta["custom"] else []) + [
         f"| Target | {tgt_name} ({tgt_url}) |",
-        f"| Versi dokumen | 1.0 |", "",
+        f"| Versi dokumen | {meta['version']} |", "",
         "## 1. Ringkasan Eksekutif", "", exec_summary(alerts, counts), "",
         "| Severity | Jumlah instance |", "|---|---|",
         f"| {SEV_EMOJI['critical']} Critical | {counts['critical']} |",
@@ -631,6 +677,10 @@ def write_html(path, findings, counts, when, cves):
 
     credit_html = (f"{esc(KIT_NAME)} — dibuat oleh <b>{esc(KIT_AUTHOR)}</b> · "
                    f"<a href='{esc(KIT_URL)}' target='_blank' rel='noopener'>{esc(KIT_URL)}</a>")
+    meta = report_meta()
+    author_rows = (f"<tr><td>Disusun oleh</td><td>{esc(meta['line'])}</td></tr>"
+                   f"<tr><td>Alat</td><td>{credit_html}</td></tr>"
+                   if meta["custom"] else f"<tr><td>Disusun oleh</td><td>{credit_html}</td></tr>")
 
     doc = f"""<!doctype html><html lang="id"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -663,13 +713,13 @@ def write_html(path, findings, counts, when, cves):
  .exec{{background:#fff;border:1px solid #e3e7ec;padding:14px 16px;border-radius:6px;font-size:14px}}
 </style>
 <header><h1>Laporan Hasil Uji Keamanan</h1>
-<div class="sub">Dibuat {esc(when)}</div>
+<div class="sub">{(esc(meta['org']) + ' · ') if meta['org'] else ''}Dibuat {esc(when)}</div>
 <div class="klas">{esc(KLASIFIKASI)}</div></header>
 <main>
 <table class="meta"><tbody>
-<tr><td>Disusun oleh</td><td>{credit_html}</td></tr>
+{author_rows}
 <tr><td>Target</td><td>{esc(tgt_name)} (<code>{esc(tgt_url)}</code>)</td></tr>
-<tr><td>Versi dokumen</td><td>1.0</td></tr>
+<tr><td>Versi dokumen</td><td>{esc(meta['version'])}</td></tr>
 </tbody></table>
 <h2>1. Ringkasan Eksekutif</h2>
 <div class="exec">{esc(exec_summary(alerts, counts))}</div>
@@ -707,13 +757,15 @@ def write_slides(path, findings, counts, when, cves):
 
     alerts = group_alerts([f for f in findings if not f["lulus"]])
     tgt_name, tgt_url = read_target()
+    meta = report_meta()
+    by_html = f"<p class='meta'>Disusun oleh {esc(meta['line'])}</p>" if meta["custom"] else ""
     total = sum(counts[s] for s in ("critical", "high", "medium", "low", "info"))
 
     slides = [f"""<section class="slide cover">
       <div class="klas">{esc(KLASIFIKASI)}</div>
       <h1>Laporan Hasil Uji Keamanan</h1>
       <p class="tgt">{esc(tgt_name)} <span class="u">{esc(tgt_url)}</span></p>
-      <p class="meta">{esc(when)}</p>
+      <p class="meta">{esc(when)}</p>{by_html}
       <p class="credit">{esc(CREDIT)}</p></section>"""]
 
     cards = "".join(
@@ -787,10 +839,10 @@ def write_slides(path, findings, counts, when, cves):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--dir", default="reports")
+    ap.add_argument("--dir", default=str(Path(os.environ.get("SAK_PROJECT_DIR") or ".") / "reports"))
     args = ap.parse_args()
     d = Path(args.dir)
-    d.mkdir(exist_ok=True)
+    d.mkdir(parents=True, exist_ok=True)
     # Sertakan zona waktu (offset UTC) agar waktu laporan tak ambigu lintas-wilayah.
     now = dt.datetime.now().astimezone()
     off = now.strftime("%z")                     # mis. +0700

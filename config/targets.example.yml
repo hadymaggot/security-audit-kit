@@ -1,8 +1,22 @@
 # Salin ke config/targets.yml lalu isi untuk aplikasi yang diuji.
 # config/targets.yml di-gitignore — jangan commit base URL internal / kredensial.
+#
+# Multi-project (paralel): jangan salin manual, buat folder project sendiri per target:
+#   python audit.py --project apple-gatrik init authz,upload   # -> projects/apple-gatrik/config/targets.yml
+#   python audit.py --project apple-gatrik all                 # config & reports milik project itu
+# Nama saja -> <kit>/projects/<nama> (di-gitignore); boleh juga path folder di mana saja.
 
 # Nama bebas untuk laporan.
 name: "Contoh Aplikasi"
+
+# Identitas penyusun laporan (opsional). Tampil di laporan HTML/MD/slide pada baris
+# "Disusun oleh"; kredit Security Audit Kit tetap tampil di baris "Alat".
+# Bisa juga lewat env: SAK_REPORT_AUTHOR, SAK_REPORT_ORG, SAK_REPORT_CONTACT (menimpa nilai di sini).
+# report:
+#   prepared_by: "Sapto Hadi"                  # default bila tak diisi: Sapto Hadi
+#   organization: "PT. Wahana Reka Tekindo"    # default bila tak diisi; isi "" untuk menyembunyikan
+#   contact: "security@contoh.co.id"           # opsional
+#   version: "1.0"                             # versi dokumen, default 1.0
 
 # Base URL target. Gunakan dev/staging untuk scanner aktif.
 base_url: "https://dev.contoh.local"
@@ -24,6 +38,9 @@ code_path: "."
 # semgrep_paths: ["services/iam/app", "frontend-vue/src"]   # default: seluruh repo
 # semgrep_exclude: ["legacy"]                               # tambahan di atas vendor/node_modules/dist/docs
 # semgrep_timeout_minutes: 20                               # batas dinding; container dihentikan bila lewat
+# Cache DB trivy dipakai bersama semua project (default ~/.cache/sak-trivy). Run trivy dari
+# beberapa project sekaligus otomatis diantrekan (kunci berkas); isi folder lain untuk cache terpisah.
+# trivy_cache_dir: "~/.cache/sak-trivy"
 
 # Jaringan Docker untuk scanner berbasis container (ZAP, testssl) — OPSIONAL.
 # Perlu bila target hanya terjangkau dari jaringan tertentu, terutama target `localhost`:
