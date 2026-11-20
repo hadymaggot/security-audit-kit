@@ -11,10 +11,10 @@ ROOT = Path(__file__).resolve().parents[2]
 FAMILIES = {
     "README": ["README.md", "README.en.md", "README.de.md"],
     "CONTRIBUTING": ["CONTRIBUTING.md", "CONTRIBUTING.en.md", "CONTRIBUTING.de.md"],
-    "panduan-penggunaan": [f"docs/panduan-penggunaan{s}.md" for s in ("", ".en", ".de")],
-    "metodologi": [f"docs/metodologi{s}.md" for s in ("", ".en", ".de")],
-    "temuan-to-test-mapping": [f"docs/temuan-to-test-mapping{s}.md" for s in ("", ".en", ".de")],
-    "glosarium": [f"docs/glosarium{s}.md" for s in ("", ".en", ".de")],
+    "usage-guide": [f"docs/panduan-penggunaan{s}.md" for s in ("", ".en", ".de")],
+    "methodology": [f"docs/metodologi{s}.md" for s in ("", ".en", ".de")],
+    "finding-to-test-mapping": [f"docs/temuan-to-test-mapping{s}.md" for s in ("", ".en", ".de")],
+    "glossary": [f"docs/glosarium{s}.md" for s in ("", ".en", ".de")],
 }
 ALL_DOCS = [p for fam in FAMILIES.values() for p in fam] + ["docs/contoh-laporan.md", "worker/README.md"]
 FENCE = re.compile(r"^```[^\n]*\n(.*?)^```", re.S | re.M)
