@@ -1,4 +1,4 @@
-"""Unit test deps per tool + ingest gitleaks/semgrep ke laporan — tanpa Docker."""
+"""Unit tests for per-tool deps and gitleaks/semgrep ingestion into the report; no Docker."""
 import importlib.util
 import json
 import sys
@@ -19,7 +19,7 @@ AU = _load("audit_deps_t", "audit.py")
 RP = _load("report_deps_t", "report.py")
 
 
-# ── pemilihan tool ──────────────────────────────────────────────────────────
+# --- tool selection ---
 def test_deps_selection():
     assert AU.deps_selection("gitleaks") == ("gitleaks",)
     assert AU.deps_selection("semgrep") == ("semgrep",)
@@ -35,13 +35,13 @@ def _run_deps(monkeypatch, tmp_path, sub):
     monkeypatch.setattr(AU, "run", lambda cmd: calls.append(cmd) or 0)
     monkeypatch.setattr(AU, "run_semgrep",
                         lambda tgt, repo, out, runner=None: calls.append(AU.semgrep_cmd(tgt, repo, out, "n")) or 0)
-    # Cache trivy ke folder sementara: test tidak boleh menyentuh ~/.cache/sak-trivy atau ikut
-    # mengantre pada kunci milik audit sungguhan yang sedang menjalankan trivy.
+    # Trivy cache goes to a temp dir: tests must not touch ~/.cache/sak-trivy or wait on
+    # the lock of a real audit that is running trivy.
     rc = AU.mod_deps({"code_path": str(tmp_path), "trivy_cache_dir": str(tmp_path / "trivy-cache")}, sub)
     return rc, calls
 
 
-def test_satu_tool_saja_dijalankan(monkeypatch, tmp_path):
+def test_only_selected_tool_runs(monkeypatch, tmp_path):
     for tool, image in (("gitleaks", "gitleaks"), ("semgrep", "semgrep"), ("trivy", "trivy")):
         rc, calls = _run_deps(monkeypatch, tmp_path, tool)
         assert rc == 0 and calls, tool
@@ -51,30 +51,30 @@ def test_satu_tool_saja_dijalankan(monkeypatch, tmp_path):
         assert not any(o in joined for o in others), f"{tool} tak boleh menjalankan {others}"
 
 
-def test_semua_tool_bila_tanpa_pilihan(monkeypatch, tmp_path):
+def test_all_tools_when_no_selection(monkeypatch, tmp_path):
     rc, calls = _run_deps(monkeypatch, tmp_path, "all")
     joined = " ".join(" ".join(c) for c in calls)
     assert all(t in joined for t in ("gitleaks", "semgrep", "trivy"))
-    assert len(calls) == 4                                     # gitleaks, semgrep, trivy tabel + json
+    assert len(calls) == 4                                     # gitleaks, semgrep, trivy table + json
 
 
-def test_json_gitleaks_dan_semgrep_ditulis_ke_out(monkeypatch, tmp_path):
+def test_gitleaks_and_semgrep_json_written_to_out(monkeypatch, tmp_path):
     _, g = _run_deps(monkeypatch, tmp_path, "gitleaks")
     c = g[0]
     assert "--report-path" in c and c[c.index("--report-path") + 1] == "/out/gitleaks.json"
-    assert any(x.endswith(":/out") for x in c)                 # volume keluaran terpasang
+    assert any(x.endswith(":/out") for x in c)                 # output volume is mounted
     _, s = _run_deps(monkeypatch, tmp_path, "semgrep")
     script = s[0][-1]
     assert "--json-output /out/semgrep.json" in script and "/out" in " ".join(s[0])
 
 
-def test_repo_dipasang_read_only(monkeypatch, tmp_path):
+def test_repo_mounted_read_only(monkeypatch, tmp_path):
     _, calls = _run_deps(monkeypatch, tmp_path, "all")
     assert all(any(x.endswith(":ro") for x in c) for c in calls)
 
 
-# ── ingest laporan ──────────────────────────────────────────────────────────
-def test_report_memuat_gitleaks(tmp_path):
+# --- report ingestion ---
+def test_report_includes_gitleaks(tmp_path):
     (tmp_path / "gitleaks.json").write_text(json.dumps([
         {"RuleID": "aws-access-token", "File": "app/cfg.py", "StartLine": 12, "Commit": "abcdef123456",
          "Description": "AWS Access Key", "Secret": "REDACTED"}]), encoding="utf-8")
@@ -86,7 +86,7 @@ def test_report_memuat_gitleaks(tmp_path):
     assert "tidak dicantumkan" in g["evidence"] and "REDACTED" not in g["evidence"]
 
 
-def test_report_memuat_semgrep_dengan_cwe_dan_severity(tmp_path):
+def test_report_includes_semgrep_with_cwe_and_severity(tmp_path):
     (tmp_path / "semgrep.json").write_text(json.dumps({"results": [
         {"check_id": "php.laravel.security.sql-injection", "path": "app/Ctl.php",
          "start": {"line": 40}, "extra": {"severity": "ERROR", "message": "<p>Query rentan</p>",
@@ -101,45 +101,45 @@ def test_report_memuat_semgrep_dengan_cwe_dan_severity(tmp_path):
     assert "sast-finding" in RP.KIND_LABEL and RP.cvss_for("sast-finding", "medium")[0] == 5.3
 
 
-def test_report_toleran_json_rusak_atau_kosong(tmp_path):
+def test_report_tolerates_broken_or_empty_json(tmp_path):
     (tmp_path / "gitleaks.json").write_text("{bukan list", encoding="utf-8")
     (tmp_path / "semgrep.json").write_text(json.dumps({"results": None}), encoding="utf-8")
     assert RP.collect(tmp_path) == []
 
 
-# ── semgrep: opsi path/exclude dan batas waktu ──────────────────────────────
-def test_semgrep_cmd_menyalin_path_lalu_memindai_di_container():
+# --- semgrep: path/exclude options and timeout ---
+def test_semgrep_cmd_copies_paths_then_scans_in_container():
     c = AU.semgrep_cmd({"semgrep_paths": ["services/iam/app", "frontend-vue/src"],
                         "semgrep_exclude": ["legacy"]}, "R", "O", "sak-x")
     assert c[c.index("--name") + 1] == "sak-x" and "--entrypoint" in c and c[c.index("--entrypoint") + 1] == "sh"
     script = c[-1]
-    # salin hanya path terpilih (tar) ke /tmp/scan lalu pindai di sana (bukan dari akar repo bind mount)
+    # copy only the selected paths (tar) to /tmp/scan and scan there (not from the bind-mounted repo root)
     assert "tar -C /src" in script and "services/iam/app" in script and "frontend-vue/src" in script
     assert "-C /tmp/scan -xf -" in script and "cd /tmp/scan" in script and "-w /src" not in " ".join(c)
     for e in ("vendor", "node_modules", "dist", "docs", "legacy"):
         assert f"--exclude={e}" in script and f"--exclude {e}" in script
     assert "--no-git-ignore" in script and "--timeout 20" in script
-    assert AU.semgrep_cmd({}, "R", "O", "n")[-1].count(" .") >= 1               # default memindai "."
+    assert AU.semgrep_cmd({}, "R", "O", "n")[-1].count(" .") >= 1               # default scans "."
 
 
-def test_semgrep_cmd_mengutip_path_berspasi():
+def test_semgrep_cmd_quotes_paths_with_spaces():
     script = AU.semgrep_cmd({"semgrep_paths": ["dir dengan spasi/app"]}, "R", "O", "n")[-1]
     assert "'dir dengan spasi/app'" in script
 
 
-def test_run_semgrep_timeout_menghentikan_container(monkeypatch):
+def test_run_semgrep_timeout_stops_container(monkeypatch):
     import subprocess
     rm = []
     monkeypatch.setattr(subprocess, "call", lambda cmd, **k: rm.append(cmd) or 0)
 
     def runner(cmd, timeout):
-        assert timeout == 0.6                                              # 0,01 menit
+        assert timeout == 0.6                                              # 0.01 minutes
         raise subprocess.TimeoutExpired(cmd, timeout)
     rc = AU.run_semgrep({"semgrep_timeout_minutes": 0.01}, "R", "O", runner=runner)
     assert rc == 1 and rm and rm[0][:3] == ["docker", "rm", "-f"]
 
 
-def test_run_semgrep_sukses_mengembalikan_rc(monkeypatch):
+def test_run_semgrep_success_returns_rc(monkeypatch):
     class R:
         returncode = 0
     assert AU.run_semgrep({}, "R", "O", runner=lambda cmd, timeout: R()) == 0

@@ -101,14 +101,14 @@ def test_italics_follow_effective_language_by_default(monkeypatch):
 
 
 # --- canonical-term mapping -------------------------------------------------------------------
-def test_padankan_keeps_case_and_applies_phrases_first():
+def test_canonicalize_keeps_case_and_applies_phrases_first():
     assert G.canonicalize("Kebocoran info: sandi bocor di respons; Berkas terekspos", "id") == \
         "Information disclosure: password breached di response; File exposed"
     assert G.canonicalize("kata sandi lemah, header pembocor info", "id") == \
         "password lemah, header information disclosure"
 
 
-def test_padankan_whole_words_only():
+def test_canonicalize_whole_words_only():
     assert G.canonicalize("responsif dan sesinya", "id") == "responsif dan sesinya"
 
 
