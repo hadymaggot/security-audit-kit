@@ -17,6 +17,15 @@ Pakai:
 
 Konfigurasi target di config/targets.yml (lihat config/targets.example.yml).
 Kredensial & token diambil dari environment variable, bukan dari file.
+
+Multi-project (paralel): satu instalasi kit, banyak folder project. Tiap project punya
+config/targets.yml, tests/<modul>/<modul>.yml, dan reports/ sendiri, sehingga beberapa
+project bisa diaudit bersamaan dari terminal berbeda tanpa saling menimpa:
+    python audit.py --project apple-gatrik init authz,upload   # buat projects/apple-gatrik/
+    python audit.py --project apple-gatrik all
+    python audit.py --project D:/audit/kumham headers          # folder di mana saja
+    SAK_PROJECT_DIR=... python audit.py all                    # setara --project
+Tanpa --project / SAK_PROJECT_DIR, folder kit itu sendiri dipakai (perilaku lama).
 """
 from __future__ import annotations
 
@@ -34,7 +43,8 @@ except ImportError:  # pragma: no cover
     print("Butuh PyYAML: pip install -r requirements.txt", file=sys.stderr)
     sys.exit(2)
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent      # kode kit (runner, report.py, contoh config)
+PROJECT = ROOT                              # data project: config/, tests/<modul>/*.yml, reports/
 ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 
 
@@ -48,11 +58,63 @@ def expand(v):
     return v
 
 
+def resolve_project(value: str | None) -> Path:
+    """Folder project dari --project / SAK_PROJECT_DIR.
+
+    - kosong            -> folder kit (perilaku lama, satu project)
+    - nama saja (tanpa pemisah path, mis. "apple-gatrik") -> <kit>/projects/<nama>
+    - path (absolut/relatif) -> path tsb; relatif terhadap SAK_CALLER_CWD bila diset oleh
+      wrapper (audit.ps1 berpindah ke folder kit), selain itu terhadap direktori kerja."""
+    if not value or not str(value).strip():
+        return ROOT
+    v = str(value).strip()
+    if "/" not in v and "\\" not in v and v not in (".", "..") and not Path(v).is_absolute():
+        return (ROOT / "projects" / v).resolve()
+    p = Path(v).expanduser()
+    if not p.is_absolute():
+        p = Path(os.environ.get("SAK_CALLER_CWD") or os.getcwd()) / p
+    return p.resolve()
+
+
+def set_project(path: Path) -> Path:
+    """Tetapkan project aktif dan wariskan ke subproses (runner, report.py) lewat env."""
+    global PROJECT
+    PROJECT = Path(path)
+    os.environ["SAK_PROJECT_DIR"] = str(PROJECT)
+    return PROJECT
+
+
+def pop_project_arg(argv: list[str]) -> tuple[str | None, list[str]]:
+    """Ambil `--project X` / `--project=X` dari argv (posisi mana pun) sebelum argparse
+    dan sebelum intersepsi 'recon' yang meneruskan argumen bebas."""
+    out, val, i = [], None, 0
+    while i < len(argv):
+        a = argv[i]
+        if a == "--project" and i + 1 < len(argv):
+            val, i = argv[i + 1], i + 2
+            continue
+        if a.startswith("--project="):
+            val, i = a.split("=", 1)[1], i + 1
+            continue
+        out.append(a)
+        i += 1
+    return val, out
+
+
+def project_cfg(*parts: str) -> Path:
+    """Path config milik project aktif, mis. project_cfg("tests", "authz-matrix", "authz_matrix.yml")."""
+    return PROJECT.joinpath(*parts)
+
+
+def project_label() -> str:
+    return "" if PROJECT == ROOT else f" (project: {PROJECT})"
+
+
 def load_targets():
-    path = ROOT / "config" / "targets.yml"
+    path = project_cfg("config", "targets.yml")
     if not path.exists():
-        print("config/targets.yml belum ada. Salin dari config/targets.example.yml.",
-              file=sys.stderr)
+        print(f"{path} belum ada{project_label()}. Salin dari config/targets.example.yml "
+              "atau jalankan `python audit.py --project <nama> init`.", file=sys.stderr)
         sys.exit(2)
     with open(path, encoding="utf-8") as f:
         return expand(yaml.safe_load(f))
@@ -93,8 +155,8 @@ def run(cmd: list[str]) -> int:
 
 
 def reports_dir() -> Path:
-    d = ROOT / "reports"
-    d.mkdir(exist_ok=True)
+    d = PROJECT / "reports"
+    d.mkdir(parents=True, exist_ok=True)
     return d
 
 
@@ -300,19 +362,71 @@ def mod_deps(tgt, sub="all"):
         rc |= run_semgrep(tgt, repo, out)
     if "trivy" in sel:
         print("== trivy (CVE dependensi & rahasia) ==")
-        cache = dockervol(Path.home() / ".cache" / "sak-trivy")
-        (Path.home() / ".cache" / "sak-trivy").mkdir(parents=True, exist_ok=True)
-        # Tabel ke konsol untuk dibaca langsung.
-        rc |= run(["docker", "run", "--rm", "-v", f"{repo}:/repo:ro",
-                   "-v", f"{cache}:/root/.cache/trivy", "aquasec/trivy:latest",
-                   "fs", "/repo", "--scanners", "vuln,secret",
-                   "--severity", "HIGH,CRITICAL", "--ignore-unfixed"])
-        # JSON lengkap (semua severity) untuk laporan CVE.
-        run(["docker", "run", "--rm", "-v", f"{repo}:/repo:ro",
-             "-v", f"{cache}:/root/.cache/trivy", "-v", f"{out}:/out",
-             "aquasec/trivy:latest", "fs", "/repo", "--scanners", "vuln",
-             "--format", "json", "--output", "/out/trivy.json"])
+        cache_dir = trivy_cache_dir(tgt)
+        cache = dockervol(cache_dir)
+        # Cache DB trivy dipakai bersama antar-project (hemat ratusan MB); trivy sendiri tak
+        # mengizinkan dua proses memakai cache yang sama, jadi run paralel diantrekan di sini.
+        with file_lock(cache_dir / ".sak-trivy.lock", "trivy project lain"):
+            # Tabel ke konsol untuk dibaca langsung.
+            rc |= run(["docker", "run", "--rm", "-v", f"{repo}:/repo:ro",
+                       "-v", f"{cache}:/root/.cache/trivy", "aquasec/trivy:latest",
+                       "fs", "/repo", "--scanners", "vuln,secret",
+                       "--severity", "HIGH,CRITICAL", "--ignore-unfixed"])
+            # JSON lengkap (semua severity) untuk laporan CVE.
+            run(["docker", "run", "--rm", "-v", f"{repo}:/repo:ro",
+                 "-v", f"{cache}:/root/.cache/trivy", "-v", f"{out}:/out",
+                 "aquasec/trivy:latest", "fs", "/repo", "--scanners", "vuln",
+                 "--format", "json", "--output", "/out/trivy.json"])
     return 0  # informatif; tak menggagalkan
+
+
+def trivy_cache_dir(tgt) -> Path:
+    """Folder cache trivy: 'trivy_cache_dir' di targets.yml, default ~/.cache/sak-trivy (bersama)."""
+    raw = (tgt or {}).get("trivy_cache_dir") or (Path.home() / ".cache" / "sak-trivy")
+    d = Path(str(raw)).expanduser()
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+class file_lock:
+    """Kunci eksklusif antar-proses berbasis berkas (Windows: msvcrt, POSIX: fcntl).
+
+    Blok sampai kunci didapat; mencetak pesan sekali bila harus menunggu proses lain."""
+
+    def __init__(self, path: Path, holder: str = "proses lain", poll: float = 2.0):
+        self.path, self.holder, self.poll, self.fh = Path(path), holder, poll, None
+
+    def _lock(self, unlock=False) -> bool:
+        try:
+            if os.name == "nt":
+                import msvcrt
+                self.fh.seek(0)
+                msvcrt.locking(self.fh.fileno(), msvcrt.LK_UNLCK if unlock else msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(self.fh.fileno(), fcntl.LOCK_UN if unlock else fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return True
+        except OSError:
+            return False
+
+    def __enter__(self):
+        import time
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.fh = open(self.path, "a+b")
+        waited = False
+        while not self._lock():
+            if not waited:
+                print(f"  menunggu {self.holder} selesai (kunci {self.path.name})...", flush=True)
+                waited = True
+            time.sleep(self.poll)
+        return self
+
+    def __exit__(self, *exc):
+        try:
+            self._lock(unlock=True)
+        finally:
+            self.fh.close()
+        return False
 
 
 def mod_py(script: Path, config: Path, json_name: str | None = None):
@@ -329,7 +443,7 @@ def mod_recon(extra):
     """Recon orchestrator. Meneruskan argumen bebas (target, -d, -m, --active) ke
     runner. Config opsional: tests/recon/recon.yml (salin dari .example-nya)."""
     script = ROOT / "tests" / "recon" / "run_recon.py"
-    cfg = ROOT / "tests" / "recon" / "recon.yml"
+    cfg = project_cfg("tests", "recon", "recon.yml")
     cmd = [sys.executable, str(script), "--json", str(reports_dir() / "recon.json")]
     if cfg.exists():
         cmd += ["--config", str(cfg)]
@@ -341,7 +455,7 @@ def mod_recon(extra):
 
 def mod_report():
     """Gabungkan semua JSON di reports/ jadi satu laporan HTML + Markdown."""
-    return run([sys.executable, str(ROOT / "report.py")])
+    return run([sys.executable, str(ROOT / "report.py"), "--dir", str(reports_dir())])
 
 
 def mod_rollback():
@@ -368,7 +482,7 @@ def mod_rollback():
         """Sesi auth dari config mass-assignment (dibuat malas — hanya bila entri butuh)."""
         if ctx:
             return ctx
-        cfg_path = ROOT / "tests" / "mass-assignment" / "mass_assignment.yml"
+        cfg_path = project_cfg("tests", "mass-assignment", "mass_assignment.yml")
         if not cfg_path.exists():
             raise RuntimeError("config auth mass-assignment tak ditemukan — pulihkan manual")
         spec = importlib.util.spec_from_file_location(
@@ -407,21 +521,120 @@ def mod_rollback():
     return 1 if gagal else 0
 
 
-def main():
+# Modul pengujian berbasis runner Python: nama CLI -> (folder di tests/, runner, config, json).
+# Runner & contoh config ada di kit (ROOT); config live per project ada di PROJECT.
+# Urutan dict = urutan eksekusi pada `all` (modul hanya jalan bila config-nya ada).
+PY_MODULES = {
+    "authz": ("authz-matrix", "run_authz_matrix.py", "authz_matrix.yml", "authz.json"),
+    "upload": ("upload-safety", "run_upload_safety.py", "upload_safety.yml", "upload.json"),
+    "auth-policy": ("auth-policy", "run_auth_policy.py", "auth_policy.yml", "auth_policy.json"),
+    "clientleak": ("client-leak", "run_client_leak.py", "client_leak.yml", "client_leak.json"),
+    "cors": ("cors", "run_cors.py", "cors.yml", "cors.json"),
+    "open-redirect": ("open-redirect", "run_open_redirect.py", "open_redirect.yml", "open_redirect.json"),
+    "webstack": ("webstack", "run_webstack.py", "webstack.yml", "webstack.json"),
+    "injection": ("injection", "run_injection.py", "injection.yml", "injection.json"),
+    "cookie-flags": ("cookie-flags", "run_cookie_flags.py", "cookie_flags.yml", "cookie_flags.json"),
+    "response-leak": ("response-leak", "run_response_leak.py", "response_leak.yml", "response_leak.json"),
+    "openapi-coverage": ("openapi-coverage", "run_openapi_coverage.py", "openapi_coverage.yml",
+                         "openapi_coverage.json"),
+    "ratelimit": ("ratelimit", "run_ratelimit.py", "ratelimit.yml", "ratelimit.json"),
+    "session-mgmt": ("session-mgmt", "run_session_mgmt.py", "session_mgmt.yml", "session_mgmt.json"),
+    "captcha": ("captcha", "run_captcha.py", "captcha.yml", "captcha.json"),
+    "jwt": ("jwt", "run_jwt.py", "jwt.yml", "jwt.json"),
+    "ssrf": ("ssrf", "run_ssrf.py", "ssrf.yml", "ssrf.json"),
+    "mass-assignment": ("mass-assignment", "run_mass_assignment.py", "mass_assignment.yml",
+                        "mass_assignment.json"),
+}
+# Modul yang membuat/mengubah data: jalankan rollback setelahnya (bersihkan sisa bila terputus).
+ROLLBACK_AFTER = {"ratelimit", "session-mgmt", "mass-assignment"}
+
+
+def py_module_paths(name):
+    folder, script, cfg, jn = PY_MODULES[name]
+    return ROOT / "tests" / folder / script, project_cfg("tests", folder, cfg), jn
+
+
+def run_py_module(name):
+    script, cfg, jn = py_module_paths(name)
+    return mod_py(script, cfg, jn)
+
+
+def mod_init(modules_csv: str):
+    """Siapkan folder project: config/targets.yml (dari contoh), reports/, dan config modul
+    yang diminta (mis. "authz,upload"). Berkas yang sudah ada tidak ditimpa."""
+    if PROJECT == ROOT and not os.environ.get("SAK_ALLOW_INIT_ROOT"):
+        print("Pakai `--project <nama|folder>` untuk init (mis. `python audit.py --project "
+              "apple-gatrik init authz,upload`).", file=sys.stderr)
+        return 2
+    wanted = [m.strip() for m in (modules_csv or "").split(",") if m.strip() and m != "baseline"]
+    unknown = [m for m in wanted if m not in PY_MODULES and m != "recon"]
+    if unknown:
+        print(f"Modul tak dikenal: {', '.join(unknown)}. Pilihan: {', '.join(PY_MODULES)}, recon",
+              file=sys.stderr)
+        return 2
+    pairs = [(ROOT / "config" / "targets.example.yml", project_cfg("config", "targets.yml"))]
+    for m in wanted:
+        folder, _s, cfg, _j = PY_MODULES[m] if m != "recon" else ("recon", "", "recon.yml", "")
+        pairs.append((ROOT / "tests" / folder / cfg.replace(".yml", ".example.yml"),
+                      project_cfg("tests", folder, cfg)))
+    reports_dir()
+    for src, dst in pairs:
+        if dst.exists():
+            print(f"  ada   {dst}")
+            continue
+        if not src.exists():
+            print(f"  lewati {dst.name}: contoh {src} tidak ada", file=sys.stderr)
+            continue
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(src, dst)
+        print(f"  dibuat {dst}")
+    print(f"Project siap di {PROJECT}. Isi base_url & kredensial (lewat env var) lalu jalankan "
+          f"`python audit.py --project {PROJECT} all`.")
+    return 0
+
+
+def mod_clean():
+    """Hapus berkas di reports/ project aktif (subfolder seperti evidence/ & snapshots/ dibiarkan)."""
+    d = reports_dir()
+    n = 0
+    for f in d.iterdir():
+        if f.is_file() and f.name != ".gitkeep":
+            f.unlink()
+            n += 1
+    print(f"{d} dibersihkan ({n} berkas).")
+    return 0
+
+
+def main(argv=None):
+    project, argv = pop_project_arg(list(sys.argv[1:] if argv is None else argv))
+    set_project(resolve_project(project or os.environ.get("SAK_PROJECT_DIR")))
+    if PROJECT != ROOT:
+        print(f"[project] {PROJECT}")
     # 'recon' meneruskan argumen bebas (target, -d, -m, --active) ke runner-nya,
     # jadi di-intercept sebelum argparse yang ketat.
-    if len(sys.argv) > 1 and sys.argv[1] == "recon":
-        return mod_recon(sys.argv[2:])
-    ap = argparse.ArgumentParser(description="Security Audit Kit — lintas-platform")
-    ap.add_argument("module", choices=["all", "zap", "tls", "headers", "deps",
-                                       "authz", "upload", "auth-policy", "clientleak",
-                                       "cors", "open-redirect", "mass-assignment",
-                                       "webstack", "injection", "cookie-flags", "response-leak", "openapi-coverage", "ratelimit", "session-mgmt", "captcha", "jwt", "ssrf", "recon", "rollback", "report"])
+    if argv and argv[0] == "recon":
+        return mod_recon(argv[1:])
+    ap = argparse.ArgumentParser(
+        description="Security Audit Kit — lintas-platform",
+        epilog="Opsi global: --project <nama|folder> (atau env SAK_PROJECT_DIR) untuk memakai "
+               "config & reports milik project tsb; nama saja = <kit>/projects/<nama>.")
+    ap.add_argument("module", choices=["all", "init", "zap", "tls", "headers", "deps", *PY_MODULES,
+                                       "recon", "rollback", "report", "clean"])
     ap.add_argument("sub", nargs="?", default="baseline",
-                    help="subperintah: 'zap' baseline|api|full; 'deps' gitleaks|semgrep|trivy (satu tool)")
-    args = ap.parse_args()
-    tgt = load_targets()
+                    help="subperintah: 'zap' baseline|api|full; 'deps' gitleaks|semgrep|trivy "
+                         "(satu tool); 'init' daftar modul dipisah koma (mis. authz,upload)")
+    args = ap.parse_args(argv)
 
+    if args.module == "init":
+        return mod_init("" if args.sub == "baseline" else args.sub)
+    if args.module == "rollback":
+        return mod_rollback()
+    if args.module == "report":
+        return mod_report()
+    if args.module == "clean":
+        return mod_clean()
+
+    tgt = load_targets()
     if args.module == "zap":
         return mod_zap(tgt, args.sub)
     if args.module == "tls":
@@ -430,128 +643,25 @@ def main():
         return mod_headers(tgt)
     if args.module == "deps":
         return mod_deps(tgt, args.sub)
-    if args.module == "authz":
-        rc = mod_py(ROOT / "tests" / "authz-matrix" / "run_authz_matrix.py",
-                    ROOT / "tests" / "authz-matrix" / "authz_matrix.yml", "authz.json")
+    if args.module in PY_MODULES:
+        rc = run_py_module(args.module)
         mod_report()
+        if args.module in ROLLBACK_AFTER:
+            mod_rollback()      # fase terakhir: pulihkan keadaan target / sisa akun uji.
         return rc
-    if args.module == "upload":
-        rc = mod_py(ROOT / "tests" / "upload-safety" / "run_upload_safety.py",
-                    ROOT / "tests" / "upload-safety" / "upload_safety.yml", "upload.json")
-        mod_report()
-        return rc
-    if args.module == "auth-policy":
-        rc = mod_py(ROOT / "tests" / "auth-policy" / "run_auth_policy.py",
-                    ROOT / "tests" / "auth-policy" / "auth_policy.yml", "auth_policy.json")
-        mod_report()
-        return rc
-    if args.module == "clientleak":
-        rc = mod_py(ROOT / "tests" / "client-leak" / "run_client_leak.py",
-                    ROOT / "tests" / "client-leak" / "client_leak.yml", "client_leak.json")
-        mod_report()
-        return rc
-    if args.module == "cors":
-        rc = mod_py(ROOT / "tests" / "cors" / "run_cors.py",
-                    ROOT / "tests" / "cors" / "cors.yml", "cors.json")
-        mod_report()
-        return rc
-    if args.module == "open-redirect":
-        rc = mod_py(ROOT / "tests" / "open-redirect" / "run_open_redirect.py",
-                    ROOT / "tests" / "open-redirect" / "open_redirect.yml", "open_redirect.json")
-        mod_report()
-        return rc
-    if args.module == "webstack":
-        rc = mod_py(ROOT / "tests" / "webstack" / "run_webstack.py",
-                    ROOT / "tests" / "webstack" / "webstack.yml", "webstack.json")
-        mod_report()
-        return rc
-    if args.module == "injection":
-        rc = mod_py(ROOT / "tests" / "injection" / "run_injection.py",
-                    ROOT / "tests" / "injection" / "injection.yml", "injection.json")
-        mod_report()
-        return rc
-    if args.module == "ssrf":
-        rc = mod_py(ROOT / "tests" / "ssrf" / "run_ssrf.py",
-                    ROOT / "tests" / "ssrf" / "ssrf.yml", "ssrf.json")
-        mod_report()
-        return rc
-    if args.module == "jwt":
-        rc = mod_py(ROOT / "tests" / "jwt" / "run_jwt.py",
-                    ROOT / "tests" / "jwt" / "jwt.yml", "jwt.json")
-        mod_report()
-        return rc
-    if args.module == "captcha":
-        rc = mod_py(ROOT / "tests" / "captcha" / "run_captcha.py",
-                    ROOT / "tests" / "captcha" / "captcha.yml", "captcha.json")
-        mod_report()
-        return rc
-    if args.module == "session-mgmt":
-        rc = mod_py(ROOT / "tests" / "session-mgmt" / "run_session_mgmt.py",
-                    ROOT / "tests" / "session-mgmt" / "session_mgmt.yml", "session_mgmt.json")
-        mod_report()
-        mod_rollback()          # bersihkan sisa akun uji bila proses terputus di tengah.
-        return rc
-    if args.module == "ratelimit":
-        rc = mod_py(ROOT / "tests" / "ratelimit" / "run_ratelimit.py",
-                    ROOT / "tests" / "ratelimit" / "ratelimit.yml", "ratelimit.json")
-        mod_report()
-        mod_rollback()          # bersihkan sisa akun uji bila proses terputus di tengah.
-        return rc
-    if args.module == "openapi-coverage":
-        rc = mod_py(ROOT / "tests" / "openapi-coverage" / "run_openapi_coverage.py",
-                    ROOT / "tests" / "openapi-coverage" / "openapi_coverage.yml",
-                    "openapi_coverage.json")
-        mod_report()
-        return rc
-    if args.module == "response-leak":
-        rc = mod_py(ROOT / "tests" / "response-leak" / "run_response_leak.py",
-                    ROOT / "tests" / "response-leak" / "response_leak.yml", "response_leak.json")
-        mod_report()
-        return rc
-    if args.module == "cookie-flags":
-        rc = mod_py(ROOT / "tests" / "cookie-flags" / "run_cookie_flags.py",
-                    ROOT / "tests" / "cookie-flags" / "cookie_flags.yml", "cookie_flags.json")
-        mod_report()
-        return rc
-    if args.module == "mass-assignment":
-        rc = mod_py(ROOT / "tests" / "mass-assignment" / "run_mass_assignment.py",
-                    ROOT / "tests" / "mass-assignment" / "mass_assignment.yml",
-                    "mass_assignment.json")
-        mod_report()
-        mod_rollback()          # fase terakhir: pulihkan keadaan target.
-        return rc
-    if args.module == "rollback":
-        return mod_rollback()
-    if args.module == "report":
-        return mod_report()
     if args.module == "all":
         rc = 0
         rc |= mod_headers(tgt)
         rc |= mod_deps(tgt)
         rc |= mod_zap(tgt, "baseline")
-        # Modul pengujian hanya jalan bila config-nya ada.
-        for script, cfg, jn in (
-            (ROOT / "tests/authz-matrix/run_authz_matrix.py", ROOT / "tests/authz-matrix/authz_matrix.yml", "authz.json"),
-            (ROOT / "tests/upload-safety/run_upload_safety.py", ROOT / "tests/upload-safety/upload_safety.yml", "upload.json"),
-            (ROOT / "tests/auth-policy/run_auth_policy.py", ROOT / "tests/auth-policy/auth_policy.yml", "auth_policy.json"),
-            (ROOT / "tests/client-leak/run_client_leak.py", ROOT / "tests/client-leak/client_leak.yml", "client_leak.json"),
-            (ROOT / "tests/cors/run_cors.py", ROOT / "tests/cors/cors.yml", "cors.json"),
-            (ROOT / "tests/open-redirect/run_open_redirect.py", ROOT / "tests/open-redirect/open_redirect.yml", "open_redirect.json"),
-            (ROOT / "tests/webstack/run_webstack.py", ROOT / "tests/webstack/webstack.yml", "webstack.json"),
-            (ROOT / "tests/injection/run_injection.py", ROOT / "tests/injection/injection.yml", "injection.json"),
-            (ROOT / "tests/cookie-flags/run_cookie_flags.py", ROOT / "tests/cookie-flags/cookie_flags.yml", "cookie_flags.json"),
-            (ROOT / "tests/response-leak/run_response_leak.py", ROOT / "tests/response-leak/response_leak.yml", "response_leak.json"),
-            (ROOT / "tests/openapi-coverage/run_openapi_coverage.py", ROOT / "tests/openapi-coverage/openapi_coverage.yml", "openapi_coverage.json"),
-            (ROOT / "tests/ratelimit/run_ratelimit.py", ROOT / "tests/ratelimit/ratelimit.yml", "ratelimit.json"),
-            (ROOT / "tests/session-mgmt/run_session_mgmt.py", ROOT / "tests/session-mgmt/session_mgmt.yml", "session_mgmt.json"),
-            (ROOT / "tests/captcha/run_captcha.py", ROOT / "tests/captcha/captcha.yml", "captcha.json"),
-            (ROOT / "tests/jwt/run_jwt.py", ROOT / "tests/jwt/jwt.yml", "jwt.json"),
-            (ROOT / "tests/ssrf/run_ssrf.py", ROOT / "tests/ssrf/ssrf.yml", "ssrf.json"),
-            (ROOT / "tests/mass-assignment/run_mass_assignment.py", ROOT / "tests/mass-assignment/mass_assignment.yml", "mass_assignment.json"),
-            (ROOT / "tests/recon/run_recon.py", ROOT / "tests/recon/recon.yml", "recon.json"),
-        ):
+        # Modul pengujian hanya jalan bila config-nya ada di project.
+        for name in PY_MODULES:
+            script, cfg, jn = py_module_paths(name)
             if cfg.exists():
                 rc |= mod_py(script, cfg, jn)
+        recon_cfg = project_cfg("tests", "recon", "recon.yml")
+        if recon_cfg.exists():
+            rc |= mod_py(ROOT / "tests" / "recon" / "run_recon.py", recon_cfg, "recon.json")
         mod_report()
         mod_rollback()          # fase terakhir: pulihkan aksi destruktif ke semula.
         return rc

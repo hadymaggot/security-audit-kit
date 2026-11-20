@@ -132,6 +132,50 @@ dan terakhir menjalankan rollback bila ada aksi destruktif yang tercatat.
 - `make <modul>` (Linux/macOS, bila `make` tersedia).
 - `./audit.ps1 <modul>` (Windows PowerShell).
 
+### Multi-project (paralel)
+
+Tanpa opsi tambahan, kit memakai `config/`, `tests/<modul>/*.yml`, dan `reports/` di folder kit
+itu sendiri (satu project). Untuk mengaudit beberapa project sekaligus, beri tiap project folder
+sendiri dengan `--project`:
+
+```
+python audit.py --project apple-gatrik init authz,upload,cookie-flags
+python audit.py --project apple-gatrik all
+```
+
+- **Nama saja** (mis. `apple-gatrik`) → folder `projects/<nama>/` di dalam kit (sudah
+  di-gitignore). **Path** (absolut atau relatif terhadap direktori kerja) → folder tersebut.
+- `init` menyalin `config/targets.example.yml` dan contoh config modul yang disebutkan ke folder
+  project, serta membuat `reports/`. Berkas yang sudah ada tidak ditimpa.
+- Setara dengan `--project`: env `SAK_PROJECT_DIR`, `make <target> PROJECT=<nama|folder>`, dan
+  `.\audit.ps1 <modul> -Project <nama|folder>`.
+- Jalankan tiap project di terminal terpisah. Kredensial tetap lewat environment variable,
+  sehingga tiap terminal dapat memakai nilai berbeda.
+
+Yang perlu diperhatikan saat berjalan bersamaan:
+
+- **Trivy** memakai cache DB bersama (`~/.cache/sak-trivy`); run dari beberapa project otomatis
+  diantrekan oleh kunci berkas (pesan "menunggu trivy project lain selesai"). Isi
+  `trivy_cache_dir` di `targets.yml` untuk cache terpisah.
+- **RAM**: ZAP full, trivy, dan semgrep cukup berat; jalankan bergiliran bila memori host terbatas.
+- **Target yang sama**: jangan menjalankan dua modul destruktif (mass-assignment, ZAP aktif dengan
+  snapshot) ke target yang sama secara bersamaan.
+
+### Penyusun dan perusahaan di laporan
+
+Baris "Disusun oleh" pada laporan HTML, Markdown, dan slide diambil dari blok `report:` di
+`targets.yml` project; kredit Security Audit Kit tetap ditampilkan pada baris "Alat".
+
+```yaml
+report:
+  prepared_by: "Sapto Hadi"                  # default: Sapto Hadi
+  organization: "PT. Wahana Reka Tekindo"    # default; isi "" untuk menyembunyikan
+  contact: "security@contoh.co.id"           # opsional
+  version: "1.0"                             # versi dokumen
+```
+
+Env `SAK_REPORT_AUTHOR`, `SAK_REPORT_ORG`, dan `SAK_REPORT_CONTACT` menimpa nilai tersebut.
+
 ## 5. Membaca laporan
 
 Setelah `report` atau `all`, hasil tersimpan di:
