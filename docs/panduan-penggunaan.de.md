@@ -1,331 +1,325 @@
 [<img src="https://flagcdn.com/id.svg" width="18" alt="ID"> Indonesia](panduan-penggunaan.md) · [<img src="https://flagcdn.com/gb.svg" width="18" alt="EN"> English](panduan-penggunaan.en.md) · **<img src="https://flagcdn.com/de.svg" width="18" alt="DE"> Deutsch**
 
-# Benutzerhandbuch — Schritt für Schritt
+# Benutzerhandbuch
 
-Dieses Handbuch erklärt, wie man das Security Audit Kit gegen ein Ziel ausführt — von der
-Installation bis zum Lesen des Berichts. Alle Befehle laufen über einen einzigen Entry Point
-`python audit.py <modul>`, identisch unter Windows wie unter Linux.
+Schritt-für-Schritt-Anleitung zum Ausführen des Security Audit Kit, von der Installation bis zum Lesen des Berichts.
+Alle Befehle nutzen einen Entry Point, `python audit.py <modul>`, identisch unter Windows und Linux.
 
-> Nur für eigene Systeme oder Systeme, für deren Prüfung Sie eine schriftliche Erlaubnis
-> besitzen. Prüfungen ohne Erlaubnis verstoßen gegen das Gesetz.
+> Nur für eigene Systeme oder Systeme, für deren Prüfung Sie eine schriftliche Erlaubnis besitzen.
+> Prüfungen ohne Erlaubnis verstoßen gegen das Gesetz.
 
 ## 1. Voraussetzungen
 
-- **Python 3.10+**.
-- **Docker** — wird von den Scanner-Modulen (ZAP, Trivy, semgrep, gitleaks, testssl.sh) über
-  offizielle Docker-Images genutzt. Die internen Prüfmodule (authz, upload usw.) benötigen kein
-  Docker.
-- Optional: **Playwright** für die browserbasierte Cache-Verifikation im Modul `clientleak`
-  (`pip install playwright && python -m playwright install chromium`).
+| Voraussetzung | Verwendet für | Prüfen |
+|---|---|---|
+| Python 3.10+ | Alle Module | `python --version` |
+| Docker | `deps`, `zap`, `tls` (andere Module benötigen es nicht) | `docker --version` |
+| make (optional) | Kurzbefehle unter Linux/macOS | `make --version` |
+| Playwright (optional) | Browser-Cache-Prüfung in `clientleak` | `python -m playwright --version` |
 
-Installation der Python-Abhängigkeiten:
+Playwright installieren Sie mit `pip install playwright`, danach `python -m playwright install chromium`.
+
+## 2. Installation
 
 ```
+git clone https://github.com/hadymaggot/security-audit-kit.git
+cd security-audit-kit
 pip install -r requirements.txt
 ```
 
-## 2. Ziel konfigurieren
+## 3. Schnellstart: erster Scan in 5 Minuten
 
-Die Beispieldatei kopieren und dann dem Ziel entsprechend ausfüllen. Die echten
-`*.yml`-Dateien stehen bereits in der `.gitignore`, sodass keine Zugangsdaten mitcommittet
-werden.
+Diese Schritte nutzen das Modul `headers`: passiv, reines Python, ohne Docker.
 
-```
-cp config/targets.example.yml config/targets.yml
-```
+1. Projekt anlegen.
 
-Minimalangaben in `config/targets.yml`:
+   ```
+   python audit.py --project my-app init
+   ```
+
+   Erwartet: Ordner `projects/my-app/` mit `config/targets.yml` und `reports/`.
+
+2. `base_url` in `projects/my-app/config/targets.yml` setzen.
+
+   ```yaml
+   base_url: "http://localhost:8080"
+   ```
+
+   Erwartet: das Ziel zeigt auf Ihre Anwendung (Dev/Staging verwenden, nicht Produktion).
+
+3. Das Modul `headers` ausführen.
+
+   ```
+   python audit.py --project my-app headers
+   ```
+
+   Erwartet: jeder Header ist mit `ok`, `MISS` (fehlt) oder `LEAK` (gibt Informationen preis) markiert; das Ergebnis liegt in `reports/headers.json`.
+
+4. Den Bericht erstellen.
+
+   ```
+   python audit.py --project my-app report
+   ```
+
+   Erwartet: `projects/my-app/reports/laporan.html`. Im Browser öffnen.
+
+## 4. Konfiguration
+
+Die echten `*.yml`-Dateien stehen bereits in `.gitignore`, damit Zugangsdaten nicht committet werden.
+
+### targets.yml
+
+Wichtigste Felder (vollständige Liste in [config/targets.example.yml](../config/targets.example.yml)):
 
 | Feld | Beschreibung |
 |---|---|
 | `base_url` | Basis-URL des Ziels, z. B. `http://localhost:8080` |
-| `tls_host` | Host für die TLS-Prüfung (Modul `tls`) |
-| `header_probe_path` | Pfad für die Security-Header-Prüfung (Modul `headers`) |
-| `code_path` | Repo-Pfad für den Abhängigkeits-/Secret-Scan (Modul `deps`) |
+| `openapi` | URL oder Pfad der OpenAPI-Spezifikation (für `zap api`) |
+| `tls_host` | Host ohne Schema für das Modul `tls` |
+| `header_probe_path` | Pfad für das Modul `headers` (Standard `/`) |
+| `code_path` | Repository-Ordner für das Modul `deps` |
+| `docker_network` | Docker-Netzwerk für ZAP und testssl; erforderlich bei `localhost`-Zielen |
+| `snapshot` | Datensicherung und Wiederherstellung rund um `zap api` und `zap full` |
+| `report` | Autor, Unternehmen, Berichtssprache (siehe Abschnitt 8) |
 
-## 3. Konfiguration je Prüfmodul
+### Konfiguration je Modul
 
-Die internen Prüfmodule (`authz`, `upload`, `auth-policy`, `clientleak`, `cors`,
-`open-redirect`, `mass-assignment`) besitzen jeweils eine eigene Konfigurationsdatei. Aus der
-vorhandenen `.example`-Datei kopieren und dann anpassen:
-
-```
-cp tests/authz-matrix/authz_matrix.example.yml tests/authz-matrix/authz_matrix.yml
-cp tests/upload-safety/upload_safety.example.yml tests/upload-safety/upload_safety.yml
-# ...und so weiter für die zu verwendenden Module
-```
-
-Module, deren Konfigurationsdatei noch nicht existiert, werden beim Ausführen von `all`
-übersprungen.
-
-### Zugangsdaten über Umgebungsvariablen
-
-Die Konfiguration verweist über `${VARIABLENNAME}` auf Zugangsdaten, statt sie in die Datei zu
-schreiben. Die Umgebungsvariablen vor dem Scan setzen.
-
-Linux/macOS:
+Jedes Testmodul hat eine eigene Konfigurationsdatei, `tests/<ordner>/<name>.yml`.
+Kopieren Sie sie mit `init` aus dem Beispiel; vorhandene Dateien werden nicht überschrieben:
 
 ```
-export AUTHZ_ADMIN_USER="admin@contoh.test"
-export AUTHZ_PASS="..."
+python audit.py --project my-app init authz,upload,cors
 ```
 
-Windows (PowerShell):
+- Ohne `--project` manuell kopieren: `tests/<ordner>/<name>.example.yml` nach `tests/<ordner>/<name>.yml`.
+- `all` überspringt Module ohne Konfiguration. Wird ein solches Modul direkt ausgeführt, endet es mit einem Fehler „belum ada" (nicht vorhanden).
+
+### Zugangsdaten: nur über Umgebungsvariablen
+
+Konfigurationen verweisen auf Zugangsdaten mit `${VARIABLENNAME}`. Die Variablennamen stehen in jeder `.example.yml`.
+Eine nicht gesetzte Variable wird ohne Warnung durch einen leeren String ersetzt.
 
 ```
-$env:AUTHZ_ADMIN_USER = "admin@contoh.test"
-$env:AUTHZ_PASS = "..."
+export AUTHZ_ADMIN_USER="admin@example.com"
+export AUTHZ_ADMIN_PASS="..."
 ```
 
-Die Variablennamen folgen denen, die in der jeweiligen `.example.yml`-Datei angegeben sind.
-
-### Authentifizierung (Bearer oder Laravel Sanctum)
-
-Zwei Modi werden unterstützt:
-
-- **Statisches Token (Bearer/JWT oder Custom-Header)** — die Blöcke `auth.header` und
-  `auth.value` ausfüllen, z. B. `value: "${TOKEN}"` mit `TOKEN="Bearer xxx"`. Token beschaffen:
-  einmal am Login-Endpoint anmelden und das Token aus der Response entnehmen.
-- **Laravel Sanctum (SPA, Session-Cookie + CSRF)** — den Block `auth.sanctum` aktivieren
-  (`enabled: true`, `csrf_path`, `origin`) sowie `auth.login`. Der Runner holt das CSRF-Cookie,
-  meldet sich an und setzt dann automatisch die Header `X-XSRF-TOKEN` und `Origin`. `origin`
-  muss mit `SANCTUM_STATEFUL_DOMAINS` auf dem Server übereinstimmen.
-
-## 4. Scan ausführen
-
-### Ein einzelnes Modul ausführen
-
 ```
-python audit.py <modul>
+$env:AUTHZ_ADMIN_USER = "admin@example.com"
+$env:AUTHZ_ADMIN_PASS = "..."
 ```
 
-Verfügbare Module:
+Der erste Block gilt für Linux/macOS, der zweite für Windows PowerShell.
+Für ZAP hinter einem Login setzen Sie `ZAP_AUTH_HEADER` auf `Authorization: Bearer <token>`.
 
-| Modul | Funktion | Benötigt |
-|---|---|---|
-| `deps` | CVE-Abhängigkeiten (Trivy) + SAST (semgrep) + committete Secrets (gitleaks) | Docker |
-| `zap baseline` | OWASP ZAP Passive Scan | Docker, laufendes Ziel |
-| `zap api` | OWASP ZAP Scan aus OpenAPI | Docker, laufendes Ziel, OpenAPI |
-| `zap full` | OWASP ZAP Active Scan (destruktiv, nur im eigenen Environment nutzen) | Docker, laufendes Ziel |
-| `authz` | Zugriffskontrolle je Rolle: Privilege Escalation, IDOR, gefälschte Header, Gateway-Bypass | Laufendes Ziel, Config |
-| `mass-assignment` | Mass Assignment / BOPLA — destruktiv, aber reversibel (siehe Abschnitt Rollback) | Laufendes Ziel, Config |
-| `upload` | Abweisung gefährlicher Datei-Uploads | Laufendes Ziel, Config |
-| `auth-policy` | Passwortstärke und Captcha-Regenerierung | Laufendes Ziel, Config |
-| `clientleak` | Caching sensibler Responses, Secrets/Endpoints in JS/HTML, Source Maps, offengelegte Dateien | Laufendes Ziel, Config |
-| `cors` | CORS-Fehlkonfiguration | Laufendes Ziel, Config |
-| `open-redirect` | Open Redirect | Laufendes Ziel, Config |
-| `webstack` | Versionserkennung des Webservers aus Bannern → bekannte CVEs (Apache mod_http2, NGINX HTTP/2); nicht-destruktiv | Laufendes Ziel, Config |
-| `injection` | SQL Injection (error/boolean-based, optional time-based); nicht-destruktiv, lesendes Probing | Laufendes Ziel, Config |
-| `tls` / `headers` | Veraltete TLS-Protokolle/-Cipher, fehlende Security-Header | Laufendes Ziel |
-| `report` | Fasst alle Ergebnisse zu einem Bericht zusammen | Scan-Ergebnisse in `reports/` |
-| `rollback` | Setzt destruktive Aktionen aus dem Rollback-Journal erneut zurück | — |
+### Authentifizierung
 
-### Den gesamten Scan ausführen
+| Modus | Konfiguration |
+|---|---|
+| Bearer/JWT oder eigener Header | `auth.header` und `auth.value`, z. B. `value: "${TOKEN}"` mit `TOKEN="Bearer xxx"` |
+| Laravel Sanctum (Session-Cookie + CSRF) | `auth.sanctum` (`enabled`, `csrf_path`, `origin`) und `auth.login` |
+
+- Im Sanctum-Modus holt der Runner das CSRF-Cookie, meldet sich an und sendet `X-XSRF-TOKEN` und `Origin` automatisch.
+- `origin` muss mit `SANCTUM_STATEFUL_DOMAINS` auf dem Server übereinstimmen.
+- Das Modul `authz` nutzt `auth.mode` (`bearer` oder `session_cookie`) mit einer Liste von Rollen; siehe die Beispiele in `tests/authz-matrix/`.
+
+## 5. Scans ausführen
 
 ```
+python audit.py authz
 python audit.py all
 ```
 
-Dieser Befehl führt `headers`, `deps`, `zap baseline` und dann jedes Prüfmodul aus, dessen
-Konfiguration vorliegt, baut anschließend automatisch den Bericht zusammen und führt zuletzt
-den Rollback aus, falls eine destruktive Aktion protokolliert wurde.
+| Modul | Was geprüft wird | Benötigt |
+|---|---|---|
+| `headers` | Fehlende oder Informationen preisgebende Security-Header | Laufendes Ziel |
+| `tls` | Veraltete TLS-Protokolle und -Cipher | Docker, laufendes Ziel |
+| `deps` | CVEs in Dependencies (Trivy), SAST (semgrep), committete Secrets (gitleaks) | Docker |
+| `zap baseline` | OWASP ZAP Passive Scan | Docker, laufendes Ziel |
+| `zap api` | ZAP Active Scan aus OpenAPI; destruktiv | Docker, laufendes Ziel, `openapi` |
+| `zap full` | ZAP Active Scan; destruktiv, nur in der eigenen Umgebung | Docker, laufendes Ziel |
+| `authz` | Zugriffskontrolle je Rolle: Privilege Escalation, IDOR, gefälschte Header, Gateway-Bypass | Laufendes Ziel, Konfiguration |
+| `mass-assignment` | Mass Assignment (BOPLA); destruktiv, aber umkehrbar | Laufendes Ziel, Konfiguration |
+| `upload` | Ablehnung gefährlicher Datei-Uploads | Laufendes Ziel, Konfiguration |
+| `auth-policy` | Passwortstärke und Captcha-Neugenerierung | Laufendes Ziel, Konfiguration |
+| `clientleak` | Caching sensibler Responses, Secrets in JS/HTML, Source Maps, offene Dateien | Laufendes Ziel, Konfiguration |
+| `cors` | CORS-Fehlkonfiguration | Laufendes Ziel, Konfiguration |
+| `open-redirect` | Open Redirect | Laufendes Ziel, Konfiguration |
+| `webstack` | Webserver-Version aus dem Banner, zugeordnet zu CVEs; nicht destruktiv | Laufendes Ziel, Konfiguration |
+| `injection` | SQL-Injection (Error, Boolean, optional Time-based); nur lesende Probes | Laufendes Ziel, Konfiguration |
+| `cookie-flags` | Cookie-Attribute (HttpOnly, Secure, SameSite); passiv | Laufendes Ziel, Konfiguration |
+| `response-leak` | Sensible Daten, Secrets und Stack Traces in API-Responses; passiv | Laufendes Ziel, Konfiguration |
+| `openapi-coverage` | Operationen, die als geschützt deklariert, aber ohne Login offen sind | Laufendes Ziel, Konfiguration |
+| `ratelimit` | Rate Limit, Account-Sperre, Account-Enumeration; nutzt ein Einweg-Testkonto | Laufendes Ziel, Konfiguration |
+| `session-mgmt` | Widerruf von Sessions bei Logout und Passwortänderung; Einweg-Testkonto | Laufendes Ziel, Konfiguration |
+| `captcha` | Statische Analyse der Captcha-Aufgabe: verrät die Response die Lösung | Laufendes Ziel, Konfiguration |
+| `jwt` | JWT-Schwächen: alg none, fehlendes exp, schwaches Secret, gefälschte Token | Laufendes Ziel, Konfiguration |
+| `ssrf` | SSRF über einen lokalen Canary-Listener | Laufendes Ziel, Konfiguration |
+| `recon` | Subdomain-OSINT; aktive Phasen (Portscan, nuclei) nur wenn aktiviert | Recon-Tools installiert, optionale Konfiguration |
+| `report` | Erstellt den Bericht aus den Ergebnissen in `reports/` | Scan-Ergebnisse |
+| `rollback` | Stellt destruktive Aktionen aus dem Journal wieder her | Rollback-Journal |
+| `clean` | Löscht Dateien in `reports/` | - |
 
-### Alternativen
+- `all` führt `headers`, `deps`, `zap baseline`, jedes Modul mit vorhandener Konfiguration und `recon` aus, falls `recon.yml` existiert. Danach erstellt `all` den Bericht und führt den Rollback aus.
+- Jedes einzeln ausgeführte Testmodul erstellt den Bericht ebenfalls automatisch.
+- Unterbefehle: `zap baseline|api|full`, `deps gitleaks|semgrep|trivy` (ein Tool pro Lauf, spart Speicher).
+- `recon` akzeptiert freie Argumente: `python audit.py recon example.com -d osint -m fast --active`.
+- Alternativen: `.\audit.ps1 <modul>` unter Windows (alle Module), `make <target>` unter Linux/macOS (nur einige Module; siehe `make help`).
 
-- `make <modul>` (Linux/macOS, sofern `make` verfügbar).
-- `./audit.ps1 <modul>` (Windows PowerShell).
+## 6. Den Bericht lesen
 
-### Mehrere Projekte (parallel)
+Nach `report` oder `all` liegen die Ergebnisse in `reports/`:
 
-Standardmäßig verwendet das Kit `config/`, `tests/<modul>/*.yml` und `reports/` im Kit-Ordner
-selbst (ein einzelnes Projekt). Um mehrere Projekte gleichzeitig zu prüfen, erhält jedes Projekt
-mit `--project` einen eigenen Ordner:
-
-```
-python audit.py --project my-app init authz,upload,cookie-flags
-python audit.py --project my-app all
-```
-
-- **Nur ein Name** (z. B. `my-app`) → `projects/<name>/` im Kit (bereits in
-  `.gitignore`). **Ein Pfad** (absolut oder relativ zum Arbeitsverzeichnis) → dieser Ordner.
-- `init` kopiert `config/targets.example.yml` und die Beispielkonfigurationen der genannten Module
-  in den Projektordner und legt `reports/` an. Vorhandene Dateien werden nie überschrieben.
-- Gleichwertig zu `--project`: die Umgebungsvariable `SAK_PROJECT_DIR`, `make <target>
-  PROJECT=<name|ordner>` und `.\audit.ps1 <modul> -Project <name|ordner>`.
-- Jedes Projekt in einem eigenen Terminal ausführen. Zugangsdaten kommen weiterhin aus
-  Umgebungsvariablen, sodass jedes Terminal andere Werte verwenden kann.
-
-#### Aus einem beliebigen Verzeichnis ausführen
-
-`audit.py` liegt im Kit-Ordner, daher funktioniert `python audit.py` nur, wenn das
-Arbeitsverzeichnis der Kit-Ordner ist. Von anderswo (z. B. `C:\GitHub`) scheitert der Aufruf mit
-`can't open file '...\audit.py'`. Den vollständigen Pfad zu `audit.py` verwenden; der Projektordner
-kann beliebig liegen, da die Konfiguration aus dem Projektordner gelesen wird, nicht aus dem
-Arbeitsverzeichnis:
-
-```powershell
-# Windows PowerShell
-python C:\GitHub\security-audit-kit\audit.py --project C:\Users\you\sak-projects\my-app all
-
-# oder über den Wrapper (wechselt selbst in den Kit-Ordner; ein relatives -Project wird vom Aufrufordner aus aufgelöst)
-& C:\GitHub\security-audit-kit\audit.ps1 all -Project C:\Users\you\sak-projects\my-app
-```
-
-```bash
-# Linux/macOS
-python3 /opt/security-audit-kit/audit.py --project ~/sak-projects/my-app all
-make -C /opt/security-audit-kit all PROJECT=/home/you/sak-projects/my-app   # PROJECT absolut
-```
-
-Um den langen Pfad nicht jedes Mal zu tippen, einmalig eine Abkürzung anlegen:
-
-```powershell
-# Windows: in das PowerShell-Profil eintragen (öffnen mit: notepad $PROFILE)
-function sak { python C:\GitHub\security-audit-kit\audit.py @args }
-# danach aus jedem Ordner:
-sak --project C:\Users\you\sak-projects\my-app all
-sak --project C:\Users\you\sak-projects\client-b headers
-```
-
-```bash
-# Linux/macOS: in ~/.bashrc oder ~/.zshrc eintragen
-alias sak='python3 /opt/security-audit-kit/audit.py'
-```
-
-Hinweis: Ein relativer Projektpfad (`--project ./proj` oder `-Project .\proj`) wird vom Verzeichnis
-aus aufgelöst, in dem der Befehl ausgeführt wird. Bei `make -C` einen absoluten Pfad verwenden, da
-`make` zuerst in den Kit-Ordner wechselt. Projektordner am besten außerhalb des Kit-Ordners ablegen
-(z. B. `~/sak-projects/<name>`), damit sie beim Löschen des Kit-Ordners oder eines Worktrees nicht
-verloren gehen.
-
-Beim gleichzeitigen Ausführen zu beachten:
-
-- **Trivy** nutzt einen gemeinsamen DB-Cache (`~/.cache/sak-trivy`); Läufe mehrerer Projekte werden
-  automatisch über eine Dateisperre in eine Warteschlange gestellt (Meldung „menunggu trivy project
-  lain selesai"). Für einen getrennten Cache `trivy_cache_dir` in `targets.yml` setzen.
-- **RAM**: ZAP full, Trivy und Semgrep sind recht schwer; bei knappem Hostspeicher nacheinander
-  ausführen.
-- **Dasselbe Ziel**: nicht zwei destruktive Module (mass-assignment, aktives ZAP mit Snapshot)
-  gleichzeitig gegen dasselbe Ziel ausführen.
-
-### Autor und Unternehmen im Bericht
-
-Die Zeile „Disusun oleh" (erstellt von) in den HTML-, Markdown- und Folienberichten stammt aus dem
-Block `report:` in der `targets.yml` des Projekts; die Nennung des Security Audit Kit bleibt in der
-Zeile „Alat" (Werkzeug).
-
-```yaml
-report:
-  prepared_by: "Sapto Hadi"                  # Standard: Sapto Hadi
-  organization: "PT. Wahana Reka Tekindo"    # Standard; "" blendet es aus
-  contact: "wahanarekatekindo@gmail.com"     # Standard nur beim Standardunternehmen; "" blendet es aus
-  version: "1.0"                             # Dokumentversion
-```
-
-Die Umgebungsvariablen `SAK_REPORT_AUTHOR`, `SAK_REPORT_ORG` und `SAK_REPORT_CONTACT`
-überschreiben diese Werte.
-
-### Farben in der Konsole
-
-Status im Terminal sind farbig hervorgehoben, damit sie leicht zu erfassen sind: `ok`/`PASS` grün,
-`MISS`/`XX`/`FAIL`/`LEAK` rot, `skip` und die ausgeführten Befehle (`+ docker run ...`) abgedunkelt
-sowie die Severity-Zusammenfassung am Ende (Critical/High rot, Medium gelb, Low cyan; Nullwerte
-abgedunkelt). Die Farben nutzen Standard-ANSI-Codes und funktionieren daher in Windows Terminal,
-PowerShell 7, dem macOS-Terminal / iTerm2 und Linux-Terminals. Farben gelangen **nie** in die
-JSON-Dateien oder die HTML-/Markdown-/Folienberichte.
-
-Standardmäßig (`auto`) werden Farben nur verwendet, wenn die Ausgabe ein interaktives Terminal ist;
-bei Umleitung in eine Datei oder Pipe sowie in CI sind sie daher automatisch aus. Ändern:
-
-| Weg | Wirkung |
+| Datei | Inhalt |
 |---|---|
-| `--color always` (oder nur `--color`) | Erzwingen, auch in Pipes (z. B. `\| less -R`) |
-| `--no-color` oder `--color never` | Ausschalten |
-| Umgebungsvariable `NO_COLOR=1` | Ausschalten (Standard von [no-color.org](https://no-color.org)) |
-| Umgebungsvariable `SAK_COLOR=always\|never\|auto` | Wie `--color`; überschreibt `NO_COLOR` und `FORCE_COLOR` |
-| Umgebungsvariable `FORCE_COLOR=1` / `CLICOLOR_FORCE=1` | Erzwingen |
+| `laporan.html` | Vollständiger Bericht: Risikoübersicht, Alert-Liste, Instanzen als Nachweis, Konfidenz, Auswirkung, Begründung der Severity, Empfehlung, Referenzen |
+| `laporan.md` | Derselbe Inhalt als Markdown |
+| `laporan-slides.html` | Eigenständige Foliensätze für Stakeholder-Präsentationen; Navigation mit Pfeil links/rechts |
+| `evidence/` | Screenshots als Nachweis (z. B. von `clientleak`); beim Weitergeben des Berichts mitliefern |
 
-Beispiel: `python audit.py --project my-app --color always headers`. Die Option kann an
-beliebiger Stelle stehen und wird automatisch an alle Module weitergegeben. Git Bash (mintty) wird
-von Python oft nicht als Terminal erkannt; dann `--color always` oder `SAK_COLOR=always` verwenden.
+Severity: Critical, High, Medium, Low, Info. Der Abschnitt „Kontrol yang Lolos (PASS)" (bestandene Controls) listet Prüfungen, die korrekt arbeiten, als Nachweis der Abdeckung, nicht als Befunde.
 
-### Sprache und technische Begriffe
+So nutzen Sie die Befunde:
 
-Technische Begriffe (Response, Request, Password, Session, File u. a.) bleiben englisch und werden in
-HTML-, Markdown- und Folienberichten *kursiv* gesetzt, sofern die Textsprache nicht Englisch ist.
-Sie stehen in `glosarium.yml` (id, en, de). Die Sprache wählt man mit `--lang id|en|de`, der
-Variable `SAK_LANG` oder `report.language` in `targets.yml` (Standard `en`). Derzeit ist nur der
-`id`-Text-Katalog vollständig. Details, auch zum Ergänzen von Begriffen, stehen unter
-[Glossar und Sprache](glosarium.de.md).
+1. Beginnen Sie mit Critical und High in der Risikoübersicht.
+2. Prüfen Sie jeden Befund manuell; automatische Ergebnisse ersetzen keinen Pentest.
+3. Setzen Sie die Empfehlung um und führen Sie dasselbe Modul erneut aus.
+4. Sichern Sie den Befund ab, damit er nicht wiederkehrt (Abschnitt 10).
 
-## 5. Den Bericht lesen
+Beispielausgabe: [contoh-laporan.md](contoh-laporan.md) und [contoh-laporan.html](contoh-laporan.html).
 
-Nach `report` oder `all` liegen die Ergebnisse unter:
+## 7. Rollback
 
-- `reports/laporan.html` — vollständiger Bericht im ZAP-Stil: Risikozusammenfassung,
-  Alert-Liste, Details je Befund samt Instanz (der als Nachweis geprüfte Endpoint),
-  Konfidenzgrad, Auswirkung, Severity-Begründung, Empfehlung und Referenzen.
-- `reports/laporan.md` — derselbe Inhalt im Markdown-Format.
-- `reports/laporan-slides.html` — eigenständige Präsentationsvariante (Slide Deck) für eine
-  knappe Vorstellung vor Stakeholdern; Navigation mit Pfeil links/rechts.
-- `reports/evidence/` — Screenshot-Nachweise (z. B. vom browserbasierten Modul `clientleak`),
-  in Bericht & Slides eingebettet. Dieser Ordner muss die Berichtsdateien beim Teilen
-  begleiten.
+Destruktive Module (`mass-assignment`, `ratelimit`, `session-mgmt` sowie `zap api` und `zap full` mit `snapshot`) stellen das Ziel automatisch als letzte Phase wieder her, nachdem der Bericht erstellt wurde.
 
-Beispielausgabe siehe [contoh-laporan.md](contoh-laporan.md) /
-[contoh-laporan.html](contoh-laporan.html).
+1. Der Runner protokolliert die Wiederherstellung unmittelbar nach jedem Schreibzugriff in `reports/rollback_journal.json` (absturzsicher).
+2. Nach der Berichtserstellung stellt `audit.py` alle Änderungen wieder her.
+3. Das Wiederherstellungsprotokoll liegt in `reports/rollback.json`.
 
-Der Abschnitt **Bestandene Controls (PASS)** listet die geprüften und korrekt arbeitenden
-Prüfungen auf — ein Nachweis des Prüfumfangs, kein Befund.
-
-## 6. Rollback (destruktive Module)
-
-Destruktive Module wie `mass-assignment` schreiben ins Ziel und stellen anschließend als
-letzter Schritt nach der Berichterstellung automatisch den Ausgangszustand wieder her. Der
-Ablauf:
-
-1. Snapshot der Originalwerte des Objekts.
-2. Verbotenes Feld injizieren (Schreibvorgang ins Ziel).
-3. Den Weg zur Wiederherstellung sofort in `reports/rollback_journal.json` protokollieren
-   (crash-safe).
-4. Prüfen, ob das verbotene Feld akzeptiert wurde (Befund, falls ja).
-5. Nach der Berichterstellung setzt `audit.py` alle Änderungen auf die Originalwerte zurück.
-
-Falls die automatische Wiederherstellung fehlschlägt (z. B. Verbindungsabbruch), erneut
-ausführen:
+Schlägt die automatische Wiederherstellung fehl (z. B. Verbindungsabbruch), wiederholen Sie sie:
 
 ```
 python audit.py rollback
 ```
 
-Das Wiederherstellungsprotokoll liegt in `reports/rollback.json`.
+Bei `zap api` und `zap full` bricht eine fehlgeschlagene Sicherung den Scan ab. Ohne `snapshot`-Block lassen sich Datenänderungen nicht wiederherstellen.
 
-## 7. CI-Integration
+## 8. Erweiterte Optionen
 
-- Der statische Scan (`deps`) ist auf jedem PR gefahrlos ausführbar, da er kein laufendes Ziel
-  benötigt.
-- Die dynamischen Prüfungen (DAST, Zugriffskontrolle, Upload usw.) benötigen ein laufendes
-  Ziel; geplant gegen dev/staging ausführen, nicht gegen Production. Zugangsdaten über GitHub
-  Secrets.
+Die globalen Optionen `--project`, `--color` und `--lang` können an beliebiger Stelle stehen und gelten für alle Module.
 
-## 8. Befunde in Tests übersetzen
+### Mehrere Projekte (parallel)
 
-Um einen Befund aus einem Pentest-Bericht zu „fixieren", damit er nicht wiederkehrt, siehe
-[temuan-to-test-mapping.md](temuan-to-test-mapping.md): die Zuordnung von Befundklassen zu
-Modulen samt Vorgehen zum Hinzufügen des Testfalls.
+Ohne `--project` nutzt das Kit `config/`, `tests/<modul>/*.yml` und `reports/` im Kit-Ordner (ein Projekt).
+Geben Sie jedem Projekt einen eigenen Ordner, damit mehrere Projekte gleichzeitig aus getrennten Terminals geprüft werden können:
 
-## 9. Troubleshooting
+```
+python audit.py --project my-app init authz,upload
+python audit.py --project my-app all
+python audit.py --project client-b headers
+```
 
-| Symptom | Mögliche Ursache & Lösung |
+- Ein reiner Name (z. B. `my-app`) bedeutet `projects/<name>/` im Kit (bereits in `.gitignore`). Ein absoluter oder relativer Pfad bedeutet genau diesen Ordner.
+- `init` kopiert `targets.example.yml` und die Konfiguration der genannten Module und legt `reports/` an.
+- Gleichwertig: Env `SAK_PROJECT_DIR`, `make <target> PROJECT=<name|ordner>`, `.\audit.ps1 <modul> -Project <name|ordner>`.
+- Zugangsdaten bleiben in Umgebungsvariablen, sodass jedes Terminal andere Werte nutzen kann.
+
+Bei gleichzeitigem Betrieb:
+
+- Trivy nutzt einen gemeinsamen DB-Cache (`~/.cache/sak-trivy`); parallele Läufe werden per Dateisperre eingereiht. Mit `trivy_cache_dir` erhalten Sie einen eigenen Cache.
+- ZAP full, Trivy und semgrep belasten den RAM stark; führen Sie sie bei knappem Speicher nacheinander aus.
+- Führen Sie nie zwei destruktive Module gleichzeitig gegen dasselbe Ziel aus.
+
+### Aus einem beliebigen Verzeichnis ausführen
+
+`python audit.py` funktioniert nur im Kit-Ordner. Aus einem anderen Ordner nutzen Sie den vollständigen Pfad zu `audit.py`.
+Der Projektordner kann beliebig liegen, da die Konfiguration aus dem Projektordner gelesen wird.
+
+```
+python C:\tools\security-audit-kit\audit.py --project C:\Users\you\sak-projects\my-app all
+& C:\tools\security-audit-kit\audit.ps1 all -Project C:\Users\you\sak-projects\my-app
+python3 /opt/security-audit-kit/audit.py --project ~/sak-projects/my-app all
+make -C /opt/security-audit-kit all PROJECT=/home/you/sak-projects/my-app
+```
+
+Zeile 1-2 gelten für Windows PowerShell, Zeile 3-4 für Linux/macOS. Bei `make -C` einen absoluten Pfad verwenden, da `make` in den Kit-Ordner wechselt.
+
+Die Abkürzung `sak` erspart den langen Pfad. Einmalig einrichten:
+
+```
+function sak { python C:\tools\security-audit-kit\audit.py @args }
+alias sak='python3 /opt/security-audit-kit/audit.py'
+sak --project C:\Users\you\sak-projects\my-app all
+sak --project C:\Users\you\sak-projects\client-b headers
+```
+
+Zeile 1 gehört in das PowerShell-Profil (`notepad $PROFILE`), Zeile 2 in `~/.bashrc` oder `~/.zshrc`. Zeile 3-4: Aufruf aus jedem Ordner.
+
+Ein relativer Projektpfad wird vom Ordner aus aufgelöst, in dem der Befehl ausgeführt wird. Legen Sie Projektordner außerhalb des Kit-Ordners ab, damit sie beim Löschen des Kit-Ordners nicht verloren gehen.
+
+### Autor und Unternehmen im Bericht
+
+Die Zeile „Disusun oleh" (erstellt von) in den HTML-, Markdown- und Folienberichten stammt aus dem Block `report:` in `targets.yml`.
+Der Kredit für das Security Audit Kit bleibt immer in der Zeile „Alat" (Werkzeug).
+
+```yaml
+report:
+  prepared_by: "Jane Doe"
+  organization: "Example Corp"      # "" blendet das Unternehmen aus
+  contact: "audit@example.com"      # "" blendet den Kontakt aus
+  version: "1.0"
+```
+
+- Nicht gesetzte Felder übernehmen die Standardwerte des Kits.
+- Die Env `SAK_REPORT_AUTHOR`, `SAK_REPORT_ORG` und `SAK_REPORT_CONTACT` überschreiben `targets.yml`.
+
+### Farben in der Konsole
+
+Farben erscheinen nur in einem interaktiven Terminal (`auto`) und gelangen nie in JSON-Dateien oder Berichte.
+
+| Methode | Wirkung |
 |---|---|
-| Seltsamer Text wie `←[32mok←[0m` oder `^[[32m` erscheint | Das Terminal versteht keine ANSI-Farbcodes (ältere Konsole) oder die Ausgabe wird in einem reinen Textbetrachter gelesen. Mit `--no-color` (oder Umgebungsvariable `NO_COLOR=1`) ausführen; unter Windows 10+ Windows Terminal oder PowerShell 7 verwenden. |
-| Gar keine Farben | Die Ausgabe wird in eine Pipe/Datei umgeleitet oder das Terminal wird nicht erkannt (z. B. Git Bash). `--color always` oder `SAK_COLOR=always` verwenden; prüfen, dass `NO_COLOR` nicht gesetzt ist. |
-| `can't open file '...\audit.py'` | `audit.py` wurde außerhalb des Kit-Ordners ausgeführt. Den vollständigen Pfad (`python C:\GitHub\security-audit-kit\audit.py ...`), `audit.ps1` oder die Abkürzung `sak` verwenden (siehe „Aus einem beliebigen Verzeichnis ausführen"). |
-| `unrecognized arguments: --project` | Der Kit-Ordner ist veraltet; im Kit-Ordner `git pull` ausführen. |
-| `<ordner>\config\targets.yml belum ada (project: ...)` | Der Projektordner wurde nicht eingerichtet oder der Pfad ist falsch: `python audit.py --project <name\|ordner> init` ausführen oder die Konfiguration in diesen Ordner kopieren. |
-| `config/targets.yml belum ada` | Aus `config/targets.example.yml` kopieren. |
-| `<config> belum ada — salin dari contoh .example-nya` | Die `.example.yml`-Datei des betreffenden Moduls kopieren. |
-| Sanctum-Login scheitert mit 500 „Session store not set" | `auth.sanctum.origin` stimmt noch nicht mit `SANCTUM_STATEFUL_DOMAINS` des Servers überein. |
-| Scanner schlägt fehl | Sicherstellen, dass Docker läuft und das Image heruntergeladen werden kann. |
-| Modul `clientleak` überspringt die Browserprüfung | Playwright ist nicht installiert (optional). |
-| Viele Login-Requests werden mit 429 abgewiesen | Rate-Limit beim Login des Ziels; zwischen den Requests pausieren. |
+| `--color always` (oder nur `--color`) | Erzwingt Farben, auch in eine Pipe |
+| `--no-color` oder `--color never` | Ausschalten |
+| Env `NO_COLOR=1` | Ausschalten |
+| Env `SAK_COLOR=always\|never\|auto` | Wie `--color`; überschreibt `NO_COLOR` und `FORCE_COLOR` |
+| Env `FORCE_COLOR=1` oder `CLICOLOR_FORCE=1` | Erzwingt Farben |
+
+Git Bash wird oft nicht als Terminal erkannt; verwenden Sie `--color always`.
+
+### Sprache und technische Begriffe
+
+Technische Begriffe bleiben englisch und werden in Berichten kursiv gesetzt; die Liste steht in `glosarium.yml` (id, en, de).
+
+- Wählen Sie die Sprache mit `--lang id|en|de`, der Env `SAK_LANG` oder `report.language` in `targets.yml` (Standard `en`).
+- Der vollständige Textkatalog existiert derzeit nur für `id`; andere Sprachen verwenden den `id`-Text mit dem Glossar der gewählten Sprache.
+- Details und Ergänzen von Begriffen: [Glossar und Sprache](glosarium.de.md).
+
+## 9. CI-Integration
+
+- `deps` kann bei jedem PR laufen, da kein laufendes Ziel nötig ist. Das Ergebnis ist informativ (Exit-Code 0).
+- Dynamische Tests benötigen ein laufendes Ziel; führen Sie sie geplant gegen Dev/Staging aus, nicht gegen Produktion.
+- Zugangsdaten über GitHub Secrets. Testmodule liefern Exit-Code 1, wenn Fehler auftreten.
+
+Beispiel-Pipeline: [security-audit.yml](../.github/workflows/security-audit.yml).
+
+## 10. Befunde in Tests übersetzen
+
+Um einen Befund aus einem Pentest-Bericht abzusichern, siehe [temuan-to-test-mapping.de.md](temuan-to-test-mapping.de.md): Zuordnung von Befundklassen zu Modulen samt Hinweis, wie der Testfall ergänzt wird.
+
+## 11. Troubleshooting
+
+| Symptom | Ursache und Lösung |
+|---|---|
+| `can't open file '...\audit.py'` | Ausführung außerhalb des Kit-Ordners. Vollständigen Pfad, `audit.ps1` oder die Abkürzung `sak` verwenden (Abschnitt 8). |
+| `config/targets.yml belum ada` oder `<ordner>\config\targets.yml belum ada (project: ...)` | Konfiguration nicht angelegt oder falscher Projektpfad. `python audit.py --project <name> init` ausführen. |
+| `<config> belum ada - salin dari contoh .example-nya` | Modulkonfiguration fehlt. `init <modul>` ausführen oder die `.example.yml` kopieren. |
+| `Docker tidak ditemukan di PATH` oder Scanner schlägt fehl | Docker installieren und sicherstellen, dass es läuft und Images laden kann. |
+| ZAP oder testssl `Connection refused` bei `localhost`-Ziel | Im Container zeigt `localhost` auf den Container selbst. `docker_network` in `targets.yml` setzen. |
+| Sanctum-Login schlägt mit 500 „Session store not set" fehl | `auth.sanctum.origin` stimmt nicht mit `SANCTUM_STATEFUL_DOMAINS` des Servers überein. |
+| Login schlägt trotz korrekter Zugangsdaten fehl | Umgebungsvariable nicht gesetzt (leerer Wert). Im selben Terminal setzen. |
+| Viele Login-Requests mit 429 abgelehnt | Rate Limit des Ziels. Pause zwischen den Requests einlegen. |
+| Zertifikatsfehler bei Dev-Ziel mit selbstsigniertem Zertifikat | `SAK_INSECURE_TLS=1` setzen (gilt für `headers` und die Python-Runner; nicht für ZAP und `tls`). |
+| `clientleak` überspringt die Browser-Prüfung | Playwright ist nicht installiert (optional). |
+| `semgrep` überschreitet das Zeitlimit | `semgrep_paths` einengen oder `semgrep_timeout_minutes` erhöhen. |
+| Seltsamer Text wie `^[[32m` oder gar keine Farbe | Terminal unterstützt kein ANSI: `--no-color` verwenden. Keine Farbe, weil die Ausgabe umgeleitet ist oder das Terminal nicht erkannt wird: `--color always` verwenden und sicherstellen, dass `NO_COLOR` nicht gesetzt ist. |
