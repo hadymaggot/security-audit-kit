@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="/assets/images/ico2.png" type="image/png">
+<title>Open Scanner (pasif) — Security Audit Kit</title>
+<meta name="description" content="Pemeriksaan keamanan pasif gratis: security headers, cookie flags, CORS misconfiguration, dan versi server rentan (CVE) dari banner. Non-intrusif, seperti securityheaders.com.">
+<link rel="canonical" href="https://hadymaggot.github.io/security-audit-kit/id/scan.html">
+<link rel="alternate" hreflang="en" href="https://hadymaggot.github.io/security-audit-kit/scan.html">
+<link rel="alternate" hreflang="id" href="https://hadymaggot.github.io/security-audit-kit/id/scan.html">
+<link rel="alternate" hreflang="de" href="https://hadymaggot.github.io/security-audit-kit/de/scan.html">
+<link rel="alternate" hreflang="x-default" href="https://hadymaggot.github.io/security-audit-kit/scan.html">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+ :root{
+   --primary-color:#7AC55A; --secondary-color:#C3DB65; --dark-color:#121212;
+   --text-color:#ffffff; --terminal-bg:rgba(18,18,18,.95);
+   --mono:'JetBrains Mono',monospace; --sans:'Poppins',sans-serif;
+   --c:#ff6b6b;--h:#ff8a3d;--m:#ffcf5c;--l:#7AC55A;--i:#9bb39b;--ok:#7AC55A;
+ }
+ *{box-sizing:border-box}
+ body{background-color:var(--dark-color);color:var(--text-color);font-family:var(--sans);margin:0;min-height:100vh;line-height:1.6}
+ .post-page{max-width:800px;margin:0 auto;padding:2rem 1rem 4rem}
+ .post-nav{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;gap:1rem;align-items:center;margin:-2rem -1rem 1.5rem;padding:.9rem 1rem;background:rgba(18,18,18,.9);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-bottom:1px solid rgba(122,197,90,.2);font-family:var(--mono);font-size:.9rem}
+ .post-nav a{color:var(--primary-color);text-decoration:none}
+ .post-nav a:hover{text-decoration:underline}
+ .post-nav .tb-lang{margin-left:auto;display:inline-flex;align-items:center;gap:.5rem}.post-nav .tb-lang a{line-height:0}.post-nav .tb-lang a:not([aria-current]){opacity:.55}.post-nav .tb-lang a:hover{opacity:1}.post-nav .tb-lang img{border-radius:2px;display:block}
+ .breadcrumb{font-size:.85rem;opacity:.85;margin-bottom:1rem}
+ .breadcrumb a{color:var(--primary-color);text-decoration:none}
+ h1{font-size:1.8rem;margin:0 0 .3rem}
+ .sub{opacity:.75;font-family:var(--mono);font-size:.85rem;margin-bottom:1.2rem}
+ a{color:var(--primary-color)} code{font-family:var(--mono);background:rgba(122,197,90,.1);border-radius:4px;padding:1px 5px;font-size:.9em;word-break:break-all}
+ .note{background:rgba(255,255,255,.03);border:1px solid rgba(122,197,90,.3);border-left:4px solid var(--m);padding:12px 14px;border-radius:8px;font-size:.95rem;margin:16px 0}
+ form{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}
+ input[type=url]{flex:1;min-width:220px;padding:10px 12px;border:1px solid rgba(122,197,90,.3);border-radius:8px;font-size:15px;background:var(--terminal-bg);color:var(--text-color);font-family:var(--mono)}
+ button{background:var(--primary-color);color:var(--dark-color);border:0;border-radius:8px;padding:10px 18px;font-size:15px;cursor:pointer;font-family:var(--mono);font-weight:600}
+ button:disabled{opacity:.6;cursor:wait}
+ .finding{background:rgba(255,255,255,.03);border:1px solid rgba(122,197,90,.2);border-left:5px solid #555;border-radius:8px;padding:10px 14px;margin:8px 0;font-size:14px}
+ .badge{color:var(--dark-color);font-size:11px;padding:2px 8px;border-radius:10px;margin-right:8px;font-family:var(--mono);font-weight:700}
+ .muted{opacity:.7;font-size:13px}
+</style>
+</head>
+<body>
+<main class="post-page">
+  <nav class="post-nav" aria-label="Navigasi">
+    <a href="https://hadymaggot.github.io/">&larr; Beranda</a>
+    <a href="./">Security Audit Kit</a>
+    <a href="https://github.com/hadymaggot/security-audit-kit">GitHub</a>
+    <span class="tb-lang">
+    <a href="../scan.html" hreflang="en" lang="en" title="English"><img src="https://flagcdn.com/gb.svg" width="20" alt="English"></a>
+    <a href="../id/scan.html" hreflang="id" lang="id" title="Indonesia" aria-current="page"><img src="https://flagcdn.com/id.svg" width="20" alt="Indonesia"></a>
+    <a href="../de/scan.html" hreflang="de" lang="de" title="Deutsch"><img src="https://flagcdn.com/de.svg" width="20" alt="Deutsch"></a>
+  </span>
+  </nav>
+  <nav class="breadcrumb"><a href="https://hadymaggot.github.io/">Beranda</a> &rsaquo; <a href="./">Security Audit Kit</a> &rsaquo; Open Scanner</nav>
+  <h1>Open Scanner — pemeriksaan pasif</h1>
+  <div class="sub">Security Audit Kit · dibuat oleh hadymaggot</div>
+  <div class="note"><b>Non-intrusif.</b> Hanya membaca <i>response</i> yang sudah dilayani publik — security <i>headers</i>, <i>cookie</i> flags, CORS, dan banner <code>Server</code>/<code>X-Powered-By</code> &rarr; CVE. <b>Tidak</b> mengirim <i>payload</i> serangan, menulis data, atau <i>brute-force</i> (seperti securityheaders.com / SSL Labs). Untuk uji mendalam, gunakan <a href="https://github.com/hadymaggot/security-audit-kit">CLI</a> pada target yang <b>Anda miliki/berwenang uji</b>.</div>
+  <form id="f">
+    <input id="u" type="url" placeholder="https://contoh-anda.example" required>
+    <button id="b" type="submit">Scan</button>
+  </form>
+  <div id="out"></div>
+  <p class="muted" id="cfg"></p>
+</main>
+<script>
+ var T = {"backend_err": "Tidak bisa menghubungi <i>backend<\/i> ({api}): {err}", "failed": "Gagal.", "found_of": "{n} temuan dari {m} pemeriksaan", "no_backend": "<i>Backend<\/i> belum dikonfigurasi.", "no_backend_cfg": "<i>Backend<\/i> belum dikonfigurasi. Deploy Worker (lihat <code>worker/README.md<\/code>) lalu buka halaman dengan <code>?api=https://...workers.dev<\/code>.", "scanning": "Memindai…"}, LANG = "id";
+ var WORKER_URL = "https://security-audit-kit-scanner.saptohadi.workers.dev";
+ var api = new URLSearchParams(location.search).get("api") || WORKER_URL;
+ var SEV = {critical:"var(--c)",high:"var(--h)",medium:"var(--m)",low:"var(--l)",
+            info:"var(--i)",lulus:"var(--ok)",ok:"var(--ok)"};
+ function sevLabel(s){s=(""+(s||"")).toLowerCase();return (s==="lulus"||s==="ok")?"PASS":s.toUpperCase();}
+ var out = document.getElementById("out");
+ document.getElementById("cfg").innerHTML = api
+   ? ""
+   : T.no_backend_cfg;
+
+ function esc(s){return String(s).replace(/[&<>]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;"}[c]})}
+ function render(data){
+   var f = data.findings || [];
+   var fail = f.filter(function(x){return !x.ok});
+   var html = "<p><b>Target:</b> <code>"+esc(data.target)+"</code> · "+
+              T.found_of.replace("{n}",fail.length).replace("{m}",f.length)+" · "+esc(data.scanned_at||"")+"</p>";
+   f.sort(function(a,b){return (a.ok?1:0)-(b.ok?1:0)});
+   f.forEach(function(x){
+     var col = SEV[x.severity]||"#555";
+     html += "<div class='finding' style='border-left-color:"+col+"'>"+
+       "<span class='badge' style='background:"+col+"'>"+esc(sevLabel(x.severity))+"</span>"+
+       "<b>["+esc(x.module)+"] "+esc(x.check)+"</b>"+
+       (x.note?" — "+esc(x.note):"")+
+       (x.cve&&x.cve.length?" <span class='muted'>("+esc(x.cve.join(", "))+")</span>":"")+
+       "</div>";
+   });
+   if(data.notice) html += "<div class='note'>"+esc(data.notice)+"</div>";
+   out.innerHTML = html;
+ }
+
+ document.getElementById("f").addEventListener("submit", function(e){
+   e.preventDefault();
+   if(!api){ out.innerHTML = "<div class='note'>"+T.no_backend+"</div>"; return; }
+   var btn = document.getElementById("b");
+   btn.disabled = true; out.innerHTML = "<p class='muted'>"+T.scanning+"</p>";
+   fetch(api.replace(/\/+$/,"")+"/scan", {
+     method:"POST", headers:{"Content-Type":"application/json"},
+     body: JSON.stringify({url: document.getElementById("u").value})
+   }).then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}})})
+     .then(function(res){
+       if(!res.ok){ out.innerHTML = "<div class='note'>"+esc(res.j.error||T.failed)+"</div>"; }
+       else render(res.j);
+     }).catch(function(err){
+       out.innerHTML = "<div class='note'>"+T.backend_err.replace("{api}",esc(api)).replace("{err}",esc(err))+"</div>";
+     }).finally(function(){ btn.disabled = false; });
+ });
+</script>
+</body>
+</html>

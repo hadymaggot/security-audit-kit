@@ -47,6 +47,8 @@ kodenya ke `complete_text` di `glosarium.yml`.
 - **Bahasa baru:** tambahkan satu blok di bawah `languages` (kode ISO 639-1).
 - **Khusus satu project:** buat `<folder-project>/config/glosarium.yml` dengan struktur yang sama;
   isinya digabung dengan glosarium kit.
+- **Situs web:** punya glosarium tersendiri di `site/glosarium.yml` (strukturnya sama, tidak digabung
+  dengan glosarium kit); lihat bagian situs web di panduan kontribusi.
 
 Setelah mengubah, jalankan `python -m pytest tests/unit/test_glosarium.py`. Test itu gagal bila
 teks yang tampil (konsol, laporan, rekomendasi) masih memakai kata yang dipetakan `map` atau

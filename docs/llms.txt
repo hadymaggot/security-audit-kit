@@ -1,21 +1,21 @@
 # Security Audit Kit
 
-> Toolkit otomatisasi security testing web/API (DAST + SCA), lintas sistem operasi dan
-> berbasis konfigurasi, non-destruktif dengan rollback otomatis, dengan laporan
-> berstandar konsultan IT security. Open-source (Apache-2.0), dibuat oleh hadymaggot.
+> Cross-platform, configuration-driven web/API security testing automation (DAST + SCA),
+> non-destructive with automatic rollback, with consultant-grade IT security reports.
+> Open source (Apache-2.0), made by hadymaggot.
 
-Entry point: `python audit.py <modul>` (identik di Windows/Linux). Kredensial lewat
-environment variable. Acuan: OWASP Top 10 2021, OWASP API Security Top 10 2023, ASVS.
+Entry point: `python audit.py <module>` (identical on Windows/Linux/macOS). Credentials via
+environment variables. References: OWASP Top 10 2021, OWASP API Security Top 10 2023, ASVS.
 
-## Modul
+## Modules
 - access control / BOPLA (authz, mass-assignment), injection (SQLi), upload, auth-policy
-- client-leak, cors, open-redirect, tls, headers, webstack (banner→CVE), deps (Trivy/semgrep/gitleaks), zap
-- Uji destruktif (mis. mass-assignment) dipulihkan otomatis via rollback journal.
+- client-leak, cors, open-redirect, tls, headers, webstack (banner to CVE), deps (Trivy/semgrep/gitleaks), zap
+- Destructive tests (e.g. mass-assignment) are restored automatically through the rollback journal.
 
-## Tautan
+## Links
 - Repo: https://github.com/hadymaggot/security-audit-kit
-- Panduan: https://github.com/hadymaggot/security-audit-kit/blob/main/docs/panduan-penggunaan.md
-- Metodologi: https://github.com/hadymaggot/security-audit-kit/blob/main/docs/metodologi.md
-- Contoh laporan: https://hadymaggot.github.io/security-audit-kit/contoh-laporan.html
-- Open scanner (pasif): https://hadymaggot.github.io/security-audit-kit/scan.html
-- Dokumentasi tiga bahasa: ID (README.md), EN (README.en.md), DE (README.de.md)
+- Guide: https://github.com/hadymaggot/security-audit-kit/blob/main/docs/panduan-penggunaan.en.md
+- Methodology: https://github.com/hadymaggot/security-audit-kit/blob/main/docs/metodologi.en.md
+- Sample report (Indonesian): https://hadymaggot.github.io/security-audit-kit/contoh-laporan.html
+- Open scanner (passive): https://hadymaggot.github.io/security-audit-kit/scan.html
+- Site and docs in three languages: English (default), Indonesian https://hadymaggot.github.io/security-audit-kit/id/, German https://hadymaggot.github.io/security-audit-kit/de/
