@@ -2,13 +2,13 @@
 
 # Translating a pentest report into tests
 
-How to use this kit to "lock in" a finding from a pentest report (for example from
-BSSN/Gov-CSIRT) so it doesn't recur. Per finding, pick the matching module then add its
-case.
+Lock in a finding from a pentest report (for example from BSSN/Gov-CSIRT) so it does not recur: pick the matching module per finding, then add its case.
+
+## Finding class to module
 
 | Finding class | Module | How to add the case |
 |---|---|---|
-| Broken Access Control / privilege escalation | `authz` | Add the sensitive endpoint, `expect: { role_rendah: deny }` |
+| Broken Access Control / privilege escalation | `authz` | Add the sensitive endpoint, `expect: { regular_user: deny }` |
 | Lack of authorization status / flow jumping | `authz` | Status-change endpoint + status body, `deny` for the unauthorized role |
 | IDOR | `authz` | Endpoint using another account's id, `deny` |
 | Authz header trusted from the client | `authz` | Fill in the `forged_headers` block |
@@ -34,14 +34,9 @@ case.
 
 ## The flow
 
-Read the report, list each finding along with its location (endpoint/parameter), map it
-to a module in the table above, then add its case in the relevant module's `*.yml` — don't
-put credentials there, use environment variables.
+1. Read the report and list each finding with its location (endpoint/parameter).
+2. Map it to a module in the table above, then add the case in that module's `*.yml`. Do not put credentials there; use environment variables.
+3. Run `python audit.py all`. The old finding must now fail (red): the test really catches the flaw.
+4. Fix the app, run again until it passes (green), then wire it into CI so regressions are detected automatically.
 
-Run `python audit.py all`, make sure the old finding now fails (red) — meaning the test
-really does catch the flaw. After that fix the app, run again until it passes (green),
-then wire it into CI so regressions are detected automatically.
-
-`reports/laporan.html` contains, per finding: description, evidence, impact, severity
-rationale, recommendations plus an example fix, and the standards reference — ready to
-attach as follow-up evidence.
+`reports/laporan.html` contains, per finding: description, evidence, impact, severity rationale, recommendations with an example fix, and the standards reference. It is ready to attach as follow-up evidence.
