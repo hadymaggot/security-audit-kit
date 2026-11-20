@@ -1,19 +1,18 @@
 #!/usr/bin/env python3
-"""Deteksi versi/stack web server lalu petakan ke CVE yang diketahui (non-destruktif).
+"""Detect web server version/stack and map it to known CVEs (non-destructive).
 
-Modul ini HANYA membaca yang diumumkan server — header `Server`, `X-Powered-By`,
-`Alt-Svc` (indikasi HTTP/2|HTTP/3), dan dukungan HTTP/2 via ALPN — tanpa mengirim
-payload exploit. Dua jenis temuan:
+Only reads what the server announces (`Server`, `X-Powered-By`, `Alt-Svc` headers as an
+HTTP/2|HTTP/3 hint, and HTTP/2 support via ALPN); no exploit payloads are sent. Two finding types:
 
-  1. Version disclosure — server membocorkan versi lewat banner (memudahkan fingerprint).
-  2. Known-vulnerable version — versi banner cocok dengan daftar `known_vulnerable`
-     (mis. Apache mod_http2 CVE-2026-119618, NGINX HTTP/2 CVE-2026-123633). Keyakinan
-     'Sedang': berbasis banner, wajib dikonfirmasi ke advisory vendor sebelum dikunci.
+  1. Version disclosure: the server leaks its version in a banner (eases fingerprinting).
+  2. Known-vulnerable version: the banner version matches the `known_vulnerable` list
+     (e.g. Apache mod_http2 CVE-2026-119618, NGINX HTTP/2 CVE-2026-123633). Medium
+     confidence: banner-based, so confirm against the vendor advisory before pinning.
 
-CVE RCE/DoS seperti ini TIDAK diuji aktif karena tak punya reverse yang aman —
-deteksi pasif adalah pendekatan yang tepat.
+RCE/DoS CVEs like these are NOT actively tested because they have no safe reverse;
+passive detection is the right approach.
 
-Pakai: python run_webstack.py --config webstack.yml [--json out.json]
+Usage: python run_webstack.py --config webstack.yml [--json out.json]
 """
 from __future__ import annotations
 
@@ -30,10 +29,10 @@ import requests
 import yaml
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import _color as C  # noqa: E402  (warna ANSI konsol lintas-modul di tests/)
+import _color as C  # noqa: E402  (shared ANSI console colors)
 
 ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
-# Nama produk + versi pada banner, mis. "Apache/2.4.70", "nginx/1.30.6".
+# Product name + version in a banner, e.g. "Apache/2.4.70", "nginx/1.30.6".
 BANNER_RE = re.compile(r"([A-Za-z][A-Za-z0-9_+.-]*)/(\d+(?:\.\d+){1,3})")
 
 
@@ -48,7 +47,7 @@ def expand(v):
 
 
 def ver_tuple(s):
-    """'2.4.70' -> (2,4,70). Bagian non-numerik diabaikan."""
+    """'2.4.70' -> (2,4,70); parsing stops at the first non-numeric part."""
     out = []
     for part in str(s).split("."):
         m = re.match(r"\d+", part)
@@ -59,7 +58,7 @@ def ver_tuple(s):
 
 
 def less_than(a, b):
-    """Bandingkan versi a < b dengan panjang tuple disamakan."""
+    """Return a < b, padding the version tuples to equal length."""
     ta, tb = ver_tuple(a), ver_tuple(b)
     n = max(len(ta), len(tb))
     ta += (0,) * (n - len(ta))
@@ -68,7 +67,7 @@ def less_than(a, b):
 
 
 def parse_banner(value):
-    """Ambil (nama_lower, versi) pertama dari header banner, atau (teks_lower, '')."""
+    """Return the first (lowercase name, version) from a banner header, else (lowercase text, '')."""
     if not value:
         return "", ""
     m = BANNER_RE.search(value)
@@ -78,7 +77,7 @@ def parse_banner(value):
 
 
 def supports_http2(url):
-    """Best-effort: negosiasi ALPN h2 lewat TLS (hanya untuk https). True/False/None."""
+    """Best-effort ALPN h2 negotiation over TLS (https only); returns True/False/None."""
     u = urlparse(url)
     if u.scheme != "https":
         return None
@@ -100,7 +99,7 @@ def supports_http2(url):
 
 
 def check_target(sess, url, known, http2_probe=supports_http2):
-    """Kembalikan daftar hasil untuk satu URL target."""
+    """Return the result rows for one target URL."""
     out = []
     try:
         r = sess.get(url, timeout=20, allow_redirects=True)
@@ -126,8 +125,8 @@ def check_target(sess, url, known, http2_probe=supports_http2):
         "url": f"GET {url}",
     })
 
-    # 2. Known-vulnerable version — cek banner Server DAN X-Powered-By, dengan rentang
-    #    min_version–max_version (mendukung backport multi-branch, mis. PHP2Shell).
+    # 2. Known-vulnerable version: check the Server AND X-Powered-By banners against a
+    #    min_version-max_version range (supports multi-branch backports, e.g. PHP2Shell).
     h2 = http2_probe(url)
     if altsvc and "h2" in altsvc.lower() and h2 is None:
         h2 = True
@@ -147,9 +146,9 @@ def check_target(sess, url, known, http2_probe=supports_http2):
                 continue
             mn, mx = kv.get("min_version"), kv.get("max_version")
             if mn and less_than(cver, mn):
-                continue                   # di bawah rentang rentan
+                continue                   # below the vulnerable range
             if mx and not less_than(cver, mx):
-                continue                   # sudah di versi perbaikan
+                continue                   # already at the fixed version
             key = kv.get("cve") or kname
             if key in flagged:
                 continue
@@ -165,7 +164,7 @@ def check_target(sess, url, known, http2_probe=supports_http2):
                 "url": f"GET {url}",
                 "cve": [kv["cve"]] if kv.get("cve") else [],
             })
-            break                          # satu temuan per entri known_vulnerable
+            break                          # one finding per known_vulnerable entry
     return out
 
 

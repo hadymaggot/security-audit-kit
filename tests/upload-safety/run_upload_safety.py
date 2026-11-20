@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
-"""Uji bahwa endpoint upload MENOLAK file berbahaya.
+"""Test that the upload endpoint REJECTS dangerous files.
 
-Defensif: mengirim file uji yang seharusnya ditolak dan memastikan server menolak
-(bukan menerima). Payload sengaja jinak — penanda, bukan kode berbahaya sungguhan —
-cukup untuk menguji validasi tipe/isi/nama file.
+Defensive: sends test files that should be rejected and verifies the server rejects them.
+Payloads are deliberately harmless markers, not real malicious code; they are enough to
+exercise type/content/filename validation.
 
-Konfigurasi lewat upload_safety.yml:
+Config via upload_safety.yml:
 
     base_url: "${TARGET_BASE_URL}"
     auth: { header: "Authorization", value: "${UPLOAD_TOKEN}" }
     endpoint: { method: POST, path: "/api/upload", field: "file" }
-    allow_only: [".pdf"]          # ekstensi yang sah menurut aplikasi
-    max_bytes: 2097152            # batas ukuran; file lebih besar harus ditolak
+    allow_only: [".pdf"]          # extensions the app considers valid
+    max_bytes: 2097152            # size limit; larger files must be rejected
 
-Pakai: python run_upload_safety.py --config upload_safety.yml
+Usage: python run_upload_safety.py --config upload_safety.yml
 """
 from __future__ import annotations
 
@@ -28,8 +28,8 @@ import requests
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import _sanctum  # noqa: E402  (helper auth Sanctum lintas-modul di tests/)
-import _color as C  # noqa: E402  (warna ANSI konsol lintas-modul di tests/)
+import _sanctum  # noqa: E402  (shared Sanctum auth helper)
+import _color as C  # noqa: E402  (shared ANSI console colors)
 
 ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 
@@ -44,8 +44,8 @@ def expand(v):
     return v
 
 
-# PDF jinak dengan aksi JavaScript sekadar penanda — untuk menguji apakah server
-# membersihkan/menolak PDF ber-JS. Tidak melakukan apa pun yang berbahaya.
+# Harmless PDF with a JavaScript action as a marker, to see whether the server sanitizes or
+# rejects PDFs with JS. It does nothing dangerous.
 PDF_WITH_JS = (
     b"%PDF-1.3\n"
     b"1 0 obj<</Type/Catalog/OpenAction<</S/JavaScript/JS(/*probe*/)>>/Pages 2 0 R>>endobj\n"
@@ -54,27 +54,27 @@ PDF_WITH_JS = (
 )
 HTML_AS_PDF = b"<html><body><script>/*probe*/</script></body></html>"
 SVG_FILE = b'<svg xmlns="http://www.w3.org/2000/svg"><text>probe</text></svg>'
-# Polyglot: header GIF valid + penanda kode server — menguji apakah validasi hanya
-# melihat magic byte. Penanda tak dieksekusi apa pun.
+# Polyglot: valid GIF header + server-side code marker, to see whether validation only checks
+# magic bytes. The marker is never executed.
 POLYGLOT_GIF_PHP = b"GIF89a\x01\x00\x01\x00\x00\x00\x00;<?php /*probe*/ ?>"
 PDF_OK = b"%PDF-1.3\n%%EOF\n"
 TRAVERSAL = "Nama file path traversal"
 
 
 def sanitized(case, resp):
-    """Kasus nama berkas: diterima tapi nama tersimpan bersih = aman (tolak ATAU sanitasi)."""
+    """Filename case: accepted but stored with a clean name is safe (reject OR sanitize)."""
     return case == TRAVERSAL and b".." not in (resp.content or b"")
 
 
 def dig(obj, dotted):
-    """Ambil nilai bersarang via 'a.b.c'."""
+    """Get a nested value via 'a.b.c'."""
     for part in dotted.split("."):
         obj = obj.get(part) if isinstance(obj, dict) else None
     return obj
 
 
 def build_cases(cfg):
-    """(nama, nama_berkas, konten, content_type, harus_ditolak?)"""
+    """Return (name, filename, content, content_type, should_reject) tuples."""
     cases = [
         ("PDF berisi JavaScript", "a.pdf", PDF_WITH_JS, "application/pdf", True),
         ("HTML dengan ekstensi .pdf", "a.pdf", HTML_AS_PDF, "application/pdf", True),
@@ -88,15 +88,15 @@ def build_cases(cfg):
     if mx:
         big = b"%PDF-1.3\n" + b"0" * (int(mx) + 1024) + b"\n%%EOF\n"
         cases.append(("Melebihi batas ukuran", "big.pdf", big, "application/pdf", True))
-    # Kontrol positif: file sah harus DITERIMA (memastikan uji tak selalu "tolak").
+    # Positive control: a valid file must be ACCEPTED (so the test is not always "reject").
     cases.append(("PDF sah (kontrol)", "ok.pdf", PDF_OK, "application/pdf", False))
     return cases
 
 
 def cleanup_accepted(sess, base, cleanup, resp, headers):
-    """Hapus berkas uji yang terlanjur diterima. Kembalikan catatan singkat.
+    """Delete a test file that was accepted and return a short note.
 
-    `cleanup`: {method, path (berisi {id}), id_field (dotted di respons JSON)}.
+    `cleanup`: {method, path (contains {id}), id_field (dotted path in the JSON response)}.
     """
     try:
         file_id = dig(resp.json(), cleanup.get("id_field", "id"))
@@ -132,7 +132,7 @@ def main():
     static_headers = {}
     if a.get("header") and a.get("value"):
         static_headers[a["header"]] = a["value"]
-    # Auth Sanctum (opsional): ambil cookie CSRF + sesi, lalu login bila disediakan.
+    # Optional Sanctum auth: fetch the CSRF + session cookies, then log in if configured.
     if sanctum:
         _sanctum.prime_csrf(sess, base, sanctum)
         login = a.get("login")
@@ -155,8 +155,8 @@ def main():
     results = []
     print(f"{'KASUS':<34} {'HTTP':>5}  HASIL")
     print("-" * 70)
-    form = ep.get("data") or {}         # field form tambahan, mis. jenis dokumen
-    cleanup = cfg.get("cleanup")        # hapus berkas uji yang terlanjur diterima
+    form = ep.get("data") or {}         # extra form fields, e.g. document type
+    cleanup = cfg.get("cleanup")        # delete test files that were accepted
     for name, fname, content, ctype, should_reject in build_cases(cfg):
         files = {ep.get("field", "file"): (fname, io.BytesIO(content), ctype)}
         evidence_url = f"{ep.get('method', 'POST')} {url}  (file={fname!r}, type={ctype})"

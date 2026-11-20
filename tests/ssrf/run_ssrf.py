@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
-"""Uji SSRF (Server-Side Request Forgery) berbasis canary lokal — defensif.
+"""Local-canary SSRF (Server-Side Request Forgery) tests (defensive).
 
-Untuk endpoint yang MENERIMA URL (webhook, pratinjau tautan, impor dari URL, dst.), modul ini
-menjalankan listener HTTP kecil milik Anda sendiri (canary) lalu mengirim URL canary sebagai
-nilai parameter. Bila server target benar-benar menembak URL itu, SSRF terkonfirmasi — dan karena
-canary berada di alamat privat/loopback, endpoint yang benar SEHARUSNYA memblokirnya.
+For endpoints that ACCEPT a URL (webhook, link preview, import from URL, etc.), this module
+runs a small HTTP listener of your own (the canary) and sends the canary URL as a parameter
+value. If the target server actually fetches it, SSRF is confirmed; since the canary sits on a
+private/loopback address, a correct endpoint SHOULD block it.
 
-Varian yang diuji per target:
-  - langsung              : http://<host canary>:<port>/<token>
-  - IP desimal/heks/oktal : bypass blokir berbasis string pada alamat IPv4
-  - userinfo (@)          : http://allowed.example@<host canary>:<port>/<token>
-  - redirect              : canary membalas 302 ke jalur kedua — hop kedua menandakan server
-                            mengikuti redirect ke tujuan yang tak divalidasi
+Variants tested per target:
+  - direct                : http://<canary host>:<port>/<token>
+  - decimal/hex/octal IP  : bypasses string-based blocklists on IPv4 addresses
+  - userinfo (@)          : http://allowed.example@<canary host>:<port>/<token>
+  - redirect              : canary replies 302 to a second path; a second hop means the
+                            server follows redirects to an unvalidated destination
 
-Tidak ada pemindaian host internal dan tidak ada pemanggilan metadata cloud; satu-satunya
-permintaan keluar yang dipicu adalah ke listener canary Anda.
+No internal host scanning and no cloud metadata calls; the only outbound request triggered
+is to your own canary listener.
 
-Konfigurasi di ssrf.yml. Pakai:
+Config in ssrf.yml. Usage:
     python run_ssrf.py --config ssrf.yml [--json out.json]
 """
 from __future__ import annotations
@@ -37,7 +37,7 @@ from urllib.parse import urlparse
 import requests
 import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import _color as C  # noqa: E402  (warna ANSI konsol lintas-modul di tests/)
+import _color as C  # noqa: E402  (shared ANSI console colors)
 
 ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 
@@ -52,9 +52,9 @@ def expand(v):
     return v
 
 
-# ── listener canary ─────────────────────────────────────────────────────────
+# ── canary listener ─────────────────────────────────────────────────────────
 class Canary:
-    """Listener HTTP yang mencatat setiap permintaan masuk (path, UA, alamat asal)."""
+    """HTTP listener that records every incoming request (path, UA, source address)."""
 
     def __init__(self, bind="0.0.0.0", port=0):
         self.hits, self._lock = [], threading.Lock()
@@ -65,7 +65,7 @@ class Canary:
                 with outer._lock:
                     outer.hits.append({"path": self.path, "ua": self.headers.get("User-Agent", ""),
                                        "from": self.client_address[0], "t": time.time()})
-                if self.path.startswith("/redir/"):          # hop kedua untuk uji redirect
+                if self.path.startswith("/redir/"):          # second hop for the redirect test
                     self.send_response(302)
                     self.send_header("Location", self.path.replace("/redir/", "/hop2/", 1))
                     self.end_headers()
@@ -77,7 +77,7 @@ class Canary:
 
             do_GET = do_POST = do_HEAD = do_PUT = _do
 
-            def log_message(self, *a):        # senyap
+            def log_message(self, *a):        # silent
                 pass
 
         self.server = ThreadingHTTPServer((bind, port), H)
@@ -97,9 +97,9 @@ class Canary:
             return [h for h in self.hits if token in h["path"]]
 
 
-# ── varian payload (murni) ──────────────────────────────────────────────────
+# ── payload variants (pure) ──────────────────────────────────────────────────
 def ip_variants(ip):
-    """Representasi alternatif sebuah IPv4 (desimal, heks, oktal, campuran). [] bila bukan IPv4."""
+    """Alternate representations of an IPv4 address (decimal, hex, octal, mapped); [] if not IPv4."""
     try:
         a = ipaddress.ip_address(ip)
     except ValueError:
@@ -114,7 +114,7 @@ def ip_variants(ip):
 
 
 def build_variants(public_url, token, variants=True):
-    """[(nama, url)] untuk satu target. public_url = URL listener seperti terlihat dari server."""
+    """Return [(name, url)] for one target; public_url is the listener URL as the server sees it."""
     u = urlparse(public_url)
     host, port = u.hostname or "", u.port
     hp = f"{host}:{port}" if port else host
@@ -129,9 +129,9 @@ def build_variants(public_url, token, variants=True):
     return out
 
 
-# ── evaluasi (murni) ────────────────────────────────────────────────────────
+# ── evaluation (pure) ────────────────────────────────────────────────────────
 def evaluate(target_name, variant, url_sent, token, hits, where):
-    """Satu baris hasil. hits: daftar hit untuk token ini."""
+    """Return one result row; hits are the canary hits for this token."""
     paths = [h["path"] for h in hits]
     if variant == "redirect":
         hop2 = [p for p in paths if p.startswith("/hop2/")]
@@ -155,9 +155,9 @@ def evaluate(target_name, variant, url_sent, token, hits, where):
             "url": where, "kind": "ssrf"}
 
 
-# ── pengiriman ──────────────────────────────────────────────────────────────
+# ── sending ──────────────────────────────────────────────────────────────
 def send_payload(sess, base, target, url, origin=None):
-    """Kirim satu URL ke endpoint target. Return status atau None."""
+    """Send one URL to the target endpoint; return the status or None."""
     param, loc = target["param"], target.get("location", "query")
     full = base + target["path"]
     kw = {"timeout": 20, "allow_redirects": False}
@@ -212,7 +212,7 @@ def run(cfg, canary=None, sess=None, sleep=time.sleep):
             name = t.get("name", t["path"])
             where = f"{t.get('method', 'GET')} {base}{t['path']} (param {t['param']})"
             for vname, tmpl in build_variants(public, "{token}", cfg.get("variants", True)):
-                token = "k" + secrets.token_hex(6)           # token unik per request
+                token = "k" + secrets.token_hex(6)           # unique token per request
                 url = tmpl.replace("{token}", token)
                 status = send_payload(sess, base, t, url, origin)
                 if status is None:
@@ -223,7 +223,7 @@ def run(cfg, canary=None, sess=None, sleep=time.sleep):
                 deadline = time.time() + wait
                 while time.time() < deadline and not canary.hits_for(token):
                     sleep(0.2)
-                sleep(0.3 if canary.hits_for(token) else 0)        # beri waktu hop kedua
+                sleep(0.3 if canary.hits_for(token) else 0)        # leave time for the second hop
                 row = evaluate(name, vname, url, token, canary.hits_for(token), where)
                 row["status"] = status
                 rows.append(row)

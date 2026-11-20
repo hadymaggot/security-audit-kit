@@ -1,26 +1,26 @@
-# Salin ke ssrf.yml. Uji SSRF berbasis CANARY LOKAL: modul menjalankan listener HTTP milik Anda,
-# mengirim URL canary ke endpoint yang menerima URL, lalu melihat apakah server target menembaknya.
-# Tidak ada pemindaian host internal dan tidak ada pemanggilan metadata cloud.
+# Copy to ssrf.yml. LOCAL-CANARY SSRF test: the module runs an HTTP listener of your own,
+# sends the canary URL to endpoints that accept a URL, and checks whether the target server fetches it.
+# No internal host scanning and no cloud metadata calls.
 base_url: "${TARGET_BASE_URL}"
 
-# Opsional — autentikasi bila endpoint butuh login (kredensial lewat env var).
+# Optional: authentication if the endpoint needs login (credentials via env var).
 # auth:
 #   sanctum: { enabled: true, csrf_path: "/sanctum/csrf-cookie", origin: "${TARGET_BASE_URL}" }
 #   login: { method: POST, path: "/api/login", body: { email: "${SSRF_USER}", password: "${SSRF_PASS}" } }
-#   # atau token statis:  header: "Authorization"  /  value: "${SSRF_TOKEN}"
+#   # or a static token:  header: "Authorization"  /  value: "${SSRF_TOKEN}"
 
-# Listener canary. `public_url` = alamat listener SEPERTI TERLIHAT DARI SERVER TARGET
-# (mis. host.docker.internal untuk target di Docker pada mesin yang sama, atau IP LAN Anda).
+# Canary listener. `public_url` = the listener address AS SEEN FROM THE TARGET SERVER
+# (e.g. host.docker.internal for a target in Docker on the same machine, or your LAN IP).
 callback:
   bind: "0.0.0.0"
   port: 18999
   public_url: "http://host.docker.internal:18999"
   wait_seconds: 4
 
-# Coba varian bypass (IP desimal/heks/oktal, userinfo '@', redirect).
+# Try bypass variants (decimal/hex/octal IP, userinfo '@', redirect).
 variants: true
 
-# Endpoint yang MENERIMA URL (webhook, pratinjau tautan, impor dari URL, dst.).
+# Endpoints that ACCEPT a URL (webhook, link preview, import from URL, etc.).
 targets:
   - name: "Pratinjau tautan"
     method: POST

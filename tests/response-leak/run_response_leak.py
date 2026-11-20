@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""Deteksi kebocoran data di respons API (pasif, hanya GET).
+"""Detect data leaks in API responses (passive, GET only).
 
-Untuk tiap endpoint yang dikonfigurasi, respons dipindai untuk:
-  - kunci JSON sensitif yang berisi nilai (password, secret, api_key, token akses,
-    two_factor_secret, recovery_codes, ...). NILAI TIDAK PERNAH dicetak ke laporan —
-    hanya path kunci dan panjang nilai.
-  - pola secret di isi respons (AWS key, private key, token GitHub/Slack/Google).
-  - jejak debug / stack trace / pesan SQL pada respons (terutama respons error).
-  - alamat IP internal (RFC1918) atau hostname internal yang bocor.
-Tambahan: probe error (path acak -> 404, dsb.) untuk memeriksa halaman error verbose.
+Each configured endpoint's response is scanned for:
+  - sensitive JSON keys holding a value (password, secret, api_key, access token,
+    two_factor_secret, recovery_codes, ...). VALUES ARE NEVER PRINTED to the report,
+    only the key path and value length.
+  - secret patterns in the body (AWS key, private key, GitHub/Slack/Google token).
+  - debug traces / stack traces / SQL messages (mainly in error responses).
+  - leaked internal IP addresses (RFC1918) or internal hostnames.
+Also sends error probes (random path -> 404, etc.) to check for verbose error pages.
 
-Konfigurasi di response_leak.yml. Pakai:
+Config in response_leak.yml. Usage:
     python run_response_leak.py --config response_leak.yml [--json out.json]
 """
 from __future__ import annotations
@@ -28,13 +28,13 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import _sanctum  # noqa: E402
-import _color as C  # noqa: E402  (warna ANSI konsol lintas-modul di tests/)
+import _color as C  # noqa: E402  (shared ANSI console colors)
 
 ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 MAX_BODY = 2_000_000
 
-# Kunci yang dianggap sensitif (substring, huruf kecil). Kunci berakhiran _at/_confirmation dll.
-# dikecualikan karena umumnya metadata (timestamp/flag), bukan nilai rahasia.
+# Sensitive key substrings (lowercase). Keys ending in _at/_confirmation etc. are excluded
+# since they are usually metadata (timestamps/flags), not secrets.
 SENSITIVE_KEY_RE = re.compile(
     r"(password|passwd|pwd|secret|api_?key|private_?key|access_?token|refresh_?token|"
     r"remember_?token|recovery_codes|cvv|card_?number)")
@@ -75,14 +75,14 @@ def expand(v):
 
 
 def walk_json(obj, path=""):
-    """Yield (path, key, value) untuk setiap pasangan kunci/nilai pada JSON bersarang."""
+    """Yield (path, key, value) for every key/value pair in nested JSON."""
     if isinstance(obj, dict):
         for k, v in obj.items():
             p = f"{path}.{k}" if path else str(k)
             yield p, str(k), v
             yield from walk_json(v, p)
     elif isinstance(obj, list):
-        for i, v in enumerate(obj[:200]):               # batasi agar respons besar tak berat
+        for i, v in enumerate(obj[:200]):               # cap so large responses stay cheap
             yield from walk_json(v, f"{path}[{i}]")
 
 
@@ -90,13 +90,13 @@ def _is_secretish_value(v):
     if v is None or isinstance(v, bool):
         return False
     if isinstance(v, (dict, list)):
-        return bool(v)                                   # objek/array berisi = ada data
+        return bool(v)                                   # non-empty object/array = data present
     s = str(v).strip()
     return bool(s) and not MASKED_RE.match(s)
 
 
 def find_sensitive_keys(data, cfg):
-    """[(path, panjang_nilai)] untuk kunci sensitif yang berisi nilai."""
+    """Return [(path, value_length)] for sensitive keys that hold a value."""
     allow = {a.lower() for a in cfg.get("allow_keys", [])}
     extra = [e.lower() for e in cfg.get("sensitive_keys", [])]
     out = []
@@ -125,7 +125,7 @@ def find_internal_ips(text):
 
 
 def evaluate_response(name, method, url, status, body, content_type, cfg, is_probe=False):
-    """Periksa satu respons -> daftar baris hasil. (Pure — tanpa jaringan.)"""
+    """Check one response and return result rows (pure, no network)."""
     rows = []
     where = f"{method} {url}"
 
@@ -141,7 +141,7 @@ def evaluate_response(name, method, url, status, body, content_type, cfg, is_pro
         except ValueError:
             data = None
 
-    # 1) kunci JSON sensitif (hanya untuk respons data, bukan probe error)
+    # 1) sensitive JSON keys (data responses only, not error probes)
     if data is not None and not is_probe:
         hits = find_sensitive_keys(data, cfg)
         if hits:
@@ -153,7 +153,7 @@ def evaluate_response(name, method, url, status, body, content_type, cfg, is_pro
             row("kunci sensitif", True, "Tidak ada kunci sensitif berisi nilai.",
                 "sensitive-data-exposure")
 
-    # 2) pola secret pada isi respons
+    # 2) secret patterns in the body
     pats = find_secret_patterns(text)
     if pats:
         row("pola secret", False, "Pola secret terdeteksi di isi response: "
@@ -162,7 +162,7 @@ def evaluate_response(name, method, url, status, body, content_type, cfg, is_pro
         row("pola secret", True, "Tidak ada pola secret di isi response.",
             "sensitive-data-exposure")
 
-    # 3) jejak debug/verbose
+    # 3) debug/verbose traces
     dbg = find_debug(text)
     if dbg:
         row("response verbose/debug", False, "Jejak debug di response: " + ", ".join(dbg)
@@ -173,7 +173,7 @@ def evaluate_response(name, method, url, status, body, content_type, cfg, is_pro
             else f"Response error (HTTP {status}) tidak expose detail implementasi.",
             "verbose-error")
 
-    # 4) alamat IP internal
+    # 4) internal IP addresses
     if cfg.get("check_internal_ips", True):
         ips = find_internal_ips(text)
         if ips:
@@ -214,7 +214,7 @@ def run_checks(cfg, sess=None, anon=None):
     results = []
 
     def fetch(sx, path, stateful=False):
-        # Sanctum SPA: Origin/Referer wajib di SETIAP request agar sesi cookie dianggap stateful.
+        # Sanctum SPA: Origin/Referer is required on EVERY request for the cookie session to count as stateful.
         hdr = _sanctum.stateful_headers(origin) if (stateful and origin) else {}
         r = sx.get(base + path, headers=hdr, timeout=20, allow_redirects=False)
         return r.status_code, (r.text or "")[:MAX_BODY], r.headers.get("Content-Type", "")
@@ -233,13 +233,13 @@ def run_checks(cfg, sess=None, anon=None):
             results.append({"check": f"{name}: akses endpoint", "status": status, "ok": True,
                             "note": f"skip: HTTP {status} (endpoint tak dapat diakses oleh session ini)",
                             "url": f"GET {base}{ep['path']}", "kind": "sensitive-data-exposure"})
-            # tetap periksa halaman error untuk jejak debug
+            # still check the error page for debug traces
             results.extend(evaluate_response(name, "GET", base + ep["path"], status, body, ctype,
                                              cfg, is_probe=True))
             continue
         results.extend(evaluate_response(name, "GET", base + ep["path"], status, body, ctype, cfg))
 
-    # probe error: path acak -> 404, dan path khusus dari config
+    # error probes: random path -> 404, plus custom paths from config
     probes = list(cfg.get("error_probes", []))
     if cfg.get("random_404_probe", True):
         probes.append(f"/{uuid.uuid4().hex[:12]}")

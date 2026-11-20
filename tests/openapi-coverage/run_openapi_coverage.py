@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
-"""Cakupan autentikasi berdasarkan spesifikasi OpenAPI (non-destruktif).
+"""OpenAPI-based authentication coverage (non-destructive).
 
-Membaca spesifikasi OpenAPI 3.x (URL atau berkas), memetakan tiap operasi apakah spesifikasi
-mendeklarasikan autentikasi (`security`), lalu — HANYA untuk operasi GET — mengirim request
-ANONIM (tanpa kredensial) dan membandingkannya:
-  - dilindungi menurut spesifikasi tetapi TERBUKA tanpa login        -> celah penegakan auth
-  - tidak mendeklarasikan auth, bukan allowlist publik, dan terbuka   -> perlu ditinjau
-  - tidak mendeklarasikan auth tetapi sebenarnya menolak anonim       -> spesifikasi tak akurat
-Operasi tulis (POST/PUT/PATCH/DELETE) TIDAK pernah dikirim — hanya dianalisis statis.
+Reads an OpenAPI 3.x spec (URL or file), records which operations declare `security`, then
+sends ANONYMOUS requests for GET operations ONLY and compares the result:
+  - protected per spec but OPEN without login         -> auth enforcement gap
+  - no auth declared, not in public allowlist, open   -> needs review
+  - no auth declared but actually rejects anonymous   -> inaccurate spec
+Write operations (POST/PUT/PATCH/DELETE) are never sent, only analyzed statically.
 
-Konfigurasi di openapi_coverage.yml. Pakai:
+Config in openapi_coverage.yml. Usage:
     python run_openapi_coverage.py --config openapi_coverage.yml [--json out.json]
 """
 from __future__ import annotations
@@ -25,7 +24,7 @@ from pathlib import Path
 import requests
 import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import _color as C  # noqa: E402  (warna ANSI konsol lintas-modul di tests/)
+import _color as C  # noqa: E402  (shared ANSI console colors)
 
 ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 HTTP_METHODS = ("get", "post", "put", "patch", "delete", "head", "options")
@@ -46,7 +45,7 @@ def expand(v):
 
 
 def load_spec(src, sess=None):
-    """Muat spesifikasi dari URL atau berkas (JSON/YAML)."""
+    """Load the spec from a URL or file (JSON/YAML)."""
     if re.match(r"^https?://", src or ""):
         r = (sess or requests).get(src, timeout=30)
         r.raise_for_status()
@@ -60,14 +59,14 @@ def load_spec(src, sess=None):
 
 
 def is_protected(security):
-    """True bila daftar 'security' mewajibkan autentikasi (tidak kosong, tak ada requirement {})."""
+    """True if the 'security' list requires auth (non-empty, no empty {} requirement)."""
     if not security:
         return False
     return not any(isinstance(req, dict) and not req for req in security)
 
 
 def operations(spec):
-    """Daftar operasi: {method, path, declared(bool), explicit_public(bool)}."""
+    """List operations as {method, path, declared(bool), explicit_public(bool)}."""
     global_sec = spec.get("security")
     ops = []
     for path, item in (spec.get("paths") or {}).items():
@@ -102,7 +101,7 @@ def fill_path(path, params):
 
 
 def classify(status):
-    """Hasil probe anonim -> 'enforced' | 'open' | 'error' | 'inconclusive'."""
+    """Map an anonymous probe status to 'enforced' | 'open' | 'error' | 'inconclusive'."""
     if status in (401, 403):
         return "enforced"
     if status is not None and 200 <= status < 300:
@@ -113,9 +112,9 @@ def classify(status):
 
 
 def analyze(ops, send, cfg, label=""):
-    """Jalankan probe anonim untuk operasi GET. `send(url)` -> status int / None.
+    """Probe GET operations anonymously and return result rows.
 
-    Mengembalikan daftar baris hasil. (Inti murni — `send` diinjeksi agar mudah diuji.)"""
+    `send(url)` returns an int status or None; it is injected to keep this core testable."""
     allow = cfg.get("public_allowlist", DEFAULT_PUBLIC)
     params = cfg.get("path_params", {})
     max_req = int(cfg.get("max_requests", 400))
@@ -134,9 +133,9 @@ def analyze(ops, send, cfg, label=""):
                  "url": base, "kind": "spec-mismatch"})
 
     enforced = open_ok = inconclusive = sent = 0
-    mismatch = []                      # tak dideklarasikan, tetapi menolak anonim
-    pub_mismatch = []                  # publik (allowlist), tetapi spesifikasi bilang terlindungi
-    errors = []                        # galat 5xx pada request anonim
+    mismatch = []                      # undeclared, but rejects anonymous
+    pub_mismatch = []                  # public (allowlist), but spec says protected
+    errors = []                        # 5xx on anonymous requests
     for o in gets:
         if sent >= max_req:
             break
@@ -153,7 +152,7 @@ def analyze(ops, send, cfg, label=""):
                 mismatch.append(o["path"])
         elif res == "open":
             if o["declared"] and is_public_allowed(o["path"], allow):
-                # Publik by design (allowlist) tetapi spesifikasi mewajibkan auth -> dokumentasi keliru.
+                # Public by design (allowlist) but spec requires auth -> wrong docs.
                 pub_mismatch.append(o["path"])
                 open_ok += 1
             elif o["declared"]:
@@ -206,7 +205,7 @@ def analyze(ops, send, cfg, label=""):
 
 
 def run_spec(spec_cfg, sess=None):
-    """Satu spesifikasi: muat -> analisis -> baris hasil."""
+    """Process one spec: load, analyze, return result rows."""
     cfg = dict(spec_cfg)
     sess = sess or requests.Session()
     if os.environ.get("SAK_INSECURE_TLS") == "1":
@@ -224,7 +223,7 @@ def run_spec(spec_cfg, sess=None):
     def send(url):
         try:
             r = anon.get(url, timeout=20, allow_redirects=False)
-            if r.status_code == 429 and retried["n"] < 20:        # backoff sekali
+            if r.status_code == 429 and retried["n"] < 20:        # single backoff on 429
                 retried["n"] += 1
                 time.sleep(2)
                 r = anon.get(url, timeout=20, allow_redirects=False)

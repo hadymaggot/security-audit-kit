@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""Modul recon — orkestrasi passive OSINT + (opsional) port scan & vuln scan.
+"""Recon module: passive OSINT plus optional port scan and vuln scan.
 
-Fase (dikendalikan `depth` di config):
-  osint : subfinder (subdomain) -> dnsx (resolve) -> httpx (alive/tech)   [non-intrusif]
-  infra : + naabu (port scan)                                            [AKTIF, gated]
-  full  : + nuclei (vuln scan; mode fast/stealth/full/owasp)             [AKTIF, gated]
+Phases (controlled by `depth` in the config):
+  osint : subfinder (subdomain) -> dnsx (resolve) -> httpx (alive/tech)   [non-intrusive]
+  infra : + naabu (port scan)                                            [ACTIVE, gated]
+  full  : + nuclei (vuln scan; mode fast/stealth/full/owasp)             [ACTIVE, gated]
 
-Fase aktif (naabu/nuclei/ffuf) HANYA berjalan bila di config:
-  active.enabled: true  DAN  toggle tool terkait bernilai true.
-Default semua off (aman). Hanya untuk target yang Anda miliki/berwenang uji.
+Active phases (naabu/nuclei/ffuf) run ONLY if the config sets active.enabled: true AND the
+tool's own toggle is true. Everything is off by default. Only for targets you own or are
+authorized to test.
 
-Binari ProjectDiscovery dipanggil via subprocess (shell=False). Jika sebuah
-binari tidak terpasang, fase-nya dilewati dengan catatan (tidak menggagalkan run).
+ProjectDiscovery binaries are invoked via subprocess (shell=False). A missing binary skips
+its phase with a note instead of failing the run.
 """
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ import subprocess
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import _color as C  # noqa: E402  (warna ANSI konsol lintas-modul di tests/)
+import _color as C  # noqa: E402  (shared ANSI console colors)
 
 try:
     import yaml
@@ -35,7 +35,7 @@ ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 
 
 def expand(x):
-    """Substitusi ${ENV_VAR} dari environment (rekursif)."""
+    """Recursively substitute ${ENV_VAR} from the environment."""
     if isinstance(x, str):
         return ENV_RE.sub(lambda m: os.environ.get(m.group(1), ""), x)
     if isinstance(x, dict):
@@ -48,7 +48,7 @@ def expand(x):
 DEPTHS = ("osint", "infra", "full")
 MODES = ("fast", "stealth", "full", "owasp")
 
-# Mapping mode -> (tags, severity) nuclei — diselaraskan dengan hunter.fish.
+# Mode -> nuclei (tags, severity); kept in line with hunter.fish.
 _NUCLEI = {
     "fast": ("cve,rce,lfi,sqli,ssti,ssrf,default-logins,auth-bypass,cors,headers,misconfig",
              "medium,high,critical"),
@@ -63,7 +63,7 @@ _NUCLEI = {
               "low,medium,high,critical"),
 }
 
-# Port yang dianggap sensitif bila terbuka ke publik (severity medium).
+# Ports considered sensitive when publicly exposed (medium severity).
 _SENSITIVE_PORTS = {
     21: "ftp", 22: "ssh", 23: "telnet", 25: "smtp", 445: "smb",
     1433: "mssql", 1521: "oracle", 3306: "mysql", 3389: "rdp",
@@ -73,7 +73,7 @@ _SENSITIVE_PORTS = {
 
 
 def default_run_tool(cmd, timeout=600, stdin=None):
-    """Jalankan binari, kembalikan (returncode, stdout). Injectable untuk test."""
+    """Run a binary and return (returncode, stdout); injectable for tests."""
     try:
         p = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout,
                            shell=False, input=stdin)
@@ -85,7 +85,7 @@ def default_run_tool(cmd, timeout=600, stdin=None):
 
 
 def _bin(tools, name, whicher=shutil.which):
-    """Nama binari dari config (atau default), None bila tidak terpasang."""
+    """Binary name from config (or default); None if not installed."""
     exe = (tools or {}).get(name, name)
     return exe if whicher(exe) else None
 
@@ -106,16 +106,14 @@ def _lines(text):
 
 
 def phase_osint(cfg, run_tool, whicher=shutil.which):
-    """Enumerasi subdomain + resolve + probe HTTP. Non-intrusif.
-
-    Mengembalikan (results, alive_urls)."""
+    """Enumerate subdomains, resolve, and probe HTTP (non-intrusive); return (results, alive_urls)."""
     results = []
     target = cfg["target"]
     tools = cfg.get("tools", {})
 
     timeout = cfg.get("timeout", 600)
 
-    # subdomain: subfinder + amass (keduanya pasif, hasil digabung)
+    # subdomains: subfinder + amass (both passive, results merged)
     subs = {target}
     used = []
     sf = _bin(tools, "subfinder", whicher)
@@ -139,7 +137,7 @@ def phase_osint(cfg, run_tool, whicher=shutil.which):
         results.append({"check": "subdomain enumeration", "ok": True, "severity": "passed",
                         "note": "skip: subfinder/amass tidak terpasang", "url": target})
 
-    # httpx: probe alive + tech-detect atas semua subdomain.
+    # httpx: alive probe + tech detection over all subdomains.
     alive_urls = []
     hx = _bin(tools, "httpx", whicher)
     if hx:
@@ -165,10 +163,10 @@ def phase_osint(cfg, run_tool, whicher=shutil.which):
     else:
         results.append({"check": "probe HTTP (httpx)", "ok": True, "severity": "passed",
                         "note": "skip: httpx tidak terpasang"})
-        # tanpa httpx, seed URL dari target agar fase lanjut tetap bisa jalan
+        # without httpx, seed the URL from the target so later phases can still run
         alive_urls = [cfg.get("base_url") or f"https://{target}"]
 
-    # URL historis dari arsip: gau + waybackurls (pasif)
+    # Historical URLs from archives: gau + waybackurls (passive)
     hist, hused = set(), []
     gau = _bin(tools, "gau", whicher)
     if gau:
@@ -186,14 +184,14 @@ def phase_osint(cfg, run_tool, whicher=shutil.which):
                         "severity": "info", "kind": "recon-subdomain",
                         "note": f"[{'+'.join(hused)}] {len(hist)} URL dari arsip; contoh: "
                                 + ", ".join(hist[:5]), "url": target})
-        # seed sebagian ke pool agar nuclei ikut memindai (dibatasi 50)
+        # seed some into the pool so nuclei scans them too (capped at 50)
         alive_urls = list(dict.fromkeys(alive_urls + hist[:50]))
 
     return results, alive_urls
 
 
 def phase_secrets(cfg, run_tool, whicher=shutil.which):
-    """Scan rahasia (trufflehog) atas code_path lokal. Pasif; hanya bila code_path diset."""
+    """Secret scan (trufflehog) of the local code_path; passive, only if code_path is set."""
     code = cfg.get("code_path")
     if not code:
         return []
@@ -225,7 +223,7 @@ def phase_secrets(cfg, run_tool, whicher=shutil.which):
 
 
 def phase_crawl(cfg, alive_urls, run_tool, whicher=shutil.which):
-    """Crawl (katana) untuk memperluas daftar URL. AKTIF — gated."""
+    """Crawl (katana) to expand the URL list. ACTIVE, gated."""
     target = cfg["target"]
     kt = _bin(cfg.get("tools", {}), "katana", whicher)
     if not kt:
@@ -245,7 +243,7 @@ def phase_crawl(cfg, alive_urls, run_tool, whicher=shutil.which):
 
 
 def phase_fuzz(cfg, alive_urls, run_tool, whicher=shutil.which):
-    """Content discovery (ffuf). AKTIF — gated. Butuh ffuf_wordlist."""
+    """Content discovery (ffuf). ACTIVE, gated; needs ffuf_wordlist."""
     target = cfg["target"]
     ff = _bin(cfg.get("tools", {}), "ffuf", whicher)
     wl = cfg.get("ffuf_wordlist")
@@ -277,7 +275,7 @@ def phase_fuzz(cfg, alive_urls, run_tool, whicher=shutil.which):
 
 
 def phase_ports(cfg, run_tool, whicher=shutil.which):
-    """Port scan via naabu. AKTIF — hanya jalan bila di-gate aktif."""
+    """Port scan via naabu. ACTIVE; runs only when the gate is enabled."""
     target = cfg["target"]
     tools = cfg.get("tools", {})
     nb = _bin(tools, "naabu", whicher)
@@ -312,7 +310,7 @@ def phase_ports(cfg, run_tool, whicher=shutil.which):
 
 
 def phase_vuln(cfg, alive_urls, run_tool, whicher=shutil.which):
-    """Vuln scan via nuclei. AKTIF — hanya jalan bila di-gate aktif."""
+    """Vuln scan via nuclei. ACTIVE; runs only when the gate is enabled."""
     tools = cfg.get("tools", {})
     nu = _bin(tools, "nuclei", whicher)
     target = cfg["target"]
@@ -359,7 +357,7 @@ def phase_vuln(cfg, alive_urls, run_tool, whicher=shutil.which):
 
 
 def orchestrate(cfg, run_tool=default_run_tool, whicher=shutil.which):
-    """Jalankan fase sesuai depth + gating aktif. Mengembalikan daftar results."""
+    """Run the phases allowed by depth and the active gate; return the results list."""
     depth = cfg.get("depth", "infra")
     if depth not in DEPTHS:
         depth = "infra"
@@ -367,7 +365,7 @@ def orchestrate(cfg, run_tool=default_run_tool, whicher=shutil.which):
     active_on = bool(active.get("enabled"))
 
     results, alive = phase_osint(cfg, run_tool, whicher)
-    results += phase_secrets(cfg, run_tool, whicher)   # pasif; hanya bila code_path diset
+    results += phase_secrets(cfg, run_tool, whicher)   # passive; only if code_path is set
 
     if depth in ("infra", "full"):
         if active_on and active.get("naabu"):
@@ -379,7 +377,7 @@ def orchestrate(cfg, run_tool=default_run_tool, whicher=shutil.which):
                             "url": cfg["target"]})
 
     if depth == "full":
-        # crawl & fuzz (aktif, gated) memperluas URL sebelum nuclei
+        # crawl and fuzz (active, gated) expand the URL set before nuclei
         if active_on and active.get("katana"):
             crawled, cres = phase_crawl(cfg, alive, run_tool, whicher)
             results += cres
@@ -398,7 +396,7 @@ def orchestrate(cfg, run_tool=default_run_tool, whicher=shutil.which):
 
 
 def _failures(results):
-    """Hitung temuan nyata (bukan info/lulus) sebagai penentu exit code."""
+    """Count real findings (not info/passed); this decides the exit code."""
     return sum(1 for r in results
                if not r.get("ok", True) and (r.get("severity") or "info").lower()
                in ("low", "medium", "high", "critical"))
@@ -411,7 +409,7 @@ def load_config(path, overrides):
     cfg = {}
     if path and Path(path).exists():
         cfg = expand(yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {})
-    # Tanpa file config pun tetap jalan bila target diberikan via CLI.
+    # Works without a config file as long as the target comes from the CLI.
     cfg.update({k: v for k, v in overrides.items() if v is not None})
     if not cfg.get("target"):
         bu = cfg.get("base_url", "")
