@@ -56,7 +56,7 @@ def test_lockout_normal_semua_lolos():
     rows = RL.evaluate_lockout(_seq(4), (423, LOCKMSG), CFG, URL)
     assert all(r["ok"] for r in rows) and len(rows) == 3
     by = {r["check"]: r for r in rows}
-    assert "ke-5" in by["lockout: penguncian setelah sandi salah"]["note"]
+    assert "ke-5" in by["lockout: penguncian setelah password salah"]["note"]
     assert "15 menit" in by["lockout: durasi kunci"]["note"]
 
 
@@ -73,7 +73,7 @@ def test_terkunci_terlalu_lambat_gagal():
 
 def test_sandi_benar_berhasil_saat_terkunci_adalah_bypass():
     rows = RL.evaluate_lockout(_seq(4), (200, "ok"), CFG, URL)
-    bypass = [r for r in rows if r["check"] == "lockout: sandi benar saat akun terkunci"][0]
+    bypass = [r for r in rows if r["check"] == "lockout: password benar saat akun terkunci"][0]
     assert bypass["ok"] is False and bypass["kind"] == "lockout-bypass"
 
 
@@ -92,7 +92,7 @@ def test_terhalang_rate_limit_gateway_di_skip():
 
 def test_lock_signal_lewat_pesan():
     assert RL.lock_signal(401, "Akun terkunci", {}) is True
-    assert RL.lock_signal(401, "sandi salah", {}) is False
+    assert RL.lock_signal(401, "password salah", {}) is False
     assert RL.parse_lock_minutes("coba lagi dalam 15 menit") == 15
     assert RL.parse_lock_minutes("tanpa angka") is None
 
@@ -102,8 +102,8 @@ def test_enumerasi_terdeteksi_423_vs_401():
     rows = RL.evaluate_enumeration((401, "Email salah"), (401, "Email salah"),
                                    (423, LOCKMSG), (401, "Email salah"), URL)
     by = {r["check"]: r for r in rows}
-    assert by["enumerasi akun: respons gagal pertama"]["ok"] is True
-    last = by["enumerasi akun: respons setelah ambang percobaan"]
+    assert by["enumerasi akun: response gagal pertama"]["ok"] is True
+    last = by["enumerasi akun: response setelah ambang percobaan"]
     assert last["ok"] is False and last["kind"] == "user-enumeration" and "423" in last["note"]
 
 
@@ -149,9 +149,9 @@ def test_run_lockout_alur_lengkap(monkeypatch):
            "lockout": {"max_attempts": 5, "delay_seconds": 0}}
     rows = RL.run_lockout(cfg, "http://t", sleep=lambda s: None)
     by = {r["check"]: r for r in rows}
-    assert by["lockout: penguncian setelah sandi salah"]["ok"] is True
-    assert by["lockout: sandi benar saat akun terkunci"]["ok"] is True
-    assert by["enumerasi akun: respons setelah ambang percobaan"]["ok"] is False   # 423 vs 401
+    assert by["lockout: penguncian setelah password salah"]["ok"] is True
+    assert by["lockout: password benar saat akun terkunci"]["ok"] is True
+    assert by["enumerasi akun: response setelah ambang percobaan"]["ok"] is False   # 423 vs 401
     assert acc.fake_calls == 5                       # identitas fiktif dicoba sebanyak percobaan nyata
 
 
@@ -187,8 +187,8 @@ def test_report_memuat_ratelimit(tmp_path):
     (tmp_path / "ratelimit.json").write_text(json.dumps(
         {"module": "ratelimit", "failures": 2, "results": rows}), encoding="utf-8")
     by = {x["judul"]: x for x in RP.collect(tmp_path)}
-    assert by["enumerasi akun: respons setelah ambang percobaan"]["kind"] == "user-enumeration"
-    assert by["enumerasi akun: respons setelah ambang percobaan"]["severity"] == "low"
+    assert by["enumerasi akun: response setelah ambang percobaan"]["kind"] == "user-enumeration"
+    assert by["enumerasi akun: response setelah ambang percobaan"]["severity"] == "low"
     assert by["laju: login"]["kind"] == "no-rate-limit" and by["laju: login"]["severity"] == "medium"
     assert {"no-rate-limit", "weak-lockout", "lockout-bypass", "user-enumeration"} <= set(RP.KIND_LABEL)
     assert RP.cvss_for("lockout-bypass", "high")[0] == 7.5

@@ -179,7 +179,7 @@ def analyze(ops, send, cfg, label=""):
     rows.append({"check": f"{tag}penegakan autentikasi (GET)", "status": None, "ok": True,
                  "note": f"{sent} request anonim: {enforced} ditolak 401/403, "
                          f"{open_ok} publik (allowlist), {inconclusive} tak dapat dipastikan "
-                         f"(404/405/422 dll.), {len(errors)} galat 5xx.", "url": base,
+                         f"(404/405/422 dll.), {len(errors)} error 5xx.", "url": base,
                  "kind": "auth-coverage-gap"})
     if pub_mismatch:
         sample = ", ".join(pub_mismatch[:8]) + (" ..." if len(pub_mismatch) > 8 else "")
@@ -190,10 +190,10 @@ def analyze(ops, send, cfg, label=""):
                              f"{sample}. Tandai dengan `security: []`.", "url": base,
                      "kind": "spec-mismatch"})
     for path, st, where in errors:
-        rows.append({"check": f"{tag}GET {path}: galat server pada request anonim",
+        rows.append({"check": f"{tag}GET {path}: error server pada request anonim",
                      "status": st, "ok": False,
                      "note": f"Request anonim memicu HTTP {st} — kemungkinan validasi/penanganan "
-                             "galat belum ditegakkan sebelum autentikasi.", "url": where,
+                             "error belum ditegakkan sebelum autentikasi.", "url": where,
                      "kind": "anon-server-error"})
     if mismatch:
         sample = ", ".join(mismatch[:8]) + (" ..." if len(mismatch) > 8 else "")

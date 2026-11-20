@@ -42,7 +42,7 @@ def test_resolve_kosong_folder_kit():
 
 
 def test_resolve_nama_ke_projects():
-    assert AU.resolve_project("apple-gatrik") == (AU.ROOT / "projects" / "apple-gatrik").resolve()
+    assert AU.resolve_project("my-app") == (AU.ROOT / "projects" / "my-app").resolve()
 
 
 def test_resolve_path_absolut_dan_relatif(tmp_path, monkeypatch):

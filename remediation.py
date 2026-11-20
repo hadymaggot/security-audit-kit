@@ -32,7 +32,7 @@ KB = {
         ],
         "referensi": ["OWASP A01:2021 Broken Access Control",
                       "OWASP ASVS V4 Access Control",
-                      "BSSN Perban No.4/2021 Pasal 26 huruf c (persyaratan kontrol akses)"],
+                      "BSSN Perban No.4/2021 Pasal 26 huruf c (persyaratan access control)"],
     },
     "forged-header": {
         "deskripsi": "Klien dapat menyuntik header otorisasi internal (mis. X-Auth-Roles) "
@@ -46,15 +46,15 @@ KB = {
             "header X-Auth-* dari sumber tepercaya; jangan teruskan nilai dari klien.",
             "Contoh (Traefik forwardAuth): pakai authResponseHeaders agar hanya nilai "
             "dari service auth yang diteruskan ke backend.",
-            "Backend juga harus memverifikasi token/sesi, tidak mempercayai header mentah.",
+            "Backend juga harus memverifikasi token/session, tidak mempercayai header mentah.",
         ],
         "referensi": ["OWASP A01:2021 Broken Access Control",
-                      "BSSN Perban No.4/2021 Pasal 26 huruf b (manajemen sesi)"],
+                      "BSSN Perban No.4/2021 Pasal 26 huruf b (manajemen session)"],
     },
     "idor": {
         "deskripsi": "Referensi objek langsung (ID pada URL/parameter) tidak diverifikasi "
                      "kepemilikannya, sehingga data milik akun lain bisa diakses.",
-        "dampak": "Kebocoran/putaran data antar pengguna atau antar perusahaan.",
+        "dampak": "Information disclosure/tampering data antar pengguna atau antar perusahaan.",
         "severity": "High",
         "severity_dasar": "Likelihood sedang–tinggi (ID mudah ditebak) x Impact tinggi "
                           "(data pribadi/perusahaan lain terungkap).",
@@ -70,10 +70,10 @@ KB = {
                       "BSSN Perban No.4/2021 Pasal 26 huruf g (proteksi data)"],
     },
     "upload-accepted": {
-        "deskripsi": "Berkas berbahaya (mis. PDF ber-JavaScript, polyglot, ekstensi ganda, "
+        "deskripsi": "File berbahaya (mis. PDF ber-JavaScript, polyglot, ekstensi ganda, "
                      "melebihi batas) diterima server karena validasi lemah.",
         "dampak": "Stored XSS saat file dibuka pengguna lain, penyimpanan konten "
-                  "berbahaya, potensi pencurian sesi.",
+                  "berbahaya, potensi pencurian session.",
         "severity": "High",
         "severity_dasar": "Likelihood sedang (perlu menyusun file) x Impact tinggi "
                           "(eksekusi skrip pada konteks korban).",
@@ -90,15 +90,15 @@ KB = {
                       "BSSN Perban No.4/2021 Pasal 26 huruf d (validasi input)"],
     },
     "weak-password": {
-        "deskripsi": "Kebijakan sandi menerima sandi lemah/umum.",
+        "deskripsi": "Kebijakan password menerima password lemah/umum.",
         "dampak": "Akun mudah ditebak/brute-force, pengambilalihan akun.",
         "severity": "Medium",
         "severity_dasar": "Likelihood sedang x Impact sedang–tinggi (per-akun).",
         "rekomendasi": [
-            "Tetapkan panjang minimal (mis. 12–16 karakter) dan tolak sandi yang ada di "
-            "daftar sandi bocor/umum.",
-            "Aktifkan MFA/2FA, dan wajibkan sandi lama saat mengganti sandi.",
-            "Simpan sandi dengan hash kuat (bcrypt/argon2), jangan plaintext/MD5/SHA1.",
+            "Tetapkan panjang minimal (mis. 12–16 karakter) dan tolak password yang ada di "
+            "daftar password breached/umum.",
+            "Aktifkan MFA/2FA, dan wajibkan password lama saat mengganti password.",
+            "Simpan password dengan hash kuat (bcrypt/argon2), jangan plaintext/MD5/SHA1.",
         ],
         "referensi": ["OWASP A07:2021 Identification & Authentication Failures",
                       "NIST SP 800-63B",
@@ -117,8 +117,8 @@ KB = {
         "referensi": ["OWASP A07:2021 Identification & Authentication Failures"],
     },
     "missing-header": {
-        "deskripsi": "Security header respons tidak dikonfigurasi (atau header pembocor "
-                     "info seperti Server/X-Powered-By masih tampil).",
+        "deskripsi": "Security header response tidak dikonfigurasi (atau header information "
+                     "disclosure seperti Server/X-Powered-By masih tampil).",
         "dampak": "Memudahkan clickjacking, MIME sniffing, XSS, dan fingerprinting server.",
         "severity": "Low",
         "severity_dasar": "Likelihood rendah–sedang x Impact rendah (umumnya enabler, "
@@ -150,7 +150,7 @@ KB = {
             "    // Laravel: batasi via $fillable + FormRequest->validated(),\n"
             "    // JANGAN Model::update($request->all()).",
             "Pisahkan field yang hanya boleh diubah admin; tolak/abaikan field istimewa "
-            "dari peran non-admin.",
+            "dari role non-admin.",
             "Terapkan otorisasi per-properti (BOPLA), bukan hanya per-objek.",
         ],
         "referensi": ["OWASP API3:2023 Broken Object Property Level Authorization",
@@ -183,7 +183,7 @@ KB = {
                      "kerentanan yang telah terdaftar (CVE), mis. Apache mod_http2 atau "
                      "NGINX HTTP/2.",
         "dampak": "Bergantung CVE-nya, berpotensi remote code execution, DoS, atau "
-                  "memory corruption pada server yang terekspos.",
+                  "memory corruption pada server yang exposed.",
         "severity": "High",
         "severity_dasar": "Likelihood sedang (eksploit publik untuk CVE yang aktif) x "
                           "Impact tinggi (RCE/DoS). Deteksi berbasis banner — keyakinan "
@@ -213,20 +213,20 @@ KB = {
                       "BSSN Perban No.4/2021 huruf e (kriptografi)"],
     },
     "client-cache": {
-        "deskripsi": "Respons yang memuat data sensitif (halaman/endpoint terautentikasi) "
+        "deskripsi": "Response yang memuat data sensitif (halaman/endpoint terautentikasi) "
                      "tidak melarang penyimpanan cache, sehingga bisa tersimpan di cache "
                      "browser, proxy bersama, atau tombol Back setelah logout.",
         "dampak": "Data sensitif pengguna terbaca dari perangkat/proxy bersama oleh pihak "
-                  "lain setelah sesi berakhir.",
+                  "lain setelah session berakhir.",
         "severity": "Medium",
         "severity_dasar": "Likelihood sedang (perangkat/proxy bersama, histori browser) x "
                           "Impact sedang–tinggi (data pribadi terungkap).",
         "rekomendasi": [
-            "Set header anti-cache pada respons sensitif/terautentikasi:",
+            "Set header anti-cache pada response sensitif/terautentikasi:",
             "    Cache-Control: no-store, no-cache, must-revalidate, private\n"
             "    Pragma: no-cache\n"
             "    Expires: 0",
-            "Jangan pakai 'public' atau 'max-age' besar pada respons yang memuat data user.",
+            "Jangan pakai 'public' atau 'max-age' besar pada response yang memuat data user.",
             "Pastikan aset statis publik tetap boleh di-cache (jangan berlebihan sebaliknya).",
         ],
         "referensi": ["OWASP A05:2021 Security Misconfiguration",
@@ -234,12 +234,12 @@ KB = {
                       "BSSN Perban No.4/2021 huruf g (proteksi data)"],
     },
     "js-leak": {
-        "deskripsi": "Bundle/aset JavaScript sisi klien membocorkan informasi sensitif: "
+        "deskripsi": "Bundle/aset JavaScript sisi klien expose informasi sensitif: "
                      "endpoint internal/admin, secret (API key/token), atau source map "
-                     "(.map) yang membuka kode sumber asli.",
+                     "(.map) yang membuka source code asli.",
         "dampak": "Memberi peta serangan — penyerang menemukan endpoint admin & struktur "
                   "API (seperti temuan privilege escalation yang berawal dari analisa JS), "
-                  "atau memakai secret yang terekspos.",
+                  "atau memakai secret yang exposed.",
         "severity": "Medium",
         "severity_dasar": "Likelihood tinggi (aset klien dapat diunduh siapa saja) x Impact "
                           "bervariasi (enabler s/d akses langsung bila berisi secret).",
@@ -257,10 +257,10 @@ KB = {
                       "BSSN Perban No.4/2021 huruf g (proteksi data)"],
     },
     "info-exposure": {
-        "deskripsi": "Berkas atau informasi sensitif terekspos publik tanpa perlu JavaScript: "
+        "deskripsi": "File atau informasi sensitif exposed publik tanpa perlu JavaScript: "
                      "file konfigurasi (.env), repository (.git/), backup/dump, atau "
-                     "komentar/isi HTML yang membocorkan secret maupun endpoint internal.",
-        "dampak": "Kebocoran kredensial, kode sumber, atau struktur sistem yang memudahkan "
+                     "komentar/isi HTML yang expose secret maupun endpoint internal.",
+        "dampak": "Exposure kredensial, source code, atau struktur sistem yang memudahkan "
                   "serangan lanjutan.",
         "severity": "High",
         "severity_dasar": "Likelihood tinggi (cukup GET satu URL) x Impact bervariasi "
@@ -316,10 +316,10 @@ KB = {
                       "OWASP Unvalidated Redirects & Forwards Cheat Sheet"],
     },
     "vuln-dependency": {
-        "deskripsi": "Komponen/dependensi versi usang dengan kerentanan yang telah "
+        "deskripsi": "Komponen/dependency versi usang dengan kerentanan yang telah "
                      "terdaftar (CVE).",
-        "dampak": "Bergantung CVE: dari kebocoran info hingga eksekusi kode jarak jauh "
-                  "(RCE) lewat pustaka yang rentan.",
+        "dampak": "Bergantung CVE: dari information disclosure hingga eksekusi kode jarak jauh "
+                  "(RCE) lewat library yang rentan.",
         "severity": "High",
         "severity_dasar": "Mengikuti skor CVSS pada CVE terkait; eksploit publik menaikkan "
                           "likelihood.",
@@ -349,7 +349,7 @@ KB = {
                      "alamat privat/loopback, tanpa validasi tujuan (Server-Side Request Forgery).",
         "dampak": "Penyerang dapat memakai server sebagai proxy ke jaringan internal: memindai "
                   "layanan privat, membaca metadata cloud (kredensial), atau mengakses layanan "
-                  "internal yang tidak terekspos ke internet.",
+                  "internal yang tidak exposed ke internet.",
         "severity": "High",
         "severity_dasar": "Likelihood sedang (butuh endpoint yang menerima URL) x Impact tinggi "
                           "(akses jaringan internal, scope berubah).",
@@ -370,7 +370,7 @@ KB = {
     "jwt-forgery": {
         "deskripsi": "Server menerima JWT yang dipalsukan: tanpa tanda tangan (alg=none), dengan "
                      "tanda tangan dibuang, atau dengan payload yang diubah.",
-        "dampak": "Siapa pun dapat membuat token sah untuk identitas/peran apa pun — "
+        "dampak": "Siapa pun dapat membuat token sah untuk identitas/role apa pun — "
                   "pengambilalihan akun dan eskalasi hak akses total.",
         "severity": "Critical",
         "severity_dasar": "Likelihood tinggi (tanpa prasyarat) x Impact kritikal (bypass "
@@ -380,7 +380,7 @@ KB = {
             "tolak alg=none.",
             "Jangan percaya header 'alg' dari token: tentukan algoritma di sisi server.",
             "Contoh (jsonwebtoken/Node): jwt.verify(token, key, { algorithms: ['HS256'] });",
-            "Perbarui pustaka JWT ke versi terbaru dan tambahkan uji regresi untuk token palsu.",
+            "Perbarui library JWT ke versi terbaru dan tambahkan uji regresi untuk token palsu.",
         ],
         "referensi": ["OWASP API2:2023 Broken Authentication", "OWASP JWT Cheat Sheet",
                       "CWE-347, CWE-287"],
@@ -415,13 +415,13 @@ KB = {
         "referensi": ["RFC 8725 JWT Best Current Practices", "OWASP JWT Cheat Sheet", "CWE-613"],
     },
     "captcha-answer-leak": {
-        "deskripsi": "Respons tantangan captcha membocorkan jawabannya (kunci jawaban, atau offset "
+        "deskripsi": "Response tantangan captcha expose jawabannya (kunci jawaban, atau offset "
                      "posisi pada SVG/gambar), sehingga captcha dapat dilewati secara otomatis "
                      "tanpa memecahkannya.",
         "dampak": "Captcha sebagai kontrol anti-otomatisasi (brute-force login, spam, pendaftaran "
-                  "massal) menjadi tidak efektif; bot dapat melewatinya dengan membaca respons.",
+                  "massal) menjadi tidak efektif; bot dapat melewatinya dengan membaca response.",
         "severity": "Medium",
-        "severity_dasar": "Likelihood tinggi (cukup mem-parsing respons) x Impact sedang (kontrol "
+        "severity_dasar": "Likelihood tinggi (cukup mem-parsing response) x Impact sedang (kontrol "
                           "anti-otomatisasi gugur, namun rate limit/lockout dapat meredam).",
         "rekomendasi": [
             "Jangan mengirim posisi/jawaban ke klien: simpan target di server dan validasi "
@@ -436,44 +436,44 @@ KB = {
                       "OWASP Automated Threats (OAT-009 CAPTCHA Defeat)", "CWE-804, CWE-602"],
     },
     "session-not-revoked": {
-        "deskripsi": "Setelah sandi diganti, sesi lain milik akun yang sama tetap berlaku "
-                     "(sesi tidak dicabut di server).",
-        "dampak": "Sesi yang telah dicuri (malware, jaringan tak aman, perangkat hilang) tetap "
-                  "dapat dipakai penyerang walau korban sudah mengganti sandi.",
+        "deskripsi": "Setelah password diganti, session lain milik akun yang sama tetap berlaku "
+                     "(session tidak dicabut di server).",
+        "dampak": "Session yang telah dicuri (malware, jaringan tak aman, perangkat hilang) tetap "
+                  "dapat dipakai penyerang walau korban sudah mengganti password.",
         "severity": "Medium",
-        "severity_dasar": "Likelihood sedang (butuh pencurian sesi sebelumnya) x Impact tinggi "
+        "severity_dasar": "Likelihood sedang (butuh pencurian session sebelumnya) x Impact tinggi "
                           "(akses akun berlanjut).",
         "rekomendasi": [
-            "Cabut semua sesi lain saat sandi berubah (pertahankan sesi yang mengganti, bila perlu).",
-            "Contoh Laravel: Auth::logoutOtherDevices($newPassword) + hapus record sesi/perangkat "
-            "milik user (mis. DeviceSession) dan sesi di Redis.",
+            "Cabut semua session lain saat password berubah (pertahankan session yang mengganti, bila perlu).",
+            "Contoh Laravel: Auth::logoutOtherDevices($newPassword) + hapus record session/perangkat "
+            "milik user (mis. DeviceSession) dan session di Redis.",
             "Kirim notifikasi keamanan dan tawarkan 'keluar dari semua perangkat'.",
         ],
         "referensi": ["OWASP ASVS V3.3.3 Session Termination",
                       "OWASP Session Management Cheat Sheet", "CWE-613"],
     },
     "logout-no-invalidate": {
-        "deskripsi": "Logout tidak mencabut sesi di server: cookie sesi lama masih diterima "
+        "deskripsi": "Logout tidak mencabut session di server: cookie session lama masih diterima "
                      "setelah logout.",
-        "dampak": "Cookie sesi yang pernah bocor tetap dapat dipakai (replay) walau pengguna "
+        "dampak": "Cookie session yang pernah exposed tetap dapat dipakai (replay) walau pengguna "
                   "sudah logout.",
         "severity": "Medium",
-        "severity_dasar": "Likelihood sedang x Impact tinggi (pembajakan sesi).",
+        "severity_dasar": "Likelihood sedang x Impact tinggi (pembajakan session).",
         "rekomendasi": [
-            "Hapus/invalidasi sesi di penyimpanan server saat logout, bukan hanya cookie klien.",
+            "Hapus/invalidasi session di penyimpanan server saat logout, bukan hanya cookie klien.",
             "Contoh Laravel: Auth::logout(); $request->session()->invalidate(); "
             "$request->session()->regenerateToken();",
         ],
         "referensi": ["OWASP ASVS V3.3.1", "OWASP Session Management Cheat Sheet", "CWE-613"],
     },
     "old-password-accepted": {
-        "deskripsi": "Sandi lama masih diterima setelah sandi diganti, atau sandi baru tidak "
+        "deskripsi": "Password lama masih diterima setelah password diganti, atau password baru tidak "
                      "berlaku.",
-        "dampak": "Penggantian sandi tidak memutus akses pihak yang mengetahui sandi lama.",
+        "dampak": "Penggantian password tidak memutus akses pihak yang mengetahui password lama.",
         "severity": "High",
         "severity_dasar": "Likelihood tinggi x Impact tinggi (kredensial lama tetap sah).",
         "rekomendasi": [
-            "Pastikan hash sandi diganti secara atomik dan sandi lama langsung tidak valid.",
+            "Pastikan hash password diganti secara atomik dan password lama langsung tidak valid.",
             "Periksa cache/replika yang masih menyimpan kredensial lama.",
         ],
         "referensi": ["OWASP ASVS V2.1", "CWE-620, CWE-613"],
@@ -487,7 +487,7 @@ KB = {
         "severity_dasar": "Likelihood tinggi (tanpa prasyarat) x Impact sedang-tinggi "
                           "(pengambilalihan akun), diredam bila ada kontrol lain (captcha, MFA).",
         "rekomendasi": [
-            "Terapkan rate limit per IP dan per akun pada endpoint login, reset sandi, dan OTP.",
+            "Terapkan rate limit per IP dan per akun pada endpoint login, reset password, dan OTP.",
             "Contoh Laravel (routes/api.php):",
             "    Route::post('/login', [LoginController::class, 'login'])\n"
             "        ->middleware('throttle:5,1');   // 5 percobaan per menit",
@@ -497,14 +497,14 @@ KB = {
                       "OWASP ASVS V2.2 Anti-automation", "CWE-307"],
     },
     "weak-lockout": {
-        "deskripsi": "Penguncian akun setelah sandi salah berulang tidak ditegakkan sesuai "
+        "deskripsi": "Penguncian akun setelah password salah berulang tidak ditegakkan sesuai "
                      "kebijakan (tidak terkunci, terlalu lambat, atau durasi tidak wajar).",
-        "dampak": "Penyerang dapat menebak sandi tanpa dihentikan; atau kunci tak berbatas "
+        "dampak": "Penyerang dapat menebak password tanpa dihentikan; atau kunci tak berbatas "
                   "dapat dipakai untuk mengunci akun korban (denial of service).",
         "severity": "Medium",
         "severity_dasar": "Likelihood sedang (kontrol lain mungkin meredam) x Impact sedang.",
         "rekomendasi": [
-            "Kunci akun sementara (mis. 15 menit) setelah N sandi salah (mis. 5) dan reset "
+            "Kunci akun sementara (mis. 15 menit) setelah N password salah (mis. 5) dan reset "
             "penghitung saat login berhasil.",
             "Pastikan kunci bersifat sementara agar tidak menjadi vektor penguncian akun korban.",
             "Kombinasikan dengan rate limit per IP dan captcha/MFA.",
@@ -512,26 +512,26 @@ KB = {
         "referensi": ["OWASP ASVS V2.2.1", "OWASP Authentication Cheat Sheet", "CWE-307"],
     },
     "lockout-bypass": {
-        "deskripsi": "Login dengan sandi benar berhasil walaupun akun berstatus terkunci.",
-        "dampak": "Penguncian akun tidak melindungi; penyerang yang menebak sandi tetap berhasil "
+        "deskripsi": "Login dengan password benar berhasil walaupun akun berstatus terkunci.",
+        "dampak": "Penguncian akun tidak melindungi; penyerang yang menebak password tetap berhasil "
                   "masuk di tengah masa kunci.",
         "severity": "High",
         "severity_dasar": "Likelihood tinggi x Impact tinggi (kontrol anti brute-force tidak efektif).",
         "rekomendasi": [
-            "Periksa status kunci SEBELUM memverifikasi sandi dan tolak (423) selama masa kunci.",
+            "Periksa status kunci SEBELUM memverifikasi password dan tolak (423) selama masa kunci.",
             "Contoh pola: if ($user->isLocked()) return response()->json([...], 423);",
         ],
         "referensi": ["OWASP ASVS V2.2.1", "CWE-307, CWE-287"],
     },
     "user-enumeration": {
-        "deskripsi": "Respons autentikasi berbeda untuk akun terdaftar dan tidak terdaftar "
+        "deskripsi": "Response autentikasi berbeda untuk akun terdaftar dan tidak terdaftar "
                      "(status, pesan, atau perilaku penguncian), sehingga keberadaan akun dapat ditebak.",
-        "dampak": "Penyerang dapat menyusun daftar akun valid untuk serangan sandi/phishing yang terarah.",
+        "dampak": "Penyerang dapat menyusun daftar akun valid untuk serangan password/phishing yang terarah.",
         "severity": "Low",
         "severity_dasar": "Informasi pendukung serangan lanjutan; dampak langsung rendah.",
         "rekomendasi": [
-            "Kembalikan respons generik yang identik (status + pesan) untuk akun terdaftar dan tidak.",
-            "Terapkan penghitung gagal/penguncian secara seragam, atau jangan membedakan respons "
+            "Kembalikan response generik yang identik (status + pesan) untuk akun terdaftar dan tidak.",
+            "Terapkan penghitung gagal/penguncian secara seragam, atau jangan membedakan response "
             "penguncian (mis. selalu 401 dengan pesan sama) dan beri tahu pemilik akun lewat email.",
         ],
         "referensi": ["OWASP ASVS V2.2.1 / V3.2", "OWASP Authentication Cheat Sheet", "CWE-204"],
@@ -573,9 +573,9 @@ KB = {
         "referensi": ["OWASP API2:2023 Broken Authentication", "OWASP A01:2021", "CWE-306"],
     },
     "anon-server-error": {
-        "deskripsi": "Request anonim (tanpa autentikasi) memicu galat server 5xx, menandakan "
-                     "validasi atau penanganan galat belum dilakukan sebelum autentikasi.",
-        "dampak": "Galat tak tertangani dapat membocorkan detail internal, mengindikasikan "
+        "deskripsi": "Request anonim (tanpa autentikasi) memicu error server 5xx, menandakan "
+                     "validasi atau penanganan error belum dilakukan sebelum autentikasi.",
+        "dampak": "Error tak tertangani dapat expose detail internal, mengindikasikan "
                   "bug yang bisa dipicu tanpa login, dan menjadi vektor gangguan layanan.",
         "severity": "Low",
         "severity_dasar": "Dapat dipicu tanpa prasyarat, tetapi dampak langsung terbatas "
@@ -583,7 +583,7 @@ KB = {
         "rekomendasi": [
             "Pastikan autentikasi dan validasi input berjalan lebih dulu dan menolak dengan "
             "401/403/422, bukan 500.",
-            "Tangani exception di lapisan global dan kembalikan respons generik.",
+            "Tangani exception di lapisan global dan kembalikan response generik.",
             "Periksa log server untuk penyebab 500 dan tambahkan uji regresinya.",
         ],
         "referensi": ["OWASP API8:2023 Security Misconfiguration", "CWE-755, CWE-209"],
@@ -605,29 +605,29 @@ KB = {
                       "OWASP API9:2023 Improper Inventory Management"],
     },
     "sensitive-data-exposure": {
-        "deskripsi": "Respons API memuat data sensitif (sandi/hash, secret, token, kunci "
+        "deskripsi": "Response API memuat data sensitif (password/hash, secret, token, kunci "
                      "pribadi, atau data rahasia lain) yang seharusnya tidak dikirim ke klien.",
-        "dampak": "Kredensial atau secret yang bocor dapat dipakai untuk pengambilalihan akun, "
+        "dampak": "Kredensial atau secret yang exposed dapat dipakai untuk pengambilalihan akun, "
                   "akses ke layanan pihak ketiga, atau serangan lanjutan.",
         "severity": "High",
         "severity_dasar": "Likelihood tinggi (cukup memanggil endpoint) x Impact tinggi "
-                          "(kebocoran kredensial/secret).",
+                          "(exposure kredensial/secret).",
         "rekomendasi": [
             "Jangan serialisasi field sensitif: pakai whitelist field eksplisit (API "
             "Resource/DTO) alih-alih mengembalikan model utuh.",
             "Contoh Laravel: sembunyikan di model dan gunakan Resource.",
             "    protected $hidden = ['password', 'remember_token', 'two_factor_secret',\n"
             "                          'two_factor_recovery_codes'];",
-            "Cabut (revoke) dan rotasi secret yang sudah terlanjur terekspos.",
-            "Terapkan authorization per field pada respons yang sama untuk peran berbeda.",
+            "Cabut (revoke) dan rotasi secret yang sudah terlanjur exposed.",
+            "Terapkan authorization per field pada response yang sama untuk role berbeda.",
         ],
         "referensi": ["OWASP API3:2023 Broken Object Property Level Authorization",
                       "OWASP A02:2021 Cryptographic Failures",
                       "CWE-200, CWE-201, CWE-522"],
     },
     "verbose-error": {
-        "deskripsi": "Respons (terutama error) membocorkan detail implementasi: stack trace, "
-                     "path berkas server, versi kerangka kerja, atau pesan SQL.",
+        "deskripsi": "Response (terutama error) expose detail implementasi: stack trace, "
+                     "path file server, versi framework, atau pesan SQL.",
         "dampak": "Detail internal mempermudah pemetaan teknologi dan pengembangan serangan "
                   "terarah (mis. injeksi, eksploitasi versi rentan).",
         "severity": "Medium",
@@ -644,34 +644,34 @@ KB = {
                       "OWASP API8:2023 Security Misconfiguration", "CWE-209, CWE-215"],
     },
     "internal-info-leak": {
-        "deskripsi": "Respons memuat alamat IP internal atau hostname jaringan privat.",
+        "deskripsi": "Response memuat alamat IP internal atau hostname jaringan privat.",
         "dampak": "Membantu pemetaan topologi jaringan internal untuk SSRF atau pivot.",
         "severity": "Low",
         "severity_dasar": "Informasi pendukung; dampak langsung rendah.",
         "rekomendasi": [
-            "Hapus alamat/hostname internal dari respons dan header.",
+            "Hapus alamat/hostname internal dari response dan header.",
             "Gunakan nama layanan publik atau ID opak alih-alih IP internal.",
         ],
         "referensi": ["OWASP A05:2021 Security Misconfiguration", "CWE-200"],
     },
     "cookie-flags": {
-        "deskripsi": "Cookie sesi/autentikasi tidak memakai atribut keamanan lengkap "
+        "deskripsi": "Cookie session/autentikasi tidak memakai atribut keamanan lengkap "
                      "(HttpOnly, Secure, SameSite) atau berumur terlalu panjang.",
-        "dampak": "Tanpa HttpOnly, XSS dapat mencuri cookie sesi; tanpa Secure, cookie "
-                  "dapat bocor lewat HTTP biasa; tanpa SameSite, risiko CSRF meningkat.",
+        "dampak": "Tanpa HttpOnly, XSS dapat mencuri cookie session; tanpa Secure, cookie "
+                  "dapat exposed lewat HTTP biasa; tanpa SameSite, risiko CSRF meningkat.",
         "severity": "Medium",
         "severity_dasar": "Likelihood sedang (butuh XSS/jaringan tak aman/CSRF sebagai "
-                          "prasyarat) x Impact sedang-tinggi (pengambilalihan sesi).",
+                          "prasyarat) x Impact sedang-tinggi (pengambilalihan session).",
         "rekomendasi": [
-            "Set HttpOnly pada seluruh cookie sesi/autentikasi (kecuali yang memang harus "
+            "Set HttpOnly pada seluruh cookie session/autentikasi (kecuali yang memang harus "
             "dibaca SPA, mis. XSRF-TOKEN).",
             "Set Secure dan sajikan situs hanya lewat HTTPS (aktifkan HSTS).",
-            "Set SameSite=Lax (atau Strict untuk sesi sensitif); gunakan None hanya bila "
+            "Set SameSite=Lax (atau Strict untuk session sensitif); gunakan None hanya bila "
             "perlu lintas-situs dan wajib bersama Secure.",
             "Contoh Laravel (config/session.php):",
             "    'http_only' => true,\n    'secure' => env('SESSION_SECURE_COOKIE', true),\n"
             "    'same_site' => 'lax',\n    'lifetime' => 120,   // menit",
-            "Pertimbangkan prefix __Host- untuk cookie sesi.",
+            "Pertimbangkan prefix __Host- untuk cookie session.",
         ],
         "referensi": ["OWASP A05:2021 Security Misconfiguration",
                       "OWASP ASVS V3.4 Cookie-based Session Management",
@@ -681,7 +681,7 @@ KB = {
         "deskripsi": "Aset/subdomain yang dapat ditemukan publik melalui OSINT "
                      "(subfinder/httpx), memperluas attack surface.",
         "dampak": "Subdomain lupa (dangling), staging terbuka, atau panel admin "
-                  "terekspos dapat menjadi titik masuk awal.",
+                  "exposed dapat menjadi titik masuk awal.",
         "severity": "Info",
         "severity_dasar": "Informatif — inventaris aset; severity naik bila host "
                           "membuka layanan/panel sensitif (lihat temuan terkait).",
@@ -697,7 +697,7 @@ KB = {
     "exposed-service": {
         "deskripsi": "Port/layanan terbuka ke internet (mis. SSH, database, Redis, "
                      "Elasticsearch) yang seharusnya dibatasi.",
-        "dampak": "Layanan admin/datastore yang terekspos memudahkan brute-force, "
+        "dampak": "Layanan admin/datastore yang exposed memudahkan brute-force, "
                   "akses tanpa autentikasi, atau eksploitasi CVE layanan.",
         "severity": "Medium",
         "severity_dasar": "Likelihood sedang–tinggi (terindeks pemindai massal) x Impact "
@@ -714,16 +714,16 @@ KB = {
     "leaked-secret": {
         "deskripsi": "Kredensial/secret (API key, token, password) terdeteksi di source "
                      "atau aset (trufflehog), berpotensi ter-commit ke repository.",
-        "dampak": "Secret yang bocor dapat dipakai menyalahgunakan layanan pihak ketiga, "
+        "dampak": "Secret yang exposed dapat dipakai menyalahgunakan layanan pihak ketiga, "
                   "mengakses data, atau pivot ke sistem internal.",
         "severity": "High",
         "severity_dasar": "Likelihood tinggi (mudah ditemukan via scanner otomatis) x "
                           "Impact tinggi (akses langsung ke layanan/data). Terverifikasi = High.",
         "rekomendasi": [
-            "Cabut (revoke) dan rotasi segera secret yang bocor; anggap sudah terkompromi.",
+            "Cabut (revoke) dan rotasi segera secret yang exposed; anggap sudah terkompromi.",
             "Hapus secret dari riwayat git (git filter-repo/BFG), bukan hanya commit terbaru.",
             "Pindahkan secret ke environment variable / secret manager; jangan commit ke repo.",
-            "Pasang pre-commit hook (gitleaks/trufflehog) untuk mencegah kebocoran berulang.",
+            "Pasang pre-commit hook (gitleaks/trufflehog) untuk mencegah exposure berulang.",
         ],
         "referensi": ["OWASP A07:2021 Identification and Authentication Failures",
                       "CWE-798 Use of Hard-coded Credentials", "OWASP ASVS V2.10"],
@@ -757,7 +757,7 @@ KB = {
         "rekomendasi": [
             "Verifikasi tiap temuan (true/false positive) pada target yang berwenang.",
             "Patch komponen rentan sesuai CVE/CWE yang tertera; cek ketersediaan versi fix.",
-            "Perbaiki misconfiguration (header, CORS, panel terekspos) sesuai kategori tag.",
+            "Perbaiki misconfiguration (header, CORS, panel exposed) sesuai kategori tag.",
         ],
         "referensi": ["OWASP Top 10 2021", "nuclei templates (ProjectDiscovery)",
                       "CVSS v3.1"],
@@ -802,7 +802,7 @@ def classify(modul: str, judul: str) -> str:
     if modul == "client-leak":
         if "cache" in j:
             return "client-cache"
-        if j.startswith("file") or "terekspos" in j or "html" in j:
+        if j.startswith("file") or "exposed" in j or "html" in j:
             return "info-exposure"
         return "js-leak"
     if modul == "cors":
@@ -828,19 +828,19 @@ def classify(modul: str, judul: str) -> str:
     if modul == "session-mgmt":
         if j.startswith("logout"):
             return "logout-no-invalidate"
-        if "sandi lama" in j or "sandi baru" in j:
+        if "password lama" in j or "password baru" in j:
             return "old-password-accepted"
         return "session-not-revoked"
     if modul == "ratelimit":
         if "enumerasi" in j:
             return "user-enumeration"
-        if "sandi benar" in j:
+        if "password benar" in j:
             return "lockout-bypass"
         if j.startswith("laju"):
             return "no-rate-limit"
         return "weak-lockout"
     if modul == "openapi-coverage":
-        if "galat server" in j:
+        if "error server" in j:
             return "anon-server-error"
         if "tak akurat" in j or "spesifikasi" in j and "dilindungi" not in j:
             return "spec-mismatch"

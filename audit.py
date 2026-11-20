@@ -21,9 +21,9 @@ Kredensial & token diambil dari environment variable, bukan dari file.
 Multi-project (paralel): satu instalasi kit, banyak folder project. Tiap project punya
 config/targets.yml, tests/<modul>/<modul>.yml, dan reports/ sendiri, sehingga beberapa
 project bisa diaudit bersamaan dari terminal berbeda tanpa saling menimpa:
-    python audit.py --project apple-gatrik init authz,upload   # buat projects/apple-gatrik/
-    python audit.py --project apple-gatrik all
-    python audit.py --project D:/audit/kumham headers          # folder di mana saja
+    python audit.py --project my-app init authz,upload   # buat projects/my-app/
+    python audit.py --project my-app all
+    python audit.py --project D:/audit/client-b headers          # folder di mana saja
     SAK_PROJECT_DIR=... python audit.py all                    # setara --project
 Tanpa --project / SAK_PROJECT_DIR, folder kit itu sendiri dipakai (perilaku lama).
 """
@@ -46,7 +46,8 @@ except ImportError:  # pragma: no cover
 ROOT = Path(__file__).resolve().parent      # kode kit (runner, report.py, contoh config)
 PROJECT = ROOT                              # data project: config/, tests/<modul>/*.yml, reports/
 sys.path.insert(0, str(ROOT / "tests"))
-import _color as C  # noqa: E402  (warna ANSI konsol: otomatis mati di pipe/CI, hormati NO_COLOR)
+import _color as C  # noqa: E402  (ANSI colors; auto-off for pipes/CI, honors NO_COLOR)
+import glossary  # noqa: E402  (per-language technical glossary)
 ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 
 
@@ -64,7 +65,7 @@ def resolve_project(value: str | None) -> Path:
     """Folder project dari --project / SAK_PROJECT_DIR.
 
     - kosong            -> folder kit (perilaku lama, satu project)
-    - nama saja (tanpa pemisah path, mis. "apple-gatrik") -> <kit>/projects/<nama>
+    - nama saja (tanpa pemisah path, mis. "my-app") -> <kit>/projects/<nama>
     - path (absolut/relatif) -> path tsb; relatif terhadap SAK_CALLER_CWD bila diset oleh
       wrapper (audit.ps1 berpindah ke folder kit), selain itu terhadap direktori kerja."""
     if not value or not str(value).strip():
@@ -132,8 +133,26 @@ def pop_color_arg(argv: list[str]) -> tuple[str | None, list[str]]:
     return val, out
 
 
+def pop_lang_arg(argv: list[str]) -> tuple[str | None, list[str]]:
+    """Pull `--lang X` / `--lang=X` out of argv; exit 2 if X is not a glossary language."""
+    out, val, i = [], None, 0
+    while i < len(argv):
+        a = argv[i]
+        if a == "--lang" and i + 1 < len(argv):
+            val, i = argv[i + 1].lower(), i + 2
+        elif a.startswith("--lang="):
+            val, i = a.split("=", 1)[1].lower(), i + 1
+        else:
+            out.append(a)
+            i += 1
+    if val is not None and val not in glossary.languages():
+        print(f"--lang: pilihan tidak valid '{val}' ({'|'.join(glossary.languages())})", file=sys.stderr)
+        sys.exit(2)
+    return val, out
+
+
 def project_cfg(*parts: str) -> Path:
-    """Path config milik project aktif, mis. project_cfg("tests", "authz-matrix", "authz_matrix.yml")."""
+    """Config path inside the active project, e.g. project_cfg("config", "targets.yml")."""
     return PROJECT.joinpath(*parts)
 
 
@@ -293,7 +312,7 @@ def mod_headers(tgt):
         if hasattr(exc, "headers") and exc.headers:
             headers = {k.lower(): v for k, v in exc.headers.items()}
         else:
-            print(f"gagal ambil header: {exc}", file=sys.stderr)
+            print(f"gagal mengambil response header: {exc}", file=sys.stderr)
             return 2
     want = ["strict-transport-security", "content-security-policy",
             "x-content-type-options", "x-frame-options", "referrer-policy"]
@@ -303,22 +322,22 @@ def mod_headers(tgt):
     print(f"== Security header ({url}) ==")
     for h in want:
         if h in headers:
-            print(f"{C.good('ok')}   {h}")
+            print(f"{C.good('ok')}   {h}: diset")
             results.append({"label": f"Header {h}", "status": None, "ok": True, "note": ""})
         else:
-            print(f"{C.bad('MISS')} {h}")
+            print(f"{C.bad('MISS')} {h}: tidak diset")
             miss += 1
             results.append({"label": f"Header hilang: {h}", "status": None, "ok": False,
-                            "note": f"header {h} tak diset pada respons"})
+                            "note": f"header {h} tidak diset pada response"})
     for h in leak:
         if h in headers and headers[h]:
-            print(f"{C.bad('LEAK')} {h}: {headers[h]}")
+            print(f"{C.bad('LEAK')} {h}: information disclosure ({headers[h]})")
             miss += 1
-            results.append({"label": f"Header pembocor info: {h}", "status": None,
+            results.append({"label": f"Header information disclosure: {h}", "status": None,
                             "ok": False, "note": f"{h}: {headers[h]}"})
         else:
-            print(f"{C.good('ok')}   {h} tidak dibocorkan")
-            results.append({"label": f"Header {h} tidak dibocorkan", "status": None,
+            print(f"{C.good('ok')}   {h}: tanpa information disclosure")
+            results.append({"label": f"Header {h} tanpa information disclosure", "status": None,
                             "ok": True, "note": ""})
     import json
     with open(reports_dir() / "headers.json", "w", encoding="utf-8") as f:
@@ -392,7 +411,7 @@ def mod_deps(tgt, sub="all"):
         print("== semgrep ==")
         rc |= run_semgrep(tgt, repo, out)
     if "trivy" in sel:
-        print("== trivy (CVE dependensi & rahasia) ==")
+        print("== trivy (CVE dependency & rahasia) ==")
         cache_dir = trivy_cache_dir(tgt)
         cache = dockervol(cache_dir)
         # Cache DB trivy dipakai bersama antar-project (hemat ratusan MB); trivy sendiri tak
@@ -595,7 +614,7 @@ def mod_init(modules_csv: str):
     yang diminta (mis. "authz,upload"). Berkas yang sudah ada tidak ditimpa."""
     if PROJECT == ROOT and not os.environ.get("SAK_ALLOW_INIT_ROOT"):
         print("Pakai `--project <nama|folder>` untuk init (mis. `python audit.py --project "
-              "apple-gatrik init authz,upload`).", file=sys.stderr)
+              "my-app init authz,upload`).", file=sys.stderr)
         return 2
     wanted = [m.strip() for m in (modules_csv or "").split(",") if m.strip() and m != "baseline"]
     unknown = [m for m in wanted if m not in PY_MODULES and m != "recon"]
@@ -632,7 +651,7 @@ def mod_clean():
         if f.is_file() and f.name != ".gitkeep":
             f.unlink()
             n += 1
-    print(f"{d} dibersihkan ({n} berkas).")
+    print(f"{d} dibersihkan ({n} file).")
     return 0
 
 
@@ -640,7 +659,11 @@ def main(argv=None):
     project, argv = pop_project_arg(list(sys.argv[1:] if argv is None else argv))
     color, argv = pop_color_arg(argv)
     if color:
-        os.environ["SAK_COLOR"] = color        # diwariskan ke semua runner & report.py
+        os.environ["SAK_COLOR"] = color        # inherited by runners and report.py
+    lang, argv = pop_lang_arg(argv)
+    if lang:
+        os.environ["SAK_LANG"] = lang
+        glossary.reset_cache()
     set_project(resolve_project(project or os.environ.get("SAK_PROJECT_DIR")))
     if PROJECT != ROOT:
         print(C.dim(f"[project] {PROJECT}"))
@@ -653,7 +676,8 @@ def main(argv=None):
         epilog="Opsi global: --project <nama|folder> (atau env SAK_PROJECT_DIR) untuk memakai "
                "config & reports milik project tsb; nama saja = <kit>/projects/<nama>. "
                "--color auto|always|never (atau --no-color; env SAK_COLOR / NO_COLOR) mengatur "
-               "warna keluaran; bawaan auto = hanya di terminal interaktif.")
+               "warna keluaran; bawaan auto = hanya di terminal interaktif. "
+               "--lang id|en|de (atau env SAK_LANG) memilih glosarium istilah teknis; bawaan en.")
     ap.add_argument("module", choices=["all", "init", "zap", "tls", "headers", "deps", *PY_MODULES,
                                        "recon", "rollback", "report", "clean"])
     ap.add_argument("sub", nargs="?", default="baseline",

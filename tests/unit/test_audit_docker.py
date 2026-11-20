@@ -39,7 +39,7 @@ def _capture(monkeypatch):
 
 def test_zap_baseline_memakai_network(monkeypatch):
     calls = _capture(monkeypatch)
-    tgt = {"base_url": "http://localhost:18880", "docker_network": "container:gw"}
+    tgt = {"base_url": "http://localhost:8080", "docker_network": "container:gw"}
     AU.mod_zap(tgt, "baseline")
     cmd = calls[0]
     i = cmd.index("--network")
@@ -51,7 +51,7 @@ def test_zap_baseline_memakai_network(monkeypatch):
 def test_zap_full_dan_api_memakai_network(monkeypatch):
     # Scan AKTIF (full) dan API scan memakai base yang sama dengan baseline.
     calls = _capture(monkeypatch)
-    tgt = {"base_url": "http://localhost:18880", "openapi": "http://localhost:18880/o.json",
+    tgt = {"base_url": "http://localhost:8080", "openapi": "http://localhost:8080/o.json",
            "docker_network": "container:gw"}
     AU.mod_zap(tgt, "full")
     AU.mod_zap(tgt, "api")

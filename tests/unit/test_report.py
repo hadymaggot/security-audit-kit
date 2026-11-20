@@ -43,8 +43,8 @@ def test_classify_authz_variants():
 
 
 def test_classify_client_leak_variants():
-    assert R.classify("client-leak", "cache respons /api") == "client-cache"
-    assert R.classify("client-leak", "File terekspos: .env") == "info-exposure"
+    assert R.classify("client-leak", "cache response /api") == "client-cache"
+    assert R.classify("client-leak", "File exposed: .env") == "info-exposure"
     assert R.classify("client-leak", "Rahasia di app.js: JWT") == "js-leak"
 
 
@@ -236,7 +236,7 @@ def test_write_html_colors_per_severity(tmp_path):
 def test_collect_carries_url_from_runner(tmp_path):
     (tmp_path / "authz.json").write_text(json.dumps([
         {"endpoint": "admin", "role": "low", "expected": "deny", "status": 200,
-         "ok": False, "note": "bocor", "url": "GET http://t:18002/api/admin"},
+         "ok": False, "note": "exposed", "url": "GET http://t:18002/api/admin"},
     ]), encoding="utf-8")
     f = RP.collect(tmp_path)[0]
     assert f["url"] == "GET http://t:18002/api/admin"
@@ -244,8 +244,8 @@ def test_collect_carries_url_from_runner(tmp_path):
 
 def test_url_appears_as_instance_evidence(tmp_path):
     (tmp_path / "authz.json").write_text(json.dumps([
-        {"endpoint": "File terekspos", "role": "anon", "expected": "deny", "status": 200,
-         "ok": False, "note": "bocor", "url": "GET http://t:18008/api/activity-logs"},
+        {"endpoint": "File exposed", "role": "anon", "expected": "deny", "status": 200,
+         "ok": False, "note": "exposed", "url": "GET http://t:18008/api/activity-logs"},
     ]), encoding="utf-8")
     findings = RP.collect(tmp_path)
     counts = RP.summarize(findings)
@@ -259,7 +259,7 @@ def test_url_appears_as_instance_evidence(tmp_path):
 
 def test_screenshot_embedded_in_all_formats(tmp_path):
     (tmp_path / "client_leak.json").write_text(json.dumps({"results": [
-        {"kind": "cache", "label": "cache respons /akun", "status": 200, "ok": False,
+        {"kind": "cache", "label": "cache response /akun", "status": 200, "ok": False,
          "note": "ter-cache", "url": "GET http://t/akun",
          "screenshot": "evidence/cache_akun.png"},
     ]}), encoding="utf-8")
@@ -481,13 +481,13 @@ def test_cache_timeout_is_skipped_not_finding():
 def test_cache_public_flagged_and_no_store_ok():
     cl = _leak()
     sess = _LeakSess({
-        "/bocor": _LeakResp(200, {"Cache-Control": "public, max-age=60"}),
+        "/exposed": _LeakResp(200, {"Cache-Control": "public, max-age=60"}),
         "/aman": _LeakResp(200, {"Cache-Control": "no-store"}),
     })
-    res = cl.check_cache(sess, "http://t", ["/bocor", "/aman"])
+    res = cl.check_cache(sess, "http://t", ["/exposed", "/aman"])
     by = {r["label"]: r for r in res}
-    assert by["cache respons /bocor"]["ok"] is False
-    assert by["cache respons /aman"]["ok"] is True
+    assert by["cache response /exposed"]["ok"] is False
+    assert by["cache response /aman"]["ok"] is True
 
 
 def test_files_spa_fallback_not_treated_as_exposed():
@@ -503,7 +503,7 @@ def test_files_real_exposure_flagged():
     cl = _leak()
     sess = _LeakSess({".env": _LeakResp(200, {"Content-Type": "text/plain"}, b"SECRET=1")})
     res = cl.check_files(sess, "http://t", [".env"])
-    assert res[0]["ok"] is False and "terekspos" in res[0]["label"].lower()
+    assert res[0]["ok"] is False and "exposed" in res[0]["label"].lower()
 
 
 def test_files_timeout_skipped_silently():
@@ -518,15 +518,15 @@ def test_collect_reads_client_leak_skip_rows(tmp_path):
     # report.collect harus memperlakukan baris skip (status -1, ok True) sebagai lulus.
     (tmp_path / "client_leak.json").write_text(json.dumps({
         "module": "client-leak", "failures": 1, "results": [
-            {"kind": "cache", "label": "cache respons /akun", "status": -1,
+            {"kind": "cache", "label": "cache response /akun", "status": -1,
              "ok": True, "note": "skip: timed out"},
-            {"kind": "file", "label": "File terekspos: .env", "status": 200,
+            {"kind": "file", "label": "File exposed: .env", "status": 200,
              "ok": False, "note": "12 byte dapat diunduh publik"},
         ]}), encoding="utf-8")
     findings = RP.collect(tmp_path)
     by = {f["judul"]: f for f in findings}
-    assert by["cache respons /akun"]["lulus"] is True
-    leak = by["File terekspos: .env"]
+    assert by["cache response /akun"]["lulus"] is True
+    leak = by["File exposed: .env"]
     assert leak["lulus"] is False and leak["kind"] == "info-exposure"
 
 
@@ -544,7 +544,7 @@ def test_zap_desc_html_tidak_bocor(tmp_path):
     (tmp_path / "zap-baseline.json").write_text(json.dumps({"site": [{"alerts": [{
         "alert": "Anti-clickjacking &lt;b&gt;Header&lt;/b&gt; Missing",
         "riskdesc": "Medium (High)",
-        "desc": "&lt;p&gt;Respons tidak melindungi dari ClickJacking.&lt;/p&gt;",
+        "desc": "&lt;p&gt;Response tidak melindungi dari ClickJacking.&lt;/p&gt;",
         "instances": [{"uri": "http://t/"}],
     }]}]}), encoding="utf-8")
     findings = RP.collect(tmp_path)
@@ -554,6 +554,6 @@ def test_zap_desc_html_tidak_bocor(tmp_path):
     md = (tmp_path / "m.md").read_text(encoding="utf-8")
     h = (tmp_path / "m.html").read_text(encoding="utf-8")
     for doc in (md, h):
-        assert "&lt;p&gt;" not in doc and "<p>Respons" not in doc
-        assert "Respons tidak melindungi dari ClickJacking." in doc
-    assert "<b>Header</b>" not in md and "Anti-clickjacking Header Missing" in md
+        assert "&lt;p&gt;" not in doc and "<p>Response" not in doc
+        assert "Response tidak melindungi dari ClickJacking." in doc
+    assert "<b>Header</b>" not in md and "Anti-clickjacking *Header* Missing" in md   # terms are italicized in Markdown

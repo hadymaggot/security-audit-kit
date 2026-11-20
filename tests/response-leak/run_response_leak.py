@@ -52,9 +52,9 @@ SECRET_PATTERNS = {
 DEBUG_MARKERS = [
     ("stack trace", re.compile(r"Stack trace:|Traceback \(most recent call last\)|"
                                r"\bat [A-Za-z_$][\w$.]*\([\w.]+:\d+\)")),
-    ("path berkas server", re.compile(r"(?:/var/www|/app/|/home/\w+/|[A-Z]:\\\\?[\w\\ ]+)"
+    ("path file server", re.compile(r"(?:/var/www|/app/|/home/\w+/|[A-Z]:\\\\?[\w\\ ]+)"
                                       r"[\w/\\.\-]*\.(?:php|py|rb|js|java)(?::\d+| on line \d+)?")),
-    ("kerangka debug", re.compile(r"Whoops!|APP_DEBUG|Illuminate\\\\|vendor/laravel|"
+    ("framework debug", re.compile(r"Whoops!|APP_DEBUG|Illuminate\\\\|vendor/laravel|"
                                   r"Symfony\\\\Component|django\.core|werkzeug", re.I)),
     ("pesan SQL", re.compile(r"SQLSTATE\[|PDOException|QueryException|syntax error at or near|"
                              r"You have an error in your SQL syntax|ORA-\d{5}", re.I)),
@@ -147,7 +147,7 @@ def evaluate_response(name, method, url, status, body, content_type, cfg, is_pro
         if hits:
             desc = "; ".join(f"{p} (panjang nilai {n})" for p, n in hits[:6])
             row("kunci sensitif", False,
-                f"{len(hits)} kunci sensitif berisi nilai di respons: {desc}. "
+                f"{len(hits)} kunci sensitif berisi nilai di response: {desc}. "
                 "Nilai tidak dicantumkan.", "sensitive-data-exposure")
         else:
             row("kunci sensitif", True, "Tidak ada kunci sensitif berisi nilai.",
@@ -156,28 +156,28 @@ def evaluate_response(name, method, url, status, body, content_type, cfg, is_pro
     # 2) pola secret pada isi respons
     pats = find_secret_patterns(text)
     if pats:
-        row("pola secret", False, "Pola secret terdeteksi di isi respons: "
+        row("pola secret", False, "Pola secret terdeteksi di isi response: "
             + ", ".join(pats) + ". Nilai tidak dicantumkan.", "sensitive-data-exposure")
     elif not is_probe:
-        row("pola secret", True, "Tidak ada pola secret di isi respons.",
+        row("pola secret", True, "Tidak ada pola secret di isi response.",
             "sensitive-data-exposure")
 
     # 3) jejak debug/verbose
     dbg = find_debug(text)
     if dbg:
-        row("respons verbose/debug", False, "Jejak debug di respons: " + ", ".join(dbg)
-            + " — detail implementasi server terekspos.", "verbose-error")
+        row("response verbose/debug", False, "Jejak debug di response: " + ", ".join(dbg)
+            + " — detail implementasi server exposed.", "verbose-error")
     else:
-        row("respons verbose/debug", True,
+        row("response verbose/debug", True,
             "Tidak ada jejak debug/stack trace." if not is_probe
-            else f"Respons error (HTTP {status}) tidak membocorkan detail implementasi.",
+            else f"Response error (HTTP {status}) tidak expose detail implementasi.",
             "verbose-error")
 
     # 4) alamat IP internal
     if cfg.get("check_internal_ips", True):
         ips = find_internal_ips(text)
         if ips:
-            row("alamat internal", False, "Alamat IP internal di respons: "
+            row("alamat internal", False, "Alamat IP internal di response: "
                 + ", ".join(ips), "internal-info-leak")
     return rows
 
@@ -231,7 +231,7 @@ def run_checks(cfg, sess=None, anon=None):
             continue
         if status >= 400 and ep.get("expect_error") is not True and status in (401, 403, 404):
             results.append({"check": f"{name}: akses endpoint", "status": status, "ok": True,
-                            "note": f"skip: HTTP {status} (endpoint tak dapat diakses oleh sesi ini)",
+                            "note": f"skip: HTTP {status} (endpoint tak dapat diakses oleh session ini)",
                             "url": f"GET {base}{ep['path']}", "kind": "sensitive-data-exposure"})
             # tetap periksa halaman error untuk jejak debug
             results.extend(evaluate_response(name, "GET", base + ep["path"], status, body, ctype,
@@ -257,7 +257,7 @@ def run_checks(cfg, sess=None, anon=None):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="Deteksi kebocoran data di respons API (pasif).")
+    ap = argparse.ArgumentParser(description="Deteksi exposure data di response API (pasif).")
     ap.add_argument("--config", default=str(Path(__file__).with_name("response_leak.yml")))
     ap.add_argument("--json", dest="json_out")
     args = ap.parse_args(argv)

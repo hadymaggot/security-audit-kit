@@ -44,6 +44,15 @@ Ein Check = ein Runner in `tests/<name>/run_<name>.py` + ein Eintrag in `remedia
 6. **Docs.** Die Modultabelle in `README.md` und `docs/temuan-to-test-mapping.md`
    aktualisieren.
 
+## Sprache und Glossar
+
+- **Code-Kommentare und Docstrings sind auf Englisch**, kurz und klar (das *Warum* erklären, den
+  Code nicht wiederholen). Variablen-, Funktions- und Schemaschlüssel-Namen sind ebenfalls englisch.
+- **Angezeigter Text** (Konsole, Berichte, Empfehlungen) folgt dem [Glossar](docs/glosarium.de.md):
+  Sätze in der Dokumentsprache, technische Begriffe bleiben englisch und werden in Berichten kursiv gesetzt.
+- Einen Begriff zu ergänzen braucht eine Zeile in `glosarium.yml`; `tests/unit/test_glosarium.py`
+  schlägt fehl, wenn angezeigter Text noch ein bereits vereinheitlichtes Wort verwendet.
+
 ## Commit & PR
 
 - **Conventional Commits:** `feat:`, `fix:`, `docs:`, `test:`, `ci:`, `refactor:`,

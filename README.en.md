@@ -56,9 +56,9 @@ project has its own `config/`, `tests/<module>/*.yml` and `reports/`, so they ca
 simultaneously from separate terminals:
 
 ```bash
-python audit.py --project apple-gatrik init authz,upload   # creates projects/apple-gatrik/
-python audit.py --project apple-gatrik all                  # terminal 1
-python audit.py --project D:/audit/kumham all               # terminal 2 (folder anywhere)
+python audit.py --project my-app init authz,upload   # creates projects/my-app/
+python audit.py --project my-app all                  # terminal 1
+python audit.py --project D:/audit/client-b all               # terminal 2 (folder anywhere)
 ```
 
 Equivalent: the `SAK_PROJECT_DIR` environment variable, `make all PROJECT=...`, or
@@ -76,6 +76,7 @@ details in [Running from any directory](docs/panduan-penggunaan.en.md#running-fr
 audit.py            cross-OS entry point (single door)
 report.py           combined report assembler
 remediation.py      remediation & rationale knowledge base
+glossary.py         glossary loader (italics, mapping); data in glosarium.yml
 config/             targets (example; the real one is gitignored)
 scanners/           ZAP, testssl, header, trivy/semgrep/gitleaks wrappers
 tests/              authz-matrix, client-leak, upload-safety, auth-policy
@@ -93,6 +94,7 @@ final report shape: [docs/contoh-laporan.md](docs/contoh-laporan.md).
 | Document | Contents |
 |---|---|
 | [docs/panduan-penggunaan.en.md](docs/panduan-penggunaan.en.md) | Step-by-step guide: installation, configuration, authentication, running scans, reading the report, rollback, troubleshooting |
+| [docs/glosarium.en.md](docs/glosarium.en.md) | Per-language technical glossary (id/en/de), italics rules, choosing the language with `--lang`, adding terms |
 | [docs/metodologi.en.md](docs/metodologi.en.md) | Testing methodology & standards reference (OWASP, ASVS, Risk Rating) |
 | [docs/temuan-to-test-mapping.en.md](docs/temuan-to-test-mapping.en.md) | Translating pentest report findings into test cases per module |
 | [docs/contoh-laporan.md](docs/contoh-laporan.md) · [contoh-laporan.html](docs/contoh-laporan.html) · [slides](docs/contoh-laporan-slides.html) | Example report output (fictional data) — consultant format + presentation/slide variant |

@@ -253,7 +253,7 @@ def run(cfg, http=requests):
     if not token or not parse(token):
         return [{"check": "jwt: token", "status": None, "ok": True,
                  "note": "skip: tidak ada token JWT yang dapat dianalisis (aplikasi mungkin memakai "
-                         "sesi/token opak, mis. Sanctum).", "url": base, "kind": "jwt-weak-config"}]
+                         "session/token opak, mis. Sanctum).", "url": base, "kind": "jwt-weak-config"}]
     header, payload, _ = parse(token)
     rows = static_rows(header, payload, token, cfg, url)
     rows += probe_rows(token, make_sender(cfg, base, http), cfg, url)

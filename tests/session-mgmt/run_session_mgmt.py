@@ -51,29 +51,29 @@ def is_valid(status):
 # ── evaluator murni ─────────────────────────────────────────────────────────
 def row_logout(replay_status, url):
     ok = not is_valid(replay_status)
-    return {"check": "logout: sesi dicabut di server", "status": replay_status, "ok": ok,
+    return {"check": "logout: session dicabut di server", "status": replay_status, "ok": ok,
             "note": (f"Replay cookie lama setelah logout ditolak (HTTP {replay_status})."
                      if ok else
-                     f"Cookie sesi lama MASIH berlaku setelah logout (HTTP {replay_status}) — "
-                     "logout hanya menghapus cookie di klien, sesi server tidak dicabut."),
+                     f"Cookie session lama MASIH berlaku setelah logout (HTTP {replay_status}) — "
+                     "logout hanya menghapus cookie di klien, session server tidak dicabut."),
             "url": url, "kind": "logout-no-invalidate"}
 
 
 def row_other_sessions(other_status, url):
     ok = not is_valid(other_status)
-    return {"check": "ganti sandi: sesi lain dicabut", "status": other_status, "ok": ok,
-            "note": (f"Sesi lain ditolak setelah ganti sandi (HTTP {other_status})."
+    return {"check": "ganti password: session lain dicabut", "status": other_status, "ok": ok,
+            "note": (f"Session lain ditolak setelah ganti password (HTTP {other_status})."
                      if ok else
-                     f"Sesi LAIN tetap berlaku setelah sandi diganti (HTTP {other_status}) — "
-                     "sesi yang mungkin dicuri bertahan walau sandi sudah berubah."),
+                     f"Session LAIN tetap berlaku setelah password diganti (HTTP {other_status}) — "
+                     "session yang mungkin dicuri bertahan walau password sudah berubah."),
             "url": url, "kind": "session-not-revoked"}
 
 
 def row_old_password(status, url):
     ok = not is_valid(status)
-    return {"check": "ganti sandi: sandi lama ditolak", "status": status, "ok": ok,
-            "note": (f"Sandi lama ditolak setelah penggantian (HTTP {status})." if ok else
-                     f"Sandi LAMA masih diterima setelah penggantian (HTTP {status})."),
+    return {"check": "ganti password: password lama ditolak", "status": status, "ok": ok,
+            "note": (f"Password lama ditolak setelah penggantian (HTTP {status})." if ok else
+                     f"Password LAMA masih diterima setelah penggantian (HTTP {status})."),
             "url": url, "kind": "old-password-accepted"}
 
 
@@ -124,13 +124,13 @@ def run_session_checks(acc, cfg, base, http=requests.Session, sleep=time.sleep):
     B, sb = login()
     C, sc_ = login()
     if not all(is_valid(x) for x in (sa, sb, sc_)):
-        return [row_info("sesi: login akun uji", True,
+        return [row_info("session: login akun uji", True,
                          f"skip: login akun uji gagal (HTTP {sa}/{sb}/{sc_}) — naikkan "
                          "`session.delay_seconds` bila kena rate limit login.", base, status=sa)]
     pre = [call(s, "GET", me) for s in (A, B, C)]
     if not all(is_valid(x) for x in pre):
-        return [row_info("sesi: akses profil akun uji", True,
-                         f"skip: sesi akun uji tidak dapat membaca {me} (HTTP {pre}).", base)]
+        return [row_info("session: akses profil akun uji", True,
+                         f"skip: session akun uji tidak dapat membaca {me} (HTTP {pre}).", base)]
 
     # 1) logout + replay cookie lama
     lo = sc.get("logout")
@@ -142,7 +142,7 @@ def run_session_checks(acc, cfg, base, http=requests.Session, sleep=time.sleep):
         status = call(replay, "GET", me)
         rows.append(row_logout(status, f"GET {base}{me} (cookie lama setelah logout)"))
     else:
-        rows.append(row_info("logout: sesi dicabut di server", True,
+        rows.append(row_info("logout: session dicabut di server", True,
                              "skip: `session.logout` tidak dikonfigurasi.", base,
                              kind="logout-no-invalidate"))
 
@@ -151,33 +151,33 @@ def run_session_checks(acc, cfg, base, http=requests.Session, sleep=time.sleep):
     if cp:
         st = call(A, cp.get("method", "POST"), cp["path"], acc.render(cp.get("body") or {}))
         if not is_valid(st):
-            rows.append(row_info("ganti sandi: pelaksanaan", True,
-                                 f"skip: ganti sandi gagal (HTTP {st}) — periksa kebijakan sandi "
+            rows.append(row_info("ganti password: pelaksanaan", True,
+                                 f"skip: ganti password gagal (HTTP {st}) — periksa kebijakan password "
                                  "dan body `change_password`.", f"{cp.get('method', 'POST')} "
                                  f"{base}{cp['path']}", status=st))
         else:
-            rows.append(row_other_sessions(call(B, "GET", me), f"GET {base}{me} (sesi lain)"))
+            rows.append(row_other_sessions(call(B, "GET", me), f"GET {base}{me} (session lain)"))
             a_after = call(A, "GET", me)
-            rows.append(row_info("ganti sandi: sesi yang mengganti", True,
-                                 f"Sesi yang mengganti sandi: HTTP {a_after} "
+            rows.append(row_info("ganti password: session yang mengganti", True,
+                                 f"Session yang mengganti password: HTTP {a_after} "
                                  f"({'tetap aktif' if is_valid(a_after) else 'dicabut'}).",
                                  f"GET {base}{me}", status=a_after))
             sleep(delay)
             old = acc.login_attempt(acc.password).status_code
-            rows.append(row_old_password(old, f"login {base} (sandi lama)"))
+            rows.append(row_old_password(old, f"login {base} (password lama)"))
             sleep(delay)
             new = acc.login_as(acc.email, acc.new_password).status_code
-            rows.append(row_info("ganti sandi: sandi baru diterima", is_valid(new),
-                                 f"Login dengan sandi baru: HTTP {new}.", f"login {base}",
+            rows.append(row_info("ganti password: password baru diterima", is_valid(new),
+                                 f"Login dengan password baru: HTTP {new}.", f"login {base}",
                                  kind="old-password-accepted", status=new))
     else:
-        rows.append(row_info("ganti sandi: sesi lain dicabut", True,
+        rows.append(row_info("ganti password: session lain dicabut", True,
                              "skip: `session.change_password` tidak dikonfigurasi.", base))
     return rows
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="Uji manajemen sesi (logout, ganti sandi).")
+    ap = argparse.ArgumentParser(description="Uji manajemen session (logout, ganti password).")
     ap.add_argument("--config", default=str(Path(__file__).with_name("session_mgmt.yml")))
     ap.add_argument("--json", dest="json_out")
     args = ap.parse_args(argv)

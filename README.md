@@ -55,9 +55,9 @@ project memiliki `config/`, `tests/<modul>/*.yml`, dan `reports/` sendiri sehing
 bersamaan dari terminal berbeda:
 
 ```bash
-python audit.py --project apple-gatrik init authz,upload   # buat projects/apple-gatrik/
-python audit.py --project apple-gatrik all                  # terminal 1
-python audit.py --project D:/audit/kumham all               # terminal 2 (folder di mana saja)
+python audit.py --project my-app init authz,upload   # buat projects/my-app/
+python audit.py --project my-app all                  # terminal 1
+python audit.py --project D:/audit/client-b all               # terminal 2 (folder di mana saja)
 ```
 
 Setara: env `SAK_PROJECT_DIR`, `make all PROJECT=...`, atau `.\audit.ps1 all -Project ...`.
@@ -75,6 +75,7 @@ rinciannya di bagian [Menjalankan dari folder mana pun](docs/panduan-penggunaan.
 audit.py            entry point lintas-OS (satu pintu)
 report.py           perangkai report gabungan
 remediation.py      knowledge base remediasi & justifikasi
+glossary.py         pemuat glosarium (miring, padanan); data di glosarium.yml
 config/             target (contoh; yang asli di-gitignore)
 scanners/           wrapper ZAP, testssl, header, trivy/semgrep/gitleaks
 tests/              authz-matrix, client-leak, upload-safety, auth-policy
@@ -92,6 +93,7 @@ laporan akhir: [docs/contoh-laporan.md](docs/contoh-laporan.md).
 | Dokumen | Isi |
 |---|---|
 | [docs/panduan-penggunaan.md](docs/panduan-penggunaan.md) | Panduan step-by-step: instalasi, konfigurasi, autentikasi, menjalankan scan, membaca laporan, rollback, troubleshooting |
+| [docs/glosarium.md](docs/glosarium.md) | Glosarium istilah teknis per bahasa (id/en/de), aturan huruf miring, memilih bahasa dengan `--lang`, cara menambah istilah |
 | [docs/metodologi.md](docs/metodologi.md) | Metodologi uji & acuan standar (OWASP, ASVS, Risk Rating) |
 | [docs/temuan-to-test-mapping.md](docs/temuan-to-test-mapping.md) | Menerjemahkan temuan laporan pentest menjadi kasus uji per modul |
 | [docs/contoh-laporan.md](docs/contoh-laporan.md) · [contoh-laporan.html](docs/contoh-laporan.html) · [slide](docs/contoh-laporan-slides.html) | Contoh output laporan (data fiktif) — format konsultan + varian presentasi/slide |

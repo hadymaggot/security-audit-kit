@@ -128,10 +128,10 @@ def _run(world):
 def test_server_sehat_semua_lolos():
     rows = _run(World())
     by = {r["check"]: r for r in rows}
-    assert by["logout: sesi dicabut di server"]["ok"] is True
-    assert by["ganti sandi: sesi lain dicabut"]["ok"] is True
-    assert by["ganti sandi: sandi lama ditolak"]["ok"] is True
-    assert by["ganti sandi: sandi baru diterima"]["ok"] is True
+    assert by["logout: session dicabut di server"]["ok"] is True
+    assert by["ganti password: session lain dicabut"]["ok"] is True
+    assert by["ganti password: password lama ditolak"]["ok"] is True
+    assert by["ganti password: password baru diterima"]["ok"] is True
     assert not [r for r in rows if not r["ok"]]
 
 
@@ -139,7 +139,7 @@ def test_sesi_lain_tak_dicabut_setelah_ganti_sandi():
     rows = _run(World(revoke_others=False))
     bad = [r for r in rows if not r["ok"]]
     assert len(bad) == 1 and bad[0]["kind"] == "session-not-revoked"
-    assert bad[0]["check"] == "ganti sandi: sesi lain dicabut"
+    assert bad[0]["check"] == "ganti password: session lain dicabut"
 
 
 def test_logout_tak_mencabut_sesi_server():
@@ -178,8 +178,8 @@ def test_report_memuat_session_mgmt(tmp_path):
     (tmp_path / "session_mgmt.json").write_text(json.dumps(
         {"module": "session-mgmt", "failures": 2, "results": rows}), encoding="utf-8")
     by = {x["judul"]: x for x in RP.collect(tmp_path)}
-    assert by["ganti sandi: sesi lain dicabut"]["kind"] == "session-not-revoked"
-    assert by["ganti sandi: sesi lain dicabut"]["severity"] == "medium"
-    assert by["logout: sesi dicabut di server"]["kind"] == "logout-no-invalidate"
+    assert by["ganti password: session lain dicabut"]["kind"] == "session-not-revoked"
+    assert by["ganti password: session lain dicabut"]["severity"] == "medium"
+    assert by["logout: session dicabut di server"]["kind"] == "logout-no-invalidate"
     assert RP.cvss_for("old-password-accepted", "high")[0] == 8.1
     assert {"session-not-revoked", "logout-no-invalidate", "old-password-accepted"} <= set(RP.KIND_LABEL)

@@ -2,7 +2,7 @@
 # Semua target meneruskan ke `python audit.py`, jadi perilakunya identik lintas-OS.
 
 PYTHON ?= python3
-# Multi-project: make all PROJECT=apple-gatrik  (nama -> projects/<nama>, atau path folder)
+# Multi-project: make all PROJECT=my-app  (nama -> projects/<nama>, atau path folder)
 PROJECT ?=
 AUDIT = $(PYTHON) audit.py $(if $(PROJECT),--project "$(PROJECT)")
 
@@ -61,6 +61,6 @@ report:
 clean:
 	$(AUDIT) clean
 
-# make init PROJECT=apple-gatrik MODULES=authz,upload
+# make init PROJECT=my-app MODULES=authz,upload
 init:
 	$(AUDIT) init $(MODULES)

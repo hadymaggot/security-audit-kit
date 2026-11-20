@@ -1,0 +1,130 @@
+# Technical glossary, one block per language (id, en, de = the documentation languages).
+# To add a term: add one line to the right language, then run tests/unit/test_glosarium.py.
+# To add a language: add a block under `languages`. Project overrides: <project>/config/glosarium.yml.
+#
+# Language is picked by: --lang > SAK_LANG > report.language (targets.yml) > `default`.
+#
+# Per language:
+#   italic  - false when the text is already English (nothing to italicize); default true.
+#   terms   - English terms printed in italics in HTML/Markdown/slide reports (case-insensitive;
+#             plural -s/-es and multi-word phrases are matched).
+#   map     - local word -> canonical term; the glossary test fails if the word appears in display text.
+#   phrases - ordered [regex, replacement], applied before `map`, for context-dependent words.
+#
+# Product names (OWASP ZAP, Docker) and acronyms (CVE, XSS, RCE) are never italicized.
+
+default: en
+
+# Languages whose report/console text catalog is complete. Others fall back to the first entry
+# until their catalog exists; add a code here when its catalog is done.
+complete_text: [id]
+
+languages:
+
+  id:
+    terms: &english_terms
+      - response
+      - request
+      - password
+      - session
+      - file
+      - header
+      - endpoint
+      - token
+      - cache
+      - rollback
+      - payload
+      - upload
+      - error
+      - exposed
+      - expose
+      - information disclosure
+      - access control
+      - role
+      - library
+      - framework
+      - source code
+      - dependency
+      - secret
+      - cookie
+      - login
+      - logout
+      - rate limit
+      - lockout
+      - brute-force
+      - stack trace
+      - debug
+      - bypass
+      - replay
+      - proxy
+      - hostname
+      - subdomain
+      - bundle
+      - source map
+      - misconfiguration
+      - likelihood
+      - impact
+      - repository
+      - backup
+      - redirect
+      - hook
+      - sanitize
+      - whitelist
+      - credential
+      - breached
+    map:
+      kata sandi: password
+      sandi: password
+      respons: response
+      permintaan: request
+      sesi: session
+      galat: error
+      berkas: file
+      unggahan: upload
+      mengunggah: upload
+      diunggah: di-upload
+      unggah: upload
+      kontrol akses: access control
+      peran: role
+      dependensi: dependency
+      pustaka: library
+      kerangka kerja: framework
+      kode sumber: source code
+      membocorkan: expose
+      dibocorkan: di-expose
+      terekspos: exposed
+      ter-ekspos: exposed
+    phrases:
+      - [ "\\b[Hh]eader pembocor info\\b", "header information disclosure" ]
+      - [ "\\bKebocoran/putaran data\\b", "Information disclosure/tampering data" ]
+      - [ "\\b[Kk]ebocoran info(?:rmasi)?\\b", "information disclosure" ]
+      - [ "\\bbocor info\\b", "information disclosure" ]
+      - [ "\\bpembocor info\\b", "information disclosure" ]
+      - [ "\\bsandi bocor\\b", "password breached" ]
+      - [ "\\bKebocoran rahasia/endpoint\\b", "Exposure secret/endpoint" ]
+      - [ "\\bKebocoran\\b", "Exposure" ]
+      - [ "\\bkebocoran\\b", "exposure" ]
+      - [ "\\bbocor\\b", "exposed" ]
+
+  en:
+    italic: false
+    terms: []
+    map:
+      reply: response
+      passcode: password
+      info leak: information disclosure
+      information leak: information disclosure
+    phrases: []
+
+  # English terms stay as-is and italic, as in the current DE docs. German Datei, Passwort, Rolle,
+  # Zugangsdaten, Befund are kept on purpose. `map` only detects (articles/endings make auto-rewrite unsafe).
+  de:
+    terms: *english_terms
+    map:
+      antwort: Response
+      anfrage: Request
+      sitzung: Session
+      endpunkt: Endpoint
+      hochladen: Upload
+      zwischenspeicher: Cache
+    phrases: []

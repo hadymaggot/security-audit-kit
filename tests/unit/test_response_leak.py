@@ -75,14 +75,14 @@ def test_pola_secret_di_isi_respons():
 # ── debug / verbose ─────────────────────────────────────────────────────────
 def test_stack_trace_dan_sql_terdeteksi():
     r = _by(_rows("Stack trace:\n#0 /var/www/app/Http/X.php(10)\nSQLSTATE[42S02]",
-                  status=500, ctype="text/html"))["respons verbose/debug"]
+                  status=500, ctype="text/html"))["response verbose/debug"]
     assert r["ok"] is False and r["kind"] == "verbose-error"
     assert "stack trace" in r["note"] and "pesan SQL" in r["note"]
 
 
 def test_halaman_error_bersih_lolos_pada_probe():
-    r = _by(_rows({"message": "Not Found"}, status=404, probe=True))["respons verbose/debug"]
-    assert r["ok"] is True and "tidak membocorkan" in r["note"]
+    r = _by(_rows({"message": "Not Found"}, status=404, probe=True))["response verbose/debug"]
+    assert r["ok"] is True and "tidak expose" in r["note"]
     assert "kunci sensitif" not in _by(_rows({"message": "x"}, status=404, probe=True))
 
 

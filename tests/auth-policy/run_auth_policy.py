@@ -147,7 +147,7 @@ def main():
         label = chk.get("name", chk["path"])
         field = chk.get("password_field", "password")
         ep_url = f"{chk.get('method', 'POST')} {base + chk['path']}"
-        print(f"== Kebijakan sandi: {label} ==")
+        print(f"== Kebijakan password: {label} ==")
 
         def body_for(pw):
             body = {k: (v.replace("{rand}", secrets.token_hex(4)) if isinstance(v, str) else v)
@@ -161,22 +161,22 @@ def main():
             try:
                 r = post(chk, body_for(pw))
             except Exception as exc:  # noqa: BLE001
-                print(f"  galat '{pw}': {exc}")
+                print(f"  error '{pw}': {exc}")
                 failures += 1
                 continue
             if r.status_code == 429:
                 # Rate limit = tak bisa disimpulkan, bukan bukti sandi lemah lolos.
-                print(f"  sandi {pw!r:<16} HTTP 429  skip (rate limit)")
-                results.append({"check": f"{label} sandi lemah {pw}", "status": 429,
+                print(f"  password {pw!r:<16} HTTP 429  skip (rate limit)")
+                results.append({"check": f"{label} password lemah {pw}", "status": 429,
                                 "ok": True, "note": "skip: rate limit", "url": ep_url})
                 continue
             rejected = password_error(r, field)
-            mark = "ok" if rejected else "XX DITERIMA (sandi lemah lolos)"
+            mark = "ok" if rejected else "XX DITERIMA (password lemah lolos)"
             if not rejected:
                 failures += 1
-            print(f"  sandi {pw!r:<16} HTTP {r.status_code}  {C.status(mark)}")
-            results.append({"check": f"{label} sandi lemah {pw}", "status": r.status_code,
-                            "ok": rejected, "note": "" if rejected else "sandi lemah lolos",
+            print(f"  password {pw!r:<16} HTTP {r.status_code}  {C.status(mark)}")
+            results.append({"check": f"{label} password lemah {pw}", "status": r.status_code,
+                            "ok": rejected, "note": "" if rejected else "password lemah lolos",
                             "url": ep_url})
 
         # Kontrol positif: sandi kuat TAK boleh kena error sandi — kalau kena, uji di
@@ -188,14 +188,14 @@ def main():
                 r = post(chk, body_for(strong))
                 ok = r.status_code == 429 or not password_error(r, field)
                 note = "skip: rate limit" if r.status_code == 429 else (
-                    "" if ok else "sandi kuat pun ditolak — uji sandi lemah tak bermakna")
+                    "" if ok else "password kuat pun ditolak — uji password lemah tak bermakna")
             except Exception as exc:  # noqa: BLE001
-                ok, note, r = False, f"galat: {exc}", None
+                ok, note, r = False, f"error: {exc}", None
             if not ok:
                 failures += 1
             status = r.status_code if r is not None else -1
-            print(f"  kontrol sandi kuat     HTTP {status}  {C.status('ok' if ok else 'XX ' + note)}")
-            results.append({"check": f"{label} kontrol sandi kuat", "status": status,
+            print(f"  kontrol password kuat     HTTP {status}  {C.status('ok' if ok else 'XX ' + note)}")
+            results.append({"check": f"{label} kontrol password kuat", "status": status,
                             "ok": ok, "note": note, "url": ep_url})
 
         # Kontrol positif: sandi kuat TAK boleh kena error sandi — kalau kena, uji di
@@ -207,14 +207,14 @@ def main():
                 r = post(chk, body_for(strong))
                 ok = r.status_code == 429 or not password_error(r, field)
                 note = "skip: rate limit" if r.status_code == 429 else (
-                    "" if ok else "sandi kuat pun ditolak — uji sandi lemah tak bermakna")
+                    "" if ok else "password kuat pun ditolak — uji password lemah tak bermakna")
             except Exception as exc:  # noqa: BLE001
-                ok, note, r = False, f"galat: {exc}", None
+                ok, note, r = False, f"error: {exc}", None
             if not ok:
                 failures += 1
             status = r.status_code if r is not None else -1
-            print(f"  kontrol sandi kuat     HTTP {status}  {C.status('ok' if ok else 'XX ' + note)}")
-            results.append({"check": f"{label} kontrol sandi kuat", "status": status,
+            print(f"  kontrol password kuat     HTTP {status}  {C.status('ok' if ok else 'XX ' + note)}")
+            results.append({"check": f"{label} kontrol password kuat", "status": status,
                             "ok": ok, "note": note})
 
     # 2. Captcha harus regenerasi (token baru tiap terbit).
@@ -227,7 +227,7 @@ def main():
                 r = sess.get(base + cap["issue_path"], headers=auth_h(), timeout=20)
                 tokens.append(dig(r.json(), cap.get("token_field", "token")))
             except Exception as exc:  # noqa: BLE001
-                print(f"  galat: {exc}")
+                print(f"  error: {exc}")
                 failures += 1
                 break
         uniq = len(set(t for t in tokens if t))

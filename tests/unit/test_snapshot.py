@@ -20,7 +20,7 @@ SN = _load("_snapshot_t", "tests/_snapshot.py")
 RB = _load("_rollback_sn_t", "tests/_rollback.py")
 AU = _load("audit_sn_t", "audit.py")
 
-PG = {"preset": "postgres-docker", "container": "pg", "user": "u", "databases": ["iam", "emission"]}
+PG = {"preset": "postgres-docker", "container": "pg", "user": "u", "databases": ["auth", "orders"]}
 
 
 class FakeRunner:
@@ -44,18 +44,18 @@ class FakeRunner:
 # ── preset & backup ─────────────────────────────────────────────────────────
 def test_expand_preset_postgres_docker():
     steps = SN.expand_preset(PG)
-    assert [s["name"] for s in steps] == ["postgres iam", "postgres emission"]
+    assert [s["name"] for s in steps] == ["postgres auth", "postgres orders"]
     assert steps[0]["backup"]["cmd"][:4] == ["docker", "exec", "pg", "pg_dump"]
-    assert "-Fc" in steps[0]["backup"]["cmd"] and steps[0]["backup"]["cmd"][-1] == "iam"
+    assert "-Fc" in steps[0]["backup"]["cmd"] and steps[0]["backup"]["cmd"][-1] == "auth"
     r = steps[1]["restore"]
     assert r["cmd"][:4] == ["docker", "exec", "-i", "pg"] and "--single-transaction" in r["cmd"]
-    assert r["stdin_from"] == "{dir}/emission.dump"
+    assert r["stdin_from"] == "{dir}/orders.dump"
     assert SN.expand_preset({"steps": [{"name": "x"}]}) == [{"name": "x"}]
 
 
 def test_backup_membuat_berkas_dan_manifest(tmp_path):
     m = SN.backup(PG, tmp_path / "s1", FakeRunner())
-    assert [s["name"] for s in m["steps"]] == ["postgres iam", "postgres emission"]
+    assert [s["name"] for s in m["steps"]] == ["postgres auth", "postgres orders"]
     assert all(Path(s["file"]).exists() and s["bytes"] > 0 for s in m["steps"])
     assert m["steps"][0]["restore"]["stdin_from"] == m["steps"][0]["file"]       # {dir} terisi
     assert "{dir}" not in str(m)
@@ -63,8 +63,8 @@ def test_backup_membuat_berkas_dan_manifest(tmp_path):
 
 def test_backup_gagal_atau_kosong_melempar(tmp_path):
     with pytest.raises(SN.SnapshotError, match="gagal"):
-        SN.backup(PG, tmp_path / "a", FakeRunner(fail_backup="emission"))
-    with pytest.raises(SN.SnapshotError, match="berkas kosong"):
+        SN.backup(PG, tmp_path / "a", FakeRunner(fail_backup="orders"))
+    with pytest.raises(SN.SnapshotError, match="file kosong"):
         SN.backup(PG, tmp_path / "b", FakeRunner(empty=True))
     with pytest.raises(SN.SnapshotError, match="tidak ada langkah"):
         SN.backup({"preset": "postgres-docker", "container": "c", "user": "u"}, tmp_path / "c",
@@ -74,10 +74,10 @@ def test_backup_gagal_atau_kosong_melempar(tmp_path):
 # ── restore ─────────────────────────────────────────────────────────────────
 def test_restore_menjalankan_semua_langkah_walau_satu_gagal(tmp_path):
     m = SN.backup(PG, tmp_path / "s", FakeRunner())
-    runner = FakeRunner(fail_restore="iam")
+    runner = FakeRunner(fail_restore="auth")
     res = SN.restore(m, runner)
-    assert [(n, ok) for n, ok, _ in res] == [("postgres iam", False), ("postgres emission", True)]
-    assert runner.calls[-1][1].endswith("emission.dump")                    # stdin dari berkas dump
+    assert [(n, ok) for n, ok, _ in res] == [("postgres auth", False), ("postgres orders", True)]
+    assert runner.calls[-1][1].endswith("orders.dump")                    # stdin dari berkas dump
 
 
 # ── Guard ───────────────────────────────────────────────────────────────────
@@ -127,7 +127,7 @@ def test_guard_backup_gagal_membatalkan_tanpa_restore_dan_tanpa_jurnal(tmp_path)
 
 
 def test_guard_restore_gagal_tetap_di_jurnal(tmp_path):
-    g, lines = _guard(tmp_path, FakeRunner(fail_restore="emission"))
+    g, lines = _guard(tmp_path, FakeRunner(fail_restore="orders"))
     with g:
         pass
     assert g.ok is False and len(RB.pending(tmp_path)) == 1
@@ -163,12 +163,12 @@ def test_guard_tanpa_konfigurasi_tidak_melakukan_apa_apa(tmp_path):
 
 
 def test_restore_entry_dari_jurnal_untuk_audit_rollback(tmp_path):
-    g, _ = _guard(tmp_path, FakeRunner(fail_restore="emission"))
+    g, _ = _guard(tmp_path, FakeRunner(fail_restore="orders"))
     with g:
         pass
     entry = RB.pending(tmp_path)[0]
     ok, note = SN.restore_entry(entry, FakeRunner())                         # pemulihan ulang berhasil
-    assert ok and "postgres iam: dipulihkan" in note
+    assert ok and "postgres auth: dipulihkan" in note
     assert not list((tmp_path / "snapshots").rglob("*.dump"))
     assert SN.restore_entry({"action": {"snapshot_manifest": str(tmp_path / "x.json")}},
                             FakeRunner())[0] is False

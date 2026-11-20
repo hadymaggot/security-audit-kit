@@ -124,13 +124,13 @@ def analyze_challenge(data):
     rows = []
     keys = find_answer_keys(data)
     if keys:
-        rows.append({"check": "kunci jawaban di respons", "status": 200, "ok": False,
-                     "note": "Respons memuat kunci yang tampak seperti jawaban: "
+        rows.append({"check": "kunci jawaban di response", "status": 200, "ok": False,
+                     "note": "Response memuat kunci yang tampak seperti jawaban: "
                              + ", ".join(f"{p}={v}" for p, v in keys[:5]) + ".",
                      "url": "", "kind": "captcha-answer-leak"})
     else:
-        rows.append({"check": "kunci jawaban di respons", "status": 200, "ok": True,
-                     "note": "Tidak ada kunci jawaban eksplisit di respons.", "url": "",
+        rows.append({"check": "kunci jawaban di response", "status": 200, "ok": True,
+                     "note": "Tidak ada kunci jawaban eksplisit di response.", "url": "",
                      "kind": "captcha-answer-leak"})
 
     layers = decode_svg_layers(data)
@@ -140,14 +140,14 @@ def analyze_challenge(data):
         mirror = (f" dan translate({l['x']:g},{l['y']:g}) pada {', '.join(l['mirror'])}"
                   if l["mirror"] else "")
         ypos = f"; Y={l['y']:g} sama dengan y_position yang dikirim" if l["y_position"] else ""
-        rows.append({"check": "SVG membocorkan posisi target", "status": 200, "ok": False,
+        rows.append({"check": "SVG expose posisi target", "status": 200, "ok": False,
                      "note": f"Offset translate(-{l['x']:g},-{l['y']:g}) pada lapisan "
                              f"'{l['layer']}'{mirror}{ypos} — posisi target X={l['x']:g} dapat "
                              "dibaca langsung dari SVG tanpa melihat gambar.",
                      "url": "", "kind": "captcha-answer-leak", "x": l["x"]})
     else:
-        rows.append({"check": "SVG membocorkan posisi target", "status": 200, "ok": True,
-                     "note": f"Tidak ditemukan offset yang membocorkan posisi pada "
+        rows.append({"check": "SVG expose posisi target", "status": 200, "ok": True,
+                     "note": f"Tidak ditemukan offset yang expose posisi pada "
                              f"{len(layers)} lapisan SVG." if layers else
                              "Tidak ada lapisan SVG untuk dianalisis.",
                      "url": "", "kind": "captcha-answer-leak"})
@@ -206,7 +206,7 @@ def run(cfg, sess=None, sleep=lambda s: None):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="Deteksi kebocoran jawaban captcha (statis).")
+    ap = argparse.ArgumentParser(description="Deteksi exposure jawaban captcha (statis).")
     ap.add_argument("--config", default=str(Path(__file__).with_name("captcha.yml")))
     ap.add_argument("--json", dest="json_out")
     args = ap.parse_args(argv)

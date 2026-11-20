@@ -38,8 +38,8 @@ def _challenge(x=237, y=33, leak=True, extra=None):
 # ── kunci jawaban ───────────────────────────────────────────────────────────
 def test_kunci_jawaban_eksplisit_terdeteksi():
     rows = {r["check"]: r for r in CP.analyze_challenge({"answer": 120, "image_width": 320})}
-    assert rows["kunci jawaban di respons"]["ok"] is False
-    assert "answer=120" in rows["kunci jawaban di respons"]["note"]
+    assert rows["kunci jawaban di response"]["ok"] is False
+    assert "answer=120" in rows["kunci jawaban di response"]["note"]
     assert CP.find_answer_keys({"target_x": 10, "x_position": 4})
     assert not CP.find_answer_keys({"y_position": 33, "image_width": 320, "piece_size": 50,
                                     "captcha_key": "ABC"})                   # bukan jawaban
@@ -48,7 +48,7 @@ def test_kunci_jawaban_eksplisit_terdeteksi():
 # ── SVG translate ───────────────────────────────────────────────────────────
 def test_translate_membocorkan_posisi():
     rows = {r["check"]: r for r in CP.analyze_challenge(_challenge(237, 33))}
-    r = rows["SVG membocorkan posisi target"]
+    r = rows["SVG expose posisi target"]
     assert r["ok"] is False and r["x"] == 237 and r["kind"] == "captcha-answer-leak"
     assert "translate(-237,-33)" in r["note"] and "translate(237,33)" in r["note"]
     assert "y_position" in r["note"]
@@ -56,13 +56,13 @@ def test_translate_membocorkan_posisi():
 
 def test_tanpa_offset_tak_ada_false_positive():
     rows = {r["check"]: r for r in CP.analyze_challenge(_challenge(leak=False))}
-    assert rows["SVG membocorkan posisi target"]["ok"] is True
-    assert rows["kunci jawaban di respons"]["ok"] is True
+    assert rows["SVG expose posisi target"]["ok"] is True
+    assert rows["kunci jawaban di response"]["ok"] is True
 
 
 def test_translate_di_luar_lebar_gambar_diabaikan():
     rows = {r["check"]: r for r in CP.analyze_challenge(_challenge(x=999, y=33))}
-    assert rows["SVG membocorkan posisi target"]["ok"] is True       # 999 > image_width 320
+    assert rows["SVG expose posisi target"]["ok"] is True       # 999 > image_width 320
 
 
 def test_decode_svg_layers_data_uri_dan_mentah():
@@ -110,7 +110,7 @@ def test_run_dua_sampel_dengan_kebocoran():
     cfg = {"base_url": "http://t", "samples": 2}
     rows = CP.run(cfg, sess=_S([_challenge(95), _challenge(164)]))
     by = {r["check"]: r for r in rows}
-    assert by["SVG membocorkan posisi target"]["ok"] is False
+    assert by["SVG expose posisi target"]["ok"] is False
     assert by["posisi target tetap antar tantangan"]["ok"] is True
     assert all(r["url"].startswith("GET http://t/api/captcha") for r in rows)
 

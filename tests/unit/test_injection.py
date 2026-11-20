@@ -79,7 +79,7 @@ def test_probe_detects_boolean_based():
 def test_probe_clean_param_no_finding():
     # Param aman: semua payload menghasilkan response identik, tak ada error.
     def send(v):
-        return _R("respons sama untuk apa pun")
+        return _R("response sama untuk apa pun")
     assert IJ.probe(send, "x", {}) == []
 
 

@@ -81,8 +81,8 @@ def _run(tmp_path, monkeypatch, get_queue, patch_status=200):
 
 
 def test_flags_accepted_injection_and_journals(tmp_path, monkeypatch):
-    # snapshot: role=pelaksana; setelah inject: role=admin (DITERIMA → temuan).
-    snap = {"data": {"role": "pelaksana", "is_admin": False}}
+    # snapshot: role=member; setelah inject: role=admin (DITERIMA → temuan).
+    snap = {"data": {"role": "member", "is_admin": False}}
     after = {"data": {"role": "admin", "is_admin": True}}
     rc, res, journal, sess = _run(tmp_path, monkeypatch, [snap, after])
     assert rc == 1
@@ -92,7 +92,7 @@ def test_flags_accepted_injection_and_journals(tmp_path, monkeypatch):
     # Jurnal mencatat pemulihan ke nilai ASLI, dan BELUM dipulihkan (restore pasca-laporan).
     assert len(journal) == 1
     act = journal[0]["action"]
-    assert act["json"] == {"role": "pelaksana", "is_admin": False}
+    assert act["json"] == {"role": "member", "is_admin": False}
     assert journal[0]["done"] is False
     # Runner hanya menulis SEKALI (inject); tak ada restore inline.
     assert len(sess.writes) == 1 and sess.writes[0][2] == {"role": "admin", "is_admin": True}
@@ -100,12 +100,12 @@ def test_flags_accepted_injection_and_journals(tmp_path, monkeypatch):
 
 def test_server_ignores_injection_is_ok(tmp_path, monkeypatch):
     # Server mengabaikan field terlarang: nilai tetap seperti semula → bukan temuan.
-    snap = {"data": {"role": "pelaksana", "is_admin": False}}
-    after = {"data": {"role": "pelaksana", "is_admin": False}}
+    snap = {"data": {"role": "member", "is_admin": False}}
+    after = {"data": {"role": "member", "is_admin": False}}
     rc, res, journal, _ = _run(tmp_path, monkeypatch, [snap, after])
     assert rc == 0 and res[0]["ok"] is True
     # Tetap mencatat jurnal (crash-safe); restore ke nilai asli = aman/no-op.
-    assert len(journal) == 1 and journal[0]["action"]["json"]["role"] == "pelaksana"
+    assert len(journal) == 1 and journal[0]["action"]["json"]["role"] == "member"
 
 
 def test_snapshot_unreadable_skips(tmp_path, monkeypatch):
@@ -116,7 +116,7 @@ def test_snapshot_unreadable_skips(tmp_path, monkeypatch):
 
 def test_rollback_restores_via_journal(tmp_path, monkeypatch):
     # Setelah temuan, replay jurnal harus mengirim PATCH nilai asli.
-    snap = {"data": {"role": "pelaksana", "is_admin": False}}
+    snap = {"data": {"role": "member", "is_admin": False}}
     after = {"data": {"role": "admin", "is_admin": True}}
     _, _, _, _ = _run(tmp_path, monkeypatch, [snap, after])
     sent = []
@@ -126,5 +126,5 @@ def test_rollback_restores_via_journal(tmp_path, monkeypatch):
         return True, "ok"
 
     RB.replay(tmp_path, do_restore)
-    assert sent == [{"role": "pelaksana", "is_admin": False}]
+    assert sent == [{"role": "member", "is_admin": False}]
     assert RB.pending(tmp_path) == []        # semua dipulihkan

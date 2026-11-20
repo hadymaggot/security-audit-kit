@@ -75,7 +75,7 @@ def replay(reports_dir, do_restore):
         try:
             ok, note = do_restore(e)
         except Exception as exc:  # noqa: BLE001
-            ok, note = False, f"galat: {exc}"
+            ok, note = False, f"error: {exc}"
         e["done"] = bool(ok)
         results.append({"label": e.get("label", "?"), "ok": bool(ok), "note": note})
     _write(reports_dir, journal)

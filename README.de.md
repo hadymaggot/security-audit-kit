@@ -59,9 +59,9 @@ jedes Projekt hat eigene `config/`, `tests/<modul>/*.yml` und `reports/`, sodass
 aus getrennten Terminals geprüft werden können:
 
 ```bash
-python audit.py --project apple-gatrik init authz,upload   # legt projects/apple-gatrik/ an
-python audit.py --project apple-gatrik all                  # Terminal 1
-python audit.py --project D:/audit/kumham all               # Terminal 2 (Ordner beliebig)
+python audit.py --project my-app init authz,upload   # legt projects/my-app/ an
+python audit.py --project my-app all                  # Terminal 1
+python audit.py --project D:/audit/client-b all               # Terminal 2 (Ordner beliebig)
 ```
 
 Gleichwertig: die Umgebungsvariable `SAK_PROJECT_DIR`, `make all PROJECT=...` oder
@@ -79,6 +79,7 @@ Details unter [Aus einem beliebigen Verzeichnis ausführen](docs/panduan-penggun
 audit.py            OS-übergreifender Entry Point (ein Zugang)
 report.py           Zusammenbau des Gesamtberichts
 remediation.py      Knowledge Base für Remediation & Begründung
+glossary.py         Glossar-Loader (Kursiv, Zuordnung); Daten in glosarium.yml
 config/             Ziele (Beispiel; die echten per gitignore ausgeschlossen)
 scanners/           Wrapper für ZAP, testssl, Header, trivy/semgrep/gitleaks
 tests/              authz-matrix, client-leak, upload-safety, auth-policy
@@ -96,6 +97,7 @@ Form des Endberichts: [docs/contoh-laporan.md](docs/contoh-laporan.md).
 | Dokument | Inhalt |
 |---|---|
 | [docs/panduan-penggunaan.de.md](docs/panduan-penggunaan.de.md) | Schritt-für-Schritt-Anleitung: Installation, Konfiguration, Authentifizierung, Scans ausführen, Berichte lesen, Rollback, Troubleshooting |
+| [docs/glosarium.de.md](docs/glosarium.de.md) | Technisches Glossar pro Sprache (id/en/de), Kursivregeln, Sprachwahl mit `--lang`, Begriffe ergänzen |
 | [docs/metodologi.de.md](docs/metodologi.de.md) | Prüfmethodik & Standardreferenzen (OWASP, ASVS, Risk Rating) |
 | [docs/temuan-to-test-mapping.de.md](docs/temuan-to-test-mapping.de.md) | Befunde eines Pentest-Berichts in Testfälle je Modul übersetzen |
 | [docs/contoh-laporan.md](docs/contoh-laporan.md) · [contoh-laporan.html](docs/contoh-laporan.html) · [Slides](docs/contoh-laporan-slides.html) | Beispielhafte Berichtsausgabe (fiktive Daten) — Beratungsformat + Präsentations-/Slide-Variante |
