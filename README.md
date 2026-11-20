@@ -2,109 +2,102 @@
 
 # Security Audit Kit
 
-Toolkit security testing untuk web app yang di-config lewat file, berjalan di Windows
-maupun Linux, dan dapat digunakan ulang lintas project. Idenya: ubah temuan pentest menjadi
-automated test yang berjalan terus di CI, lalu rangkum menjadi report yang dapat
-dipertanggungjawabkan — ada metodologi, bukti, alasan severity, rekomendasi beserta contoh
-solusinya, dan rujukan ke OWASP/BSSN.
+Toolkit security testing berbasis file config untuk web app: mengubah temuan pentest menjadi automated test, lalu menyusun hasilnya menjadi report yang dapat dipertanggungjawabkan.
 
-> ⚠️ Hanya untuk sistem milik sendiri atau yang Anda miliki izin tertulis untuk diuji.
-> Scan aktif arahkan ke dev/staging, jangan ke production yang sedang digunakan user.
+- Menguji lebih dari 20 modul: header, TLS, access control, upload, injection, JWT, CORS, dependency, dan lainnya.
+- Non-destruktif secara bawaan. Modul yang menulis data (`mass-assignment`, `ratelimit`, `session-mgmt`) dan scan aktif ZAP dengan blok `snapshot` dipulihkan otomatis lewat rollback.
+- Report setara konsultan dalam HTML, Markdown, dan slide: bukti, alasan severity, rekomendasi dengan contoh perbaikan, dan rujukan OWASP/BSSN.
 
-## Modul
+> Hanya untuk sistem milik sendiri atau yang Anda miliki izin tertulis untuk diuji. Arahkan scan aktif ke dev/staging, bukan production.
 
-| Modul | Fungsi |
-|---|---|
-| `authz` | Access control per role: privilege escalation, lompat status, IDOR, header `X-Auth-*` palsu dari client |
-| `zap` | OWASP ZAP — passive scan / API scan dari OpenAPI, bisa jalan di balik login |
-| `clientleak` | Cache response sensitif, secret/endpoint yang tersisip di bundle JS & HTML, source map, file terekspos (`.env`, `.git/`, dump, backup) — tetap berjalan walau app-nya tidak menggunakan JS |
-| `upload` | Menolak file upload berbahaya: PDF ber-JS, polyglot, double extension, terlalu besar |
-| `auth-policy` | Kekuatan password, captcha harus regenerate tiap gagal |
-| `mass-assignment` | Mass assignment / privilege escalation (BOPLA): menyuntikkan field terlarang (`role`, `is_admin`, `company_id`) ke objek milik sendiri. **Destruktif tapi reversibel** — tiap tulisan dicatat ke jurnal & dipulihkan otomatis setelah laporan (`audit.py rollback` untuk replay) |
-| `cors` | CORS misconfiguration: reflected origin, wildcard+credentials, Origin `null` diterima |
-| `open-redirect` | Parameter pengalih (`next`/`url`/`redirect`/…) yang mengarah ke host luar |
-| `tls` / `headers` | Protokol/cipher TLS usang, security header yang kurang atau malah membocorkan info |
-| `webstack` | Deteksi versi dari banner `Server`/`X-Powered-By` lalu petakan ke CVE yang diketahui (mis. Apache mod_http2, NGINX HTTP/2, PHP2Shell); mendukung rentang `min_version`, non-destruktif, `known_vulnerable` dapat diperbarui lewat config |
-| `injection` | SQL injection (error-based, boolean-based, time-based opsional); non-destruktif (probing baca, tidak mengubah data) |
-| `deps` | CVE dependency (Trivy) + SAST OWASP Top 10 (semgrep) + secret ter-commit (gitleaks) |
-| `report` | Gabung semua hasil jadi `reports/laporan.html` & `.md` |
-
-Automation ini bukan pengganti pentest manual: temuan scanner tetap harus diverifikasi,
-dan celah logika bisnis hanya terdeteksi apabila test-nya ditulis khusus untuk kasus itu.
-
-## Prasyarat
-
-Python 3.10+, Docker (untuk ZAP/Trivy/semgrep/gitleaks/testssl). `make` opsional.
-
-## Penggunaan
+## Quick start
 
 ```bash
 git clone https://github.com/hadymaggot/security-audit-kit.git
 cd security-audit-kit
 pip install -r requirements.txt
-cp config/targets.example.yml config/targets.yml      # isi base URL target
-python audit.py all                                   # -> reports/laporan.html
+python audit.py --project my-app init
+# edit projects/my-app/config/targets.yml: base_url: "https://dev.example.com"
+python audit.py --project my-app headers
+python audit.py --project my-app report
 ```
 
-Kredensial lewat environment variable, bukan ditaruh di file (file `*.yml` yang asli sudah
-masuk gitignore). Satu entry point untuk semua OS: `python audit.py <modul>`. Untuk perintah
-pendek, gunakan `make <modul>` di Linux/macOS atau `.\audit.ps1 <modul>` di Windows.
+Expected: tiap header dicetak `ok`, `MISS`, atau `LEAK` (kode keluar 1 jika ada temuan), lalu `projects/my-app/reports/laporan.html` terbentuk. Buka file itu di browser.
 
-**Multi-project (paralel).** Satu instalasi kit dapat melayani banyak project sekaligus; tiap
-project memiliki `config/`, `tests/<modul>/*.yml`, dan `reports/` sendiri sehingga dapat diaudit
-bersamaan dari terminal berbeda:
+## Modules
 
-```bash
-python audit.py --project my-app init authz,upload   # buat projects/my-app/
-python audit.py --project my-app all                  # terminal 1
-python audit.py --project D:/audit/client-b all               # terminal 2 (folder di mana saja)
-```
+Jalankan dengan `python audit.py --project my-app <modul>`. `all` menjalankan semua modul yang config-nya ada, lalu report dan rollback.
 
-Setara: env `SAK_PROJECT_DIR`, `make all PROJECT=...`, atau `.\audit.ps1 all -Project ...`.
-Penyusun dan perusahaan di laporan diatur per project lewat blok `report:` di `targets.yml`
-(lihat [panduan](docs/panduan-penggunaan.md#multi-project-paralel)).
+| Modul | Pemeriksaan | Kredensial? |
+|---|---|---|
+| `headers` | Security header yang kurang; bocoran `Server`/`X-Powered-By` | Tidak |
+| `tls` | Protokol/cipher TLS usang dan kerentanan TLS (testssl.sh) | Tidak |
+| `webstack` | Versi dari banner `Server`/`X-Powered-By` dipetakan ke CVE | Tidak |
+| `zap` | OWASP ZAP: `baseline` (passive), `api` dari OpenAPI, `full` (aktif) | Opsional |
+| `deps` | CVE dependency (Trivy), SAST (semgrep), secret ter-commit (gitleaks) | Tidak |
+| `recon` | OSINT pasif (subfinder, dnsx, httpx); port scan dan nuclei hanya jika diaktifkan di config | Tidak |
+| `clientleak` | Cache response sensitif, secret/source map di JS dan HTML, file terekspos (`.env`, `.git/`) | Opsional |
+| `cookie-flags` | `HttpOnly`, `Secure`, `SameSite`, dan masa berlaku cookie | Opsional |
+| `cors` | Reflected origin, wildcard dengan credentials, Origin `null` | Opsional |
+| `open-redirect` | Parameter redirect (`next`, `url`, `redirect`) ke host luar | Opsional |
+| `response-leak` | Key sensitif, secret, stack trace, dan IP internal di response API | Opsional |
+| `openapi-coverage` | Operasi GET yang dilindungi menurut OpenAPI tetapi terbuka tanpa login | Tidak |
+| `captcha` | Jawaban captcha yang bocor di response tantangan | Tidak |
+| `auth-policy` | Kekuatan password, captcha harus berganti tiap kali | Opsional |
+| `authz` | Access control per role: privilege escalation, IDOR, header `X-Auth-*` palsu | Ya |
+| `upload` | Penolakan upload berbahaya: PDF ber-JS, polyglot, double extension | Opsional |
+| `injection` | SQL injection error-based, boolean-based, dan time-based (opsional) | Opsional |
+| `jwt` | Algoritma `none`, secret lemah, token dipalsukan atau tanpa `exp` | Ya |
+| `ssrf` | Endpoint yang menerima URL, diuji dengan listener canary lokal | Opsional |
+| `mass-assignment` | Field terlarang (`role`, `is_admin`) pada objek sendiri; dipulihkan otomatis | Ya |
+| `ratelimit` | Rate limit, lockout akun, dan enumerasi akun pada akun uji sekali pakai | Ya |
+| `session-mgmt` | Sesi dicabut setelah logout dan ganti password | Ya |
 
-`python audit.py` hanya berjalan dari folder kit. Dari folder lain gunakan path lengkap
-(`python C:\GitHub\security-audit-kit\audit.py --project <folder> all`), `audit.ps1`, atau buat
-pintasan `sak` di profil PowerShell (`function sak { python C:\GitHub\security-audit-kit\audit.py @args }`);
-rinciannya di bagian [Menjalankan dari folder mana pun](docs/panduan-penggunaan.md#menjalankan-dari-folder-mana-pun).
+Perintah lain: `init`, `report`, `rollback`, `clean`. Daftar lengkap: `python audit.py --help`. Hasil scanner tetap perlu diverifikasi; celah logika bisnis hanya terdeteksi jika test-nya ditulis untuk kasus itu.
 
-## Struktur
+## Requirements
 
-```
-audit.py            entry point lintas-OS (satu pintu)
-report.py           perangkai report gabungan
-remediation.py      knowledge base remediasi & justifikasi
-glossary.py         pemuat glosarium (miring, padanan); data di glosarium.yml
-config/             target (contoh; yang asli di-gitignore)
-scanners/           wrapper ZAP, testssl, header, trivy/semgrep/gitleaks
-tests/              authz-matrix, client-leak, upload-safety, auth-policy
-docs/               metodologi & pemetaan temuan -> test (halaman situs hasil build)
-site/               templat, kamus id/en/de, dan glosarium situs; build: python scripts/build_site.py
-.github/workflows/  contoh pipeline CI
-Makefile, audit.ps1 wrapper perintah pendek per OS
-```
+- [ ] Python 3.10+ dan `pip install -r requirements.txt`
+- [ ] Docker untuk `zap`, `tls`, dan `deps`
+- [ ] Opsional: Playwright untuk verifikasi cache browser di `clientleak`
+- [ ] Kredensial lewat environment variable, bukan di file
 
-Lebih detail ada di [docs/metodologi.md](docs/metodologi.md) dan
-[docs/temuan-to-test-mapping.md](docs/temuan-to-test-mapping.md). Contoh bentuk
-laporan akhir: [docs/contoh-laporan.md](docs/contoh-laporan.md).
-
-## Dokumentasi
+## Documentation
 
 | Dokumen | Isi |
 |---|---|
-| [docs/panduan-penggunaan.md](docs/panduan-penggunaan.md) | Panduan step-by-step: instalasi, konfigurasi, autentikasi, menjalankan scan, membaca laporan, rollback, troubleshooting |
-| [docs/glosarium.md](docs/glosarium.md) | Glosarium istilah teknis per bahasa (id/en/de), aturan huruf miring, memilih bahasa dengan `--lang`, cara menambah istilah |
-| [docs/metodologi.md](docs/metodologi.md) | Metodologi uji & acuan standar (OWASP, ASVS, Risk Rating) |
-| [docs/temuan-to-test-mapping.md](docs/temuan-to-test-mapping.md) | Menerjemahkan temuan laporan pentest menjadi kasus uji per modul |
-| [docs/contoh-laporan.md](docs/contoh-laporan.md) · [contoh-laporan.html](docs/contoh-laporan.html) · [slide](docs/contoh-laporan-slides.html) | Contoh output laporan (data fiktif) — format konsultan + varian presentasi/slide |
-| [CONTRIBUTING.md](CONTRIBUTING.md) · [SECURITY.md](SECURITY.md) · [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) | Kontribusi, kebijakan keamanan, kode etik |
+| [Panduan penggunaan](docs/panduan-penggunaan.md) | Instalasi, config, autentikasi, scan, report, rollback, troubleshooting |
+| [Glosarium](docs/glosarium.md) | Istilah teknis per bahasa dan opsi `--lang` |
+| [Metodologi](docs/metodologi.md) | Tahapan uji dan acuan standar (OWASP, ASVS) |
+| [Pemetaan temuan ke test](docs/temuan-to-test-mapping.md) | Mengubah temuan pentest menjadi kasus uji |
+| [Contoh report](docs/contoh-laporan.md) | Contoh output dengan data fiktif ([HTML](docs/contoh-laporan.html), [slide](docs/contoh-laporan-slides.html)) |
+| [Contributing](CONTRIBUTING.md) | Alur kontribusi dan cara menambah check |
+| [Situs](https://hadymaggot.github.io/security-audit-kit/id/) | Halaman proyek dan open scanner pasif ([setup Worker](worker/README.md)) |
 
-## Kontribusi
+Opsi lanjutan (di panduan): [multi-project](docs/panduan-penggunaan.md#multi-project-paralel), [menjalankan dari folder mana pun](docs/panduan-penggunaan.md#menjalankan-dari-folder-mana-pun), [warna keluaran](docs/panduan-penggunaan.md#warna-keluaran-konsol), [bahasa dan istilah](docs/panduan-penggunaan.md#bahasa-dan-istilah-teknis).
 
-Alur kontribusi, cara menambahkan check, dan konvensi commit ada di
-[CONTRIBUTING.md](CONTRIBUTING.md).
+## Project layout
 
-## Lisensi
+```text
+audit.py, audit.ps1, Makefile   # entry point lintas-OS dan wrapper pendek
+report.py                       # penyusun report gabungan
+remediation.py                  # knowledge base remediasi dan justifikasi severity
+glossary.py, glosarium.yml      # pemuat dan data glosarium
+config/                         # targets.example.yml (targets.yml asli di-gitignore)
+tests/<modul>/                  # runner dan contoh config tiap modul
+tests/unit/                     # unit test
+scanners/                       # skrip pembungkus ZAP, testssl, header, deps
+projects/                       # project buatan init (di-gitignore)
+docs/                           # panduan dan situs hasil build
+site/                           # templat, kamus id/en/de, glosarium situs
+worker/                         # Cloudflare Worker untuk open scanner
+.github/workflows/              # pipeline CI
+```
 
-Apache-2.0 — lihat [LICENSE](LICENSE).
+## Contributing
+
+Lihat [CONTRIBUTING.md](CONTRIBUTING.md) untuk alur, cara menambah check, dan konvensi commit.
+
+## License
+
+Apache-2.0, lihat [LICENSE](LICENSE).

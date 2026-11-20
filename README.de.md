@@ -2,113 +2,102 @@
 
 # Security Audit Kit
 
-Ein per Datei konfigurierbares Security-Testing-Toolkit für Webanwendungen, das unter
-Windows wie unter Linux läuft und projektübergreifend wiederverwendbar ist. Die Idee:
-Pentest-Befunde in automatisierte Tests überführen, die dauerhaft in der CI laufen, und
-sie anschließend zu einem nachvollziehbaren Bericht zusammenfassen — mit Methodik,
-Nachweisen, Begründung der Severity, Empfehlungen samt Lösungsbeispielen sowie Verweisen
-auf OWASP/BSSN.
+Ein per Datei konfiguriertes Security-Testing-Toolkit für Webanwendungen: Es überführt Pentest-Befunde in automatisierte Tests und fasst die Ergebnisse zu einem nachvollziehbaren Bericht zusammen.
 
-> ⚠️ Nur für eigene Systeme oder Systeme, für deren Prüfung Sie eine schriftliche
-> Erlaubnis besitzen. Aktive Scans auf dev/staging richten, nicht auf eine Production,
-> die gerade von Nutzern verwendet wird.
+- Prüft mehr als 20 Module: Header, TLS, Zugriffskontrolle, Upload, Injection, JWT, CORS, Abhängigkeiten und mehr.
+- Standardmäßig nicht-destruktiv. Module, die Daten schreiben (`mass-assignment`, `ratelimit`, `session-mgmt`), und aktive ZAP-Scans mit `snapshot`-Block werden per Rollback automatisch wiederhergestellt.
+- Bericht auf Beraterniveau als HTML, Markdown und Slides: Nachweise, Begründung der Severity, Empfehlungen mit Lösungsbeispielen und Verweise auf OWASP/BSSN.
 
-## Module
+> Nur für eigene Systeme oder Systeme, für deren Prüfung Sie eine schriftliche Erlaubnis besitzen. Aktive Scans auf dev/staging richten, nicht auf Production.
 
-| Modul | Funktion |
-|---|---|
-| `authz` | Zugriffskontrolle je Rolle: Privilege Escalation, Statussprünge, IDOR, gefälschte `X-Auth-*`-Header vom Client |
-| `zap` | OWASP ZAP — Passive Scan / API-Scan aus OpenAPI, kann hinter einem Login laufen |
-| `clientleak` | Caching sensibler Responses, in JS- & HTML-Bundles eingestreute Secrets/Endpoints, Source Maps, offengelegte Dateien (`.env`, `.git/`, Dumps, Backups) — läuft auch, wenn die App kein JS nutzt |
-| `upload` | Abweisung gefährlicher Datei-Uploads: PDF mit JS, Polyglots, doppelte Dateiendung, zu groß |
-| `auth-policy` | Passwortstärke, Captcha muss nach jedem Fehlversuch neu generiert werden |
-| `mass-assignment` | Mass Assignment / Privilege Escalation (BOPLA): Einschleusen verbotener Felder (`role`, `is_admin`, `company_id`) in eigene Objekte. **Destruktiv, aber reversibel** — jeder Schreibvorgang wird in ein Journal protokolliert und nach dem Bericht automatisch zurückgesetzt (`audit.py rollback` zum erneuten Abspielen) |
-| `cors` | CORS-Fehlkonfiguration: reflektierter Origin, Wildcard+Credentials, akzeptierter Origin `null` |
-| `open-redirect` | Weiterleitungsparameter (`next`/`url`/`redirect`/…), die auf externe Hosts zeigen |
-| `tls` / `headers` | Veraltete TLS-Protokolle/-Cipher, fehlende oder Informationen preisgebende Security-Header |
-| `webstack` | Versionserkennung aus `Server`/`X-Powered-By`-Bannern und Abgleich mit bekannten CVEs (z. B. Apache mod_http2, NGINX HTTP/2, PHP2Shell); unterstützt `min_version`-Bereiche, nicht-destruktiv, `known_vulnerable` per Config aktualisierbar |
-| `injection` | SQL Injection (error-based, boolean-based, optional time-based); nicht-destruktiv (lesendes Probing, verändert keine Daten) |
-| `deps` | CVE-Abhängigkeiten (Trivy) + SAST OWASP Top 10 (semgrep) + committete Secrets (gitleaks) |
-| `report` | Fasst alle Ergebnisse zu `reports/laporan.html` & `.md` zusammen |
-
-Diese Automatisierung ersetzt keinen manuellen Pentest: Scanner-Befunde müssen weiterhin
-verifiziert werden, und Business-Logic-Lücken werden nur erkannt, wenn ein Test eigens für
-diesen Fall geschrieben wurde.
-
-## Voraussetzungen
-
-Python 3.10+, Docker (für ZAP/Trivy/semgrep/gitleaks/testssl). `make` optional.
-
-## Verwendung
+## Quick start
 
 ```bash
 git clone https://github.com/hadymaggot/security-audit-kit.git
 cd security-audit-kit
 pip install -r requirements.txt
-cp config/targets.example.yml config/targets.yml      # Basis-URL des Ziels eintragen
-python audit.py all                                   # -> reports/laporan.html
+python audit.py --project my-app init
+# projects/my-app/config/targets.yml bearbeiten: base_url: "https://dev.example.com"
+python audit.py --project my-app headers
+python audit.py --project my-app report
 ```
 
-Zugangsdaten über Umgebungsvariablen, nicht in Dateien ablegen (die echten `*.yml`-Dateien
-stehen bereits in der gitignore). Ein Entry Point für alle Betriebssysteme:
-`python audit.py <modul>`. Für kurze Befehle `make <modul>` unter Linux/macOS oder
-`.\audit.ps1 <modul>` unter Windows verwenden.
+Erwartet: Jeder Header wird als `ok`, `MISS` oder `LEAK` ausgegeben (Exit-Code 1 bei Befunden), danach entsteht `projects/my-app/reports/laporan.html`. Die Datei im Browser öffnen.
 
-**Mehrere Projekte (parallel).** Eine Kit-Installation kann viele Projekte gleichzeitig bedienen;
-jedes Projekt hat eigene `config/`, `tests/<modul>/*.yml` und `reports/`, sodass sie gleichzeitig
-aus getrennten Terminals geprüft werden können:
+## Modules
 
-```bash
-python audit.py --project my-app init authz,upload   # legt projects/my-app/ an
-python audit.py --project my-app all                  # Terminal 1
-python audit.py --project D:/audit/client-b all               # Terminal 2 (Ordner beliebig)
-```
+Aufruf mit `python audit.py --project my-app <modul>`. `all` führt jedes Modul mit vorhandener Config aus, danach Bericht und Rollback.
 
-Gleichwertig: die Umgebungsvariable `SAK_PROJECT_DIR`, `make all PROJECT=...` oder
-`.\audit.ps1 all -Project ...`. Autor und Unternehmen im Bericht werden je Projekt über den Block
-`report:` in `targets.yml` festgelegt (siehe [Anleitung](docs/panduan-penggunaan.de.md#mehrere-projekte-parallel)).
+| Modul | Prüfungen | Zugangsdaten? |
+|---|---|---|
+| `headers` | Fehlende Security-Header; Offenlegung über `Server`/`X-Powered-By` | Nein |
+| `tls` | Veraltete TLS-Protokolle/-Cipher und TLS-Schwachstellen (testssl.sh) | Nein |
+| `webstack` | Version aus `Server`/`X-Powered-By`-Bannern auf CVEs abgebildet | Nein |
+| `zap` | OWASP ZAP: `baseline` (passiv), `api` aus OpenAPI, `full` (aktiv) | Optional |
+| `deps` | CVEs in Abhängigkeiten (Trivy), SAST (semgrep), committete Secrets (gitleaks) | Nein |
+| `recon` | Passives OSINT (subfinder, dnsx, httpx); Portscan und nuclei nur bei Aktivierung in der Config | Nein |
+| `clientleak` | Caching sensibler Responses, Secrets/Source Maps in JS und HTML, offengelegte Dateien (`.env`, `.git/`) | Optional |
+| `cookie-flags` | `HttpOnly`, `Secure`, `SameSite` und Laufzeit von Cookies | Optional |
+| `cors` | Reflektierter Origin, Wildcard mit Credentials, Origin `null` | Optional |
+| `open-redirect` | Weiterleitungsparameter (`next`, `url`, `redirect`) auf externe Hosts | Optional |
+| `response-leak` | Sensible Schlüssel, Secrets, Stack Traces und interne IPs in API-Responses | Optional |
+| `openapi-coverage` | GET-Operationen, die laut OpenAPI geschützt, aber ohne Login offen sind | Nein |
+| `captcha` | Captcha-Antworten, die in der Challenge-Response preisgegeben werden | Nein |
+| `auth-policy` | Passwortstärke, Captcha muss sich jedes Mal ändern | Optional |
+| `authz` | Zugriffskontrolle je Rolle: Privilege Escalation, IDOR, gefälschte `X-Auth-*`-Header | Ja |
+| `upload` | Abweisung gefährlicher Uploads: PDF mit JS, Polyglot, doppelte Dateiendung | Optional |
+| `injection` | SQL Injection: error-based, boolean-based und time-based (optional) | Optional |
+| `jwt` | Algorithmus `none`, schwache Secrets, gefälschte Tokens oder Tokens ohne `exp` | Ja |
+| `ssrf` | Endpoints, die URLs annehmen, geprüft mit lokalem Canary-Listener | Optional |
+| `mass-assignment` | Verbotene Felder (`role`, `is_admin`) an eigenen Objekten; automatisch wiederhergestellt | Ja |
+| `ratelimit` | Rate Limit, Account-Lockout und Account-Enumeration an einem Einweg-Testkonto | Ja |
+| `session-mgmt` | Sessions werden nach Logout und Passwortwechsel widerrufen | Ja |
 
-`python audit.py` funktioniert nur im Kit-Ordner. Von anderswo den vollständigen Pfad
-(`python C:\GitHub\security-audit-kit\audit.py --project <ordner> all`), `audit.ps1` oder eine
-`sak`-Abkürzung im PowerShell-Profil verwenden (`function sak { python C:\GitHub\security-audit-kit\audit.py @args }`);
-Details unter [Aus einem beliebigen Verzeichnis ausführen](docs/panduan-penggunaan.de.md#aus-einem-beliebigen-verzeichnis-ausführen).
+Weitere Befehle: `init`, `report`, `rollback`, `clean`. Vollständige Liste: `python audit.py --help`. Scanner-Ergebnisse müssen weiterhin verifiziert werden; Business-Logic-Lücken werden nur erkannt, wenn ein Test für diesen Fall geschrieben wurde.
 
-## Struktur
+## Requirements
 
-```
-audit.py            OS-übergreifender Entry Point (ein Zugang)
-report.py           Zusammenbau des Gesamtberichts
-remediation.py      Knowledge Base für Remediation & Begründung
-glossary.py         Glossar-Loader (Kursiv, Zuordnung); Daten in glosarium.yml
-config/             Ziele (Beispiel; die echten per gitignore ausgeschlossen)
-scanners/           Wrapper für ZAP, testssl, Header, trivy/semgrep/gitleaks
-tests/              authz-matrix, client-leak, upload-safety, auth-policy
-docs/               Methodik & Zuordnung Befund -> Test (gebaute Seitenseiten)
-site/               Vorlagen, id/en/de-Wörterbücher und Seiten-Glossar; Build: python scripts/build_site.py
-.github/workflows/  Beispiel-CI-Pipeline
-Makefile, audit.ps1 Wrapper für kurze Befehle je OS
-```
+- [ ] Python 3.10+ und `pip install -r requirements.txt`
+- [ ] Docker für `zap`, `tls` und `deps`
+- [ ] Optional: Playwright für die Browser-Cache-Prüfung in `clientleak`
+- [ ] Zugangsdaten über Umgebungsvariablen, nicht in Dateien
 
-Mehr Details in [docs/metodologi.de.md](docs/metodologi.de.md) und
-[docs/temuan-to-test-mapping.de.md](docs/temuan-to-test-mapping.de.md). Beispiel für die
-Form des Endberichts: [docs/contoh-laporan.md](docs/contoh-laporan.md).
-
-## Dokumentation
+## Documentation
 
 | Dokument | Inhalt |
 |---|---|
-| [docs/panduan-penggunaan.de.md](docs/panduan-penggunaan.de.md) | Schritt-für-Schritt-Anleitung: Installation, Konfiguration, Authentifizierung, Scans ausführen, Berichte lesen, Rollback, Troubleshooting |
-| [docs/glosarium.de.md](docs/glosarium.de.md) | Technisches Glossar pro Sprache (id/en/de), Kursivregeln, Sprachwahl mit `--lang`, Begriffe ergänzen |
-| [docs/metodologi.de.md](docs/metodologi.de.md) | Prüfmethodik & Standardreferenzen (OWASP, ASVS, Risk Rating) |
-| [docs/temuan-to-test-mapping.de.md](docs/temuan-to-test-mapping.de.md) | Befunde eines Pentest-Berichts in Testfälle je Modul übersetzen |
-| [docs/contoh-laporan.md](docs/contoh-laporan.md) · [contoh-laporan.html](docs/contoh-laporan.html) · [Slides](docs/contoh-laporan-slides.html) | Beispielhafte Berichtsausgabe (fiktive Daten) — Beratungsformat + Präsentations-/Slide-Variante |
-| [CONTRIBUTING.de.md](CONTRIBUTING.de.md) · [SECURITY.de.md](SECURITY.de.md) · [CODE_OF_CONDUCT.de.md](CODE_OF_CONDUCT.de.md) | Beitragen, Sicherheitsrichtlinie, Verhaltenskodex |
+| [Benutzerhandbuch](docs/panduan-penggunaan.de.md) | Installation, Config, Authentifizierung, Scans, Bericht, Rollback, Troubleshooting |
+| [Glossar](docs/glosarium.de.md) | Technische Begriffe je Sprache und die Option `--lang` |
+| [Methodik](docs/metodologi.de.md) | Prüfphasen und Normverweise (OWASP, ASVS) |
+| [Zuordnung Befund zu Test](docs/temuan-to-test-mapping.de.md) | Pentest-Befunde in Testfälle überführen |
+| [Beispielbericht](docs/contoh-laporan.md) | Beispielausgabe mit fiktiven Daten ([HTML](docs/contoh-laporan.html), [Slides](docs/contoh-laporan-slides.html)) |
+| [Contributing](CONTRIBUTING.de.md) | Beitragsablauf und Hinzufügen eines Checks |
+| [Website](https://hadymaggot.github.io/security-audit-kit/de/) | Projektseite und passiver Open Scanner ([Worker-Setup](worker/README.md)) |
 
-## Beitragen
+Erweiterte Optionen (im Handbuch): [mehrere Projekte](docs/panduan-penggunaan.de.md#mehrere-projekte-parallel), [aus beliebigem Verzeichnis ausführen](docs/panduan-penggunaan.de.md#aus-einem-beliebigen-verzeichnis-ausführen), [Konsolenfarben](docs/panduan-penggunaan.de.md#farben-in-der-konsole), [Sprache und Begriffe](docs/panduan-penggunaan.de.md#sprache-und-technische-begriffe).
 
-Ablauf für Beiträge, Vorgehen zum Hinzufügen eines Checks und Commit-Konventionen stehen in
-[CONTRIBUTING.de.md](CONTRIBUTING.de.md).
+## Project layout
 
-## Lizenz
+```text
+audit.py, audit.ps1, Makefile   # OS-übergreifender Entry Point und kurze Wrapper
+report.py                       # Zusammenführung des Berichts
+remediation.py                  # Wissensbasis für Behebung und Severity-Begründung
+glossary.py, glosarium.yml      # Glossar-Loader und -Daten
+config/                         # targets.example.yml (echte targets.yml ist gitignored)
+tests/<modul>/                  # Runner und Beispiel-Config je Modul
+tests/unit/                     # Unit-Tests
+scanners/                       # Wrapper-Skripte für ZAP, testssl, Header, deps
+projects/                       # per init erzeugte Projekte (gitignored)
+docs/                           # Handbücher und gebaute Website
+site/                           # Templates, id/en/de-Wörterbücher, Website-Glossar
+worker/                         # Cloudflare Worker für den Open Scanner
+.github/workflows/              # CI-Pipelines
+```
 
-Apache-2.0 — siehe [LICENSE](LICENSE).
+## Contributing
+
+Ablauf, Hinzufügen eines Checks und Commit-Konventionen: [CONTRIBUTING.de.md](CONTRIBUTING.de.md).
+
+## License
+
+Apache-2.0, siehe [LICENSE](LICENSE).
