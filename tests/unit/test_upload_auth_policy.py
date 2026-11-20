@@ -1,4 +1,4 @@
-"""Unit test runner upload-safety & auth-policy — tanpa jaringan."""
+"""Unit tests for the upload-safety and auth-policy runners. No network."""
 import importlib.util
 import json
 import sys
@@ -33,7 +33,7 @@ class _Resp:
 
 
 class _Sess:
-    """requests.Session tiruan; `responder(method, url, kw)` menentukan respons."""
+    """Fake requests.Session; `responder(method, url, kw)` decides the response."""
 
     responder = None
     calls = []
@@ -65,14 +65,14 @@ def _main(mod, tmp_path, monkeypatch, cfg, responder):
     return rc, json.loads(out.read_text(encoding="utf-8"))["results"]
 
 
-# --- auth-policy: password_error ---
+# auth-policy: password_error
 
 def test_password_error_requires_error_on_password_field():
     assert AP.password_error(_Resp(422, {"errors": {"password": ["lemah"]}}), "password")
-    # 422 karena field lain ≠ kebijakan sandi ditegakkan.
+    # A 422 caused by another field does not mean the password policy is enforced.
     assert not AP.password_error(_Resp(422, {"errors": {"email": ["wajib"]}}), "password")
     assert not AP.password_error(_Resp(200, {}), "password")
-    assert AP.password_error(_Resp(422), "password")        # non-JSON → status saja
+    assert AP.password_error(_Resp(422), "password")        # non-JSON: status only
 
 
 def test_password_checks_keeps_legacy_register_first():
@@ -99,9 +99,9 @@ def _policy(method, url, kw):
         return _Resp(200, {})
     pw = (kw.get("json") or {}).get("password")
     if pw == "aaaaaaaaaaaa":
-        return _Resp(429, {})                                   # kena rate limit
+        return _Resp(429, {})                                   # rate limited
     if pw == "Password123!":
-        return _Resp(422, {"errors": {"current_password": ["salah"]}})  # HIBP tak jalan
+        return _Resp(422, {"errors": {"current_password": ["salah"]}})  # HIBP check did not run
     if pw == AP_CFG["strong_password"]:
         return _Resp(422, {"errors": {"current_password": ["salah"]}})
     return _Resp(422, {"errors": {"password": ["terlalu pendek"]}})
@@ -111,19 +111,19 @@ def test_auth_policy_flags_weak_accepted_and_skips_429(tmp_path, monkeypatch):
     rc, res = _main(AP, tmp_path, monkeypatch, AP_CFG, _policy)
     by = {r["check"]: r for r in res}
     assert by["ganti password password lemah 12345678"]["ok"] is True
-    # Lolos validasi sandi (hanya gagal di current_password) = sandi lemah diterima.
+    # Passing password validation (failing only on current_password) means the weak password was accepted.
     assert by["ganti password password lemah Password123!"]["ok"] is False
     skip = by["ganti password password lemah aaaaaaaaaaaa"]
     assert skip["ok"] is True and skip["note"].startswith("skip")
     assert by["ganti password kontrol password kuat"]["ok"] is True
     assert rc == 1
-    # Konfirmasi sandi ikut dikirim & sesi login dipakai untuk endpoint ber-auth.
+    # The password confirmation is sent and the login session is used for authenticated endpoints.
     sent = [c[2]["json"] for c in _Sess.calls if c[1].endswith("change-password")]
     assert all(b["password"] == b["password_confirmation"] for b in sent)
 
 
 def test_auth_policy_strong_control_detects_meaningless_test(tmp_path, monkeypatch):
-    # Endpoint menolak sandi APA PUN di field sandi → kontrol harus gagal.
+    # An endpoint that rejects ANY password in the password field must fail the control.
     def always_pw_error(method, url, kw):
         if url.endswith("/api/login"):
             return _Resp(200, {})
@@ -133,7 +133,7 @@ def test_auth_policy_strong_control_detects_meaningless_test(tmp_path, monkeypat
     assert ctrl["ok"] is False and rc == 1
 
 
-# --- upload-safety ---
+# upload-safety
 
 UP_CFG = {
     "base_url": "http://t",
@@ -148,7 +148,7 @@ def _upload(method, url, kw):
         return _Resp(204)
     name, fobj, _ = kw["files"]["file"]
     body = fobj.read()
-    # Server hanya mendeteksi MIME: PDF ber-JS & PDF sah diterima, sisanya ditolak.
+    # The server only checks MIME: PDF with JS and a valid PDF are accepted, the rest rejected.
     if body.startswith(b"%PDF") and len(body) < 2048 and not name.endswith(".php") \
             and "/" not in name:
         return _Resp(201, {"data": {"id": f"att-{name}"}})
@@ -158,7 +158,7 @@ def _upload(method, url, kw):
 def test_upload_flags_pdf_js_and_cleans_up_accepted(tmp_path, monkeypatch):
     rc, res = _main(UP, tmp_path, monkeypatch, UP_CFG, _upload)
     by = {r["case"]: r for r in res}
-    assert by["PDF berisi JavaScript"]["ok"] is False                 # temuan
+    assert by["PDF berisi JavaScript"]["ok"] is False                 # finding
     assert "cleanup ok" in by["PDF berisi JavaScript"]["note"]
     assert by["PDF sah (kontrol)"]["ok"] is True
     assert "cleanup ok" in by["PDF sah (kontrol)"]["note"]
@@ -168,7 +168,7 @@ def test_upload_flags_pdf_js_and_cleans_up_accepted(tmp_path, monkeypatch):
     deletes = [c[1] for c in _Sess.calls if c[0] == "DELETE"]
     assert "http://t/api/r/1/attachments/att-a.pdf" in deletes
     posts = [c[2] for c in _Sess.calls if c[0] == "POST"]
-    assert all(p["data"] == {"type": "lainnya"} for p in posts)       # field form ikut
+    assert all(p["data"] == {"type": "lainnya"} for p in posts)       # form fields are included
 
 
 def test_traversal_name_sanitized_is_ok_but_echoed_is_finding(tmp_path, monkeypatch):

@@ -1,4 +1,4 @@
-"""Unit test modul openapi-coverage — murni, tanpa jaringan (sender di-stub)."""
+"""Unit tests for the openapi-coverage module: pure, no network (sender is stubbed)."""
 import importlib.util
 import json
 from pathlib import Path
@@ -20,9 +20,9 @@ SPEC = {
     "openapi": "3.0.0",
     "security": [{"cookieAuth": []}],
     "paths": {
-        "/users": {"get": {}, "post": {}},                                  # warisan global (dilindungi)
+        "/users": {"get": {}, "post": {}},                                  # inherits global security (protected)
         "/users/{id}": {"get": {}, "delete": {}},
-        "/login": {"post": {"security": []}},                               # publik eksplisit
+        "/login": {"post": {"security": []}},                               # explicitly public
         "/captcha": {"get": {"security": []}},
         "/laporan": {"get": {"security": [{"cookieAuth": []}]}},
     },
@@ -30,17 +30,17 @@ SPEC = {
 CFG = {"base_url": "http://t.example/api"}
 
 
-# ── is_protected / operations ───────────────────────────────────────────────
+# is_protected / operations
 def test_is_protected():
     assert OC.is_protected([{"bearer": []}]) is True
     assert OC.is_protected([]) is False and OC.is_protected(None) is False
-    assert OC.is_protected([{}]) is False                  # {} = auth opsional
-    assert OC.is_protected([{"a": []}, {}]) is False       # salah satunya opsional
+    assert OC.is_protected([{}]) is False                  # {} = optional auth
+    assert OC.is_protected([{"a": []}, {}]) is False       # one alternative is optional
 
 
-def test_operations_pewarisan_security_global():
+def test_operations_inherit_global_security():
     ops = {(o["method"], o["path"]): o for o in OC.operations(SPEC)}
-    assert ops[("GET", "/users")]["declared"] is True                  # warisan global
+    assert ops[("GET", "/users")]["declared"] is True                  # inherited from global security
     assert ops[("POST", "/login")]["declared"] is False
     assert ops[("POST", "/login")]["explicit_public"] is True
     assert ops[("GET", "/laporan")]["declared"] is True
@@ -61,7 +61,7 @@ def test_classify():
     assert OC.classify(404) == "inconclusive" and OC.classify(422) == "inconclusive"
 
 
-# ── analyze ─────────────────────────────────────────────────────────────────
+# analyze
 def _run(spec, answers, cfg=None):
     sent = []
 
@@ -75,77 +75,77 @@ def _run(spec, answers, cfg=None):
     return rows, sent
 
 
-def test_semua_ditegakkan_tanpa_temuan():
+def test_all_enforced_no_findings():
     rows, sent = _run(SPEC, {"/captcha": 200})
     assert not [r for r in rows if not r["ok"]]
     assert any("penegakan autentikasi" in r["check"] for r in rows)
 
 
-def test_dilindungi_menurut_spec_tetapi_terbuka():
+def test_protected_per_spec_but_open():
     rows, _ = _run(SPEC, {"/laporan": 200})
     f = [r for r in rows if not r["ok"]]
     assert len(f) == 1 and f[0]["kind"] == "auth-coverage-gap"
     assert "dilindungi menurut spesifikasi" in f[0]["check"] and f[0]["status"] == 200
 
 
-def test_publik_allowlist_tetapi_spec_bilang_terlindungi_jadi_spec_mismatch():
-    # /captcha ada di allowlist default; spesifikasi (security global) menganggapnya terlindungi.
+def test_allowlisted_public_but_spec_says_protected_is_spec_mismatch():
+    # /captcha is in the default allowlist, but the spec (global security) treats it as protected.
     spec = {"security": [{"cookieAuth": []}], "paths": {"/captcha": {"get": {}},
                                                          "/health": {"get": {}}}}
     rows, _ = _run(spec, {"/captcha": 200, "/health": 200})
     f = [r for r in rows if not r["ok"]]
-    assert len(f) == 1 and f[0]["kind"] == "spec-mismatch"           # bukan auth-coverage-gap
+    assert len(f) == 1 and f[0]["kind"] == "spec-mismatch"           # not auth-coverage-gap
     assert "2 operasi GET publik" in f[0]["note"] and "security: []" in f[0]["note"]
 
 
-def test_galat_5xx_pada_request_anonim_jadi_temuan():
+def test_5xx_on_anonymous_request_is_finding():
     rows, _ = _run(SPEC, {"/laporan": 500})
     f = [r for r in rows if not r["ok"]]
     assert len(f) == 1 and f[0]["kind"] == "anon-server-error" and f[0]["status"] == 500
     assert "error server" in f[0]["check"]
 
 
-def test_terbuka_tanpa_deklarasi_dan_di_luar_allowlist():
+def test_open_without_declaration_and_outside_allowlist():
     spec = {"paths": {"/rahasia": {"get": {}}, "/health": {"get": {}}}}
     rows, _ = _run(spec, {"/rahasia": 200, "/health": 200})
     f = [r for r in rows if not r["ok"]]
     assert len(f) == 1 and f[0]["kind"] == "unauthenticated-endpoint"
-    assert "/rahasia" in f[0]["check"]            # /health ada di allowlist default
+    assert "/rahasia" in f[0]["check"]            # /health is in the default allowlist
 
 
-def test_spec_tak_akurat_diagregasi():
+def test_inaccurate_spec_is_aggregated():
     spec = {"paths": {"/a": {"get": {}}, "/b": {"get": {}}, "/c": {"get": {}}}}
-    rows, _ = _run(spec, {})                                    # semua 401, tak ada deklarasi
+    rows, _ = _run(spec, {})                                    # all 401, no declarations
     f = [r for r in rows if not r["ok"]]
     assert len(f) == 1 and f[0]["kind"] == "spec-mismatch" and "3 operasi" in f[0]["note"]
 
 
-def test_operasi_tulis_tidak_pernah_dikirim():
+def test_write_operations_are_never_sent():
     rows, sent = _run(SPEC, {})
     assert all("/login" not in u or u.endswith("/captcha") for u in sent)
     methods_get = {o["path"] for o in OC.operations(SPEC) if o["method"] == "GET"}
-    assert len(sent) == len(methods_get)                       # hanya operasi GET
+    assert len(sent) == len(methods_get)                       # GET operations only
 
 
-def test_max_requests_membatasi_probe():
+def test_max_requests_limits_probes():
     spec = {"paths": {f"/p{i}": {"get": {}} for i in range(10)}}
     _, sent = _run(spec, {}, {"max_requests": 3})
     assert len(sent) == 3
 
 
-def test_inconclusive_404_tidak_jadi_temuan():
+def test_inconclusive_404_is_not_a_finding():
     rows, _ = _run(SPEC, {"/laporan": 404, "/users/" + OC.PLACEHOLDER_ID: 404})
     assert not [r for r in rows if not r["ok"] and r["kind"] == "auth-coverage-gap"]
 
 
-def test_allowlist_kustom():
+def test_custom_allowlist():
     spec = {"paths": {"/katalog": {"get": {}}}}
     rows, _ = _run(spec, {"/katalog": 200}, {"public_allowlist": ["/katalog"]})
     assert not [r for r in rows if not r["ok"]]
 
 
-# ── run_spec (load spec dari berkas + base_url dari servers) ────────────────
-def test_run_spec_dari_berkas_dan_servers(tmp_path, monkeypatch):
+# run_spec (spec loaded from file, base_url from servers)
+def test_run_spec_from_file_and_servers(tmp_path, monkeypatch):
     spec = {**SPEC, "servers": [{"url": "http://t.example/api"}]}
     p = tmp_path / "o.json"
     p.write_text(json.dumps(spec), encoding="utf-8")
@@ -163,8 +163,8 @@ def test_run_spec_dari_berkas_dan_servers(tmp_path, monkeypatch):
     assert any(r["check"].startswith("[svc] cakupan spesifikasi") for r in rows)
 
 
-# ── integrasi report ────────────────────────────────────────────────────────
-def test_report_memuat_openapi_coverage(tmp_path):
+# report integration
+def test_report_includes_openapi_coverage(tmp_path):
     rows, _ = _run(SPEC, {"/laporan": 200})
     (tmp_path / "openapi_coverage.json").write_text(json.dumps(
         {"module": "openapi-coverage", "failures": 1, "results": rows}), encoding="utf-8")
