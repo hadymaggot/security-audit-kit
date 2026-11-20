@@ -35,7 +35,9 @@ def _run_deps(monkeypatch, tmp_path, sub):
     monkeypatch.setattr(AU, "run", lambda cmd: calls.append(cmd) or 0)
     monkeypatch.setattr(AU, "run_semgrep",
                         lambda tgt, repo, out, runner=None: calls.append(AU.semgrep_cmd(tgt, repo, out, "n")) or 0)
-    rc = AU.mod_deps({"code_path": str(tmp_path)}, sub)
+    # Cache trivy ke folder sementara: test tidak boleh menyentuh ~/.cache/sak-trivy atau ikut
+    # mengantre pada kunci milik audit sungguhan yang sedang menjalankan trivy.
+    rc = AU.mod_deps({"code_path": str(tmp_path), "trivy_cache_dir": str(tmp_path / "trivy-cache")}, sub)
     return rc, calls
 
 
