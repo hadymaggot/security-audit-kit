@@ -160,7 +160,7 @@ def check_target(sess, url, known, http2_probe=supports_http2):
                 "check": f"Versi rentan: {cname} {cver}",
                 "status": r.status_code, "ok": False,
                 "note": (f"{cname}/{cver} ({src}) dalam rentang rentan {rng} — "
-                         f"{kv.get('cve', '?')}. {kv.get('catatan', '')}.{h2note} "
+                         f"{kv.get('cve', '?')}. {kv.get('note') or kv.get('catatan', '')}.{h2note} "
                          "Konfirmasi ke advisory vendor."),
                 "url": f"GET {url}",
                 "cve": [kv["cve"]] if kv.get("cve") else [],

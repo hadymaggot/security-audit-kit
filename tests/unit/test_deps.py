@@ -81,8 +81,8 @@ def test_report_memuat_gitleaks(tmp_path):
     f = RP.collect(tmp_path)
     assert len(f) == 1
     g = f[0]
-    assert g["kind"] == "leaked-secret" and g["severity"] == "high" and not g["lulus"]
-    assert "app/cfg.py:12" in g["judul"] and "abcdef12" in g["evidence"]
+    assert g["kind"] == "leaked-secret" and g["severity"] == "high" and not g["passed"]
+    assert "app/cfg.py:12" in g["title"] and "abcdef12" in g["evidence"]
     assert "tidak dicantumkan" in g["evidence"] and "REDACTED" not in g["evidence"]
 
 
@@ -93,7 +93,7 @@ def test_report_memuat_semgrep_dengan_cwe_dan_severity(tmp_path):
                                            "metadata": {"cwe": ["CWE-89: SQL Injection"]}}},
         {"check_id": "x.y.warn-rule", "path": "a.js", "start": {"line": 3},
          "extra": {"severity": "WARNING", "message": "perhatian"}}]}), encoding="utf-8")
-    f = {x["judul"]: x for x in RP.collect(tmp_path)}
+    f = {x["title"]: x for x in RP.collect(tmp_path)}
     sql = f["sql-injection — app/Ctl.php:40"]
     assert sql["kind"] == "sast-finding" and sql["severity"] == "high" and sql["cve"] == ["CWE-89"]
     assert "<p>" not in sql["evidence"] and "Query rentan" in sql["evidence"]

@@ -31,9 +31,9 @@ Satu check = satu runner di `tests/<nama>/run_<nama>.py` + entri di `remediation
 1. **Runner.** Baca config via `--config`, dukung `--json <out>`. Pola output per
    item: `{"label", "status", "ok": bool, "note"}`. Lihat `tests/cors/run_cors.py`
    sebagai contoh paling ringkas. Sertakan `<nama>.example.yml`.
-2. **Remediasi (wajib).** Tambahkan entri `KB` di `remediation.py` dengan `deskripsi`,
-   `dampak`, `severity`, `severity_dasar`, `rekomendasi` (list, boleh ada contoh
-   solusi/kode), dan `referensi` (OWASP/BSSN). Petakan di `classify()`.
+2. **Remediasi (wajib).** Tambahkan entri `KB` di `remediation.py` dengan `description`,
+   `impact`, `severity`, `severity_basis`, `recommendation` (list, boleh ada contoh
+   solusi/kode), dan `references` (OWASP/BSSN). Petakan di `classify()`.
 3. **report.py.** Daftarkan file JSON-nya di `collect()` agar ikut ke laporan gabungan.
 4. **audit.py.** Daftarkan modulnya agar dapat `python audit.py <nama>`.
 5. **Test.** Tambahkan unit test di `tests/unit/` — logika runner diuji tanpa jaringan

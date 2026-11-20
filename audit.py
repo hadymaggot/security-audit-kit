@@ -564,11 +564,11 @@ def mod_rollback():
 
     print("== Rollback (memulihkan keadaan target) ==")
     res = _rollback.replay(reports, do_restore)
-    gagal = sum(1 for r in res if not r["ok"])
+    failed = sum(1 for r in res if not r["ok"])
     for r in res:
         print(f"  {C.good('ok') if r['ok'] else C.bad('XX')} {r['label']}  {r['note']}")
-    print(f"{len(res) - gagal}/{len(res)} dipulihkan.")
-    return 1 if gagal else 0
+    print(f"{len(res) - failed}/{len(res)} dipulihkan.")
+    return 1 if failed else 0
 
 
 # Modul pengujian berbasis runner Python: nama CLI -> (folder di tests/, runner, config, json).

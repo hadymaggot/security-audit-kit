@@ -203,8 +203,8 @@ def test_report_memuat_jwt(tmp_path):
     rows = JW.run(CFG, http=_Http(_token("secret"), mode="accepts-none", secret="secret"))
     (tmp_path / "jwt.json").write_text(json.dumps(
         {"module": "jwt", "failures": 1, "results": rows}), encoding="utf-8")
-    gagal = [x for x in RP.collect(tmp_path) if not x["lulus"]]
-    kinds = {x["kind"]: x["severity"] for x in gagal}
+    failed = [x for x in RP.collect(tmp_path) if not x["passed"]]
+    kinds = {x["kind"]: x["severity"] for x in failed}
     assert kinds["jwt-forgery"] == "critical" and kinds["jwt-weak-secret"] == "critical"
     assert RP.cvss_for("jwt-forgery", "critical")[0] == 9.8
     assert {"jwt-forgery", "jwt-weak-secret", "jwt-weak-config"} <= set(RP.KIND_LABEL)

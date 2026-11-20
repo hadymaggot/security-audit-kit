@@ -21,9 +21,9 @@ WS = _load()
 
 KNOWN = [
     {"server": "apache", "max_version": "2.4.71", "cve": "CVE-2026-119618",
-     "catatan": "mod_http2 RCE"},
+     "note": "mod_http2 RCE"},
     {"server": "nginx", "max_version": "1.30.7", "cve": "CVE-2026-123633",
-     "catatan": "HTTP/2"},
+     "note": "HTTP/2"},
 ]
 
 
@@ -51,9 +51,9 @@ def _check(headers, http2=None, known=None):
 # known_vulnerable PHP multi-branch (backport) — dua entri, CVE sama.
 PHP_KNOWN = [
     {"server": "php", "min_version": "8.4.0", "max_version": "8.4.27",
-     "cve": "CVE-2026-109618", "catatan": "PHP2Shell"},
+     "cve": "CVE-2026-109618", "note": "PHP2Shell"},
     {"server": "php", "min_version": "8.3.0", "max_version": "8.3.36",
-     "cve": "CVE-2026-109618", "catatan": "PHP2Shell"},
+     "cve": "CVE-2026-109618", "note": "PHP2Shell"},
 ]
 
 

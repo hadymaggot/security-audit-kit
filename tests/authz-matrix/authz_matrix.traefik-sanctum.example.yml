@@ -40,7 +40,7 @@ auth:
     admin:
       username: "${AUTHZ_ADMIN_USER}"
       password: "${AUTHZ_ADMIN_PASS}"
-    user_rendah:                      # peran paling rendah; harus ditolak di area admin
+    low_user:                      # peran paling rendah; harus ditolak di area admin
       username: "${AUTHZ_LOW_USER}"
       password: "${AUTHZ_LOW_PASS}"
     anon: { anonymous: true }
@@ -50,35 +50,35 @@ endpoints:
   - name: "Daftar pengguna (admin only)"
     method: GET
     path: "/api/users"
-    expect: { admin: allow, user_rendah: deny, anon: deny }
+    expect: { admin: allow, low_user: deny, anon: deny }
 
   - name: "Kelola peran/permission (admin only)"
     method: GET
     path: "/api/roles"
-    expect: { admin: allow, user_rendah: deny, anon: deny }
+    expect: { admin: allow, low_user: deny, anon: deny }
 
   - name: "Log aktivitas (admin only)"
     method: GET
     path: "/api/activity-logs"
-    expect: { admin: allow, user_rendah: deny, anon: deny }
+    expect: { admin: allow, low_user: deny, anon: deny }
 
   # IDOR — peran rendah mengakses objek milik entitas lain harus ditolak.
   - name: "IDOR — perusahaan/company lain"
     method: GET
     path: "/api/companies/1"
-    expect: { user_rendah: deny }
+    expect: { low_user: deny }
 
   - name: "IDOR — detail laporan milik unit lain"
     method: GET
     path: "/api/reports/1"
-    expect: { user_rendah: deny }
+    expect: { low_user: deny }
 
   # Business-logic — ubah status/approve tanpa peran berwenang harus ditolak.
   - name: "Approve laporan tanpa wewenang"
     method: POST
     path: "/api/reports/1/approve"
     body: { note: "probe" }
-    expect: { user_rendah: deny }
+    expect: { low_user: deny }
 
   # Bypass gateway — 'base_url' per endpoint menunjuk LANGSUNG ke port service
   # (tanpa Traefik/ForwardAuth). Anon tanpa header apa pun harus tetap ditolak.
@@ -93,7 +93,7 @@ endpoints:
 # dipercaya mentah oleh service hilir.
 forged_headers:
   # 1) Lewat gateway sebagai peran rendah: ForwardAuth wajib menimpa X-Auth-*.
-  - as_role: user_rendah
+  - as_role: low_user
     inject:
       X-Auth-Roles: "admin"
       X-Auth-User-Id: "1"

@@ -161,6 +161,6 @@ def test_report_memuat_ssrf(tmp_path):
                         WHERE)]
     (tmp_path / "ssrf.json").write_text(json.dumps(
         {"module": "ssrf", "failures": 1, "results": rows}), encoding="utf-8")
-    gagal = [x for x in RP.collect(tmp_path) if not x["lulus"]]
-    assert gagal and gagal[0]["kind"] == "ssrf" and gagal[0]["severity"] == "high"
+    failed = [x for x in RP.collect(tmp_path) if not x["passed"]]
+    assert failed and failed[0]["kind"] == "ssrf" and failed[0]["severity"] == "high"
     assert RP.cvss_for("ssrf", "high")[0] == 8.5 and "ssrf" in RP.KIND_LABEL

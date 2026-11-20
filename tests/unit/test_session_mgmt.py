@@ -177,7 +177,7 @@ def test_report_memuat_session_mgmt(tmp_path):
     rows = _run(World(revoke_others=False, revoke_on_logout=False))
     (tmp_path / "session_mgmt.json").write_text(json.dumps(
         {"module": "session-mgmt", "failures": 2, "results": rows}), encoding="utf-8")
-    by = {x["judul"]: x for x in RP.collect(tmp_path)}
+    by = {x["title"]: x for x in RP.collect(tmp_path)}
     assert by["ganti password: session lain dicabut"]["kind"] == "session-not-revoked"
     assert by["ganti password: session lain dicabut"]["severity"] == "medium"
     assert by["logout: session dicabut di server"]["kind"] == "logout-no-invalidate"

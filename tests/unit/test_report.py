@@ -54,8 +54,8 @@ def test_every_kind_has_kb():
                  "idor", "info-exposure", "client-cache", "js-leak", "weak-password",
                  "captcha-static", "missing-header", "tls-weak", "vuln-dependency"):
         kb = R.lookup(kind)
-        assert {"deskripsi", "dampak", "severity", "severity_dasar",
-                "rekomendasi", "referensi"} <= set(kb)
+        assert {"description", "impact", "severity", "severity_basis",
+                "recommendation", "references"} <= set(kb)
 
 
 # --- report.collect / summarize ---
@@ -69,13 +69,13 @@ def test_collect_cors_and_counts(tmp_path):
         ]}), encoding="utf-8")
     findings = RP.collect(tmp_path)
     counts = RP.summarize(findings)
-    cors = [f for f in findings if f["modul"] == "cors"]
+    cors = [f for f in findings if f["module"] == "cors"]
     assert len(cors) == 2
-    bad = [f for f in cors if not f["lulus"]][0]
+    bad = [f for f in cors if not f["passed"]][0]
     assert bad["kind"] == "cors-misconfig"
     assert bad["severity"] == "medium"
     assert counts["medium"] == 1
-    assert counts["lulus"] == 1
+    assert counts["passed"] == 1
 
 
 def test_collect_skips_missing_files(tmp_path):
@@ -148,12 +148,12 @@ def test_lookup_unknown_kind_falls_back_to_zap_generic():
 
 def test_all_kb_entries_wellformed():
     # Jauh lebih kuat dari daftar hardcode: tiap entri KB apa pun harus lengkap & waras.
-    need = {"deskripsi", "dampak", "severity", "severity_dasar", "rekomendasi", "referensi"}
+    need = {"description", "impact", "severity", "severity_basis", "recommendation", "references"}
     for kind, kb in R.KB.items():
         assert need <= set(kb), f"{kind} kurang field"
         assert kb["severity"].lower() in {"critical", "high", "medium", "low", "info"}
-        assert isinstance(kb["rekomendasi"], list) and kb["rekomendasi"], f"{kind} tanpa rekomendasi"
-        assert isinstance(kb["referensi"], list) and kb["referensi"], f"{kind} tanpa referensi"
+        assert isinstance(kb["recommendation"], list) and kb["recommendation"], f"{kind} tanpa rekomendasi"
+        assert isinstance(kb["references"], list) and kb["references"], f"{kind} tanpa referensi"
 
 
 # --- report.collect: lintas modul dalam satu direktori ---
@@ -175,12 +175,12 @@ def test_collect_multi_module(tmp_path):
     ]), encoding="utf-8")
 
     findings = RP.collect(tmp_path)
-    kinds = {f["judul"]: f for f in findings}
+    kinds = {f["title"]: f for f in findings}
 
     # headers: missing-header via kind_hint, bukan classify.
     csp = kinds["Content-Security-Policy"]
-    assert csp["kind"] == "missing-header" and not csp["lulus"]
-    assert any(f["lulus"] and f["kind"] == "missing-header" for f in findings)  # yg ok tetap kebaca
+    assert csp["kind"] == "missing-header" and not csp["passed"]
+    assert any(f["passed"] and f["kind"] == "missing-header" for f in findings)  # yg ok tetap kebaca
 
     # trivy: kind vuln-dependency + CVE terbawa.
     cve = kinds["CVE-2024-4068 — braces"]
@@ -210,7 +210,7 @@ def _render(tmp_path):
         for c in f["cve"]:
             if c and c.startswith("CVE") and c not in seen:
                 seen.add(c)
-                cves.append({"id": c, "where": f["judul"], "sev": f["severity"]})
+                cves.append({"id": c, "where": f["title"], "sev": f["severity"]})
     RP.write_md(tmp_path / "laporan.md", findings, counts, "2026-01-01 00:00", cves)
     RP.write_html(tmp_path / "laporan.html", findings, counts, "2026-01-01 00:00", cves)
     return ((tmp_path / "laporan.md").read_text(encoding="utf-8"),
@@ -259,12 +259,12 @@ def test_url_appears_as_instance_evidence(tmp_path):
 
 def test_screenshot_embedded_in_all_formats(tmp_path):
     (tmp_path / "client_leak.json").write_text(json.dumps({"results": [
-        {"kind": "cache", "label": "cache response /akun", "status": 200, "ok": False,
-         "note": "ter-cache", "url": "GET http://t/akun",
-         "screenshot": "evidence/cache_akun.png"},
+        {"kind": "cache", "label": "cache response /account", "status": 200, "ok": False,
+         "note": "ter-cache", "url": "GET http://t/account",
+         "screenshot": "evidence/cache_account.png"},
     ]}), encoding="utf-8")
     findings = RP.collect(tmp_path)
-    assert findings[0]["screenshot"] == "evidence/cache_akun.png"
+    assert findings[0]["screenshot"] == "evidence/cache_account.png"
     counts = RP.summarize(findings)
     RP.write_md(tmp_path / "m.md", findings, counts, "2026-01-01", [])
     RP.write_html(tmp_path / "m.html", findings, counts, "2026-01-01", [])
@@ -272,9 +272,9 @@ def test_screenshot_embedded_in_all_formats(tmp_path):
     md = (tmp_path / "m.md").read_text(encoding="utf-8")
     h = (tmp_path / "m.html").read_text(encoding="utf-8")
     s = (tmp_path / "s.html").read_text(encoding="utf-8")
-    assert "![bukti](evidence/cache_akun.png)" in md                 # MD: image link
-    assert "<img class='shot' src='evidence/cache_akun.png'" in h    # HTML: thumbnail
-    assert "evidence/cache_akun.png" in s                            # slide: gambar
+    assert "![bukti](evidence/cache_account.png)" in md                 # MD: image link
+    assert "<img class='shot' src='evidence/cache_account.png'" in h    # HTML: thumbnail
+    assert "evidence/cache_account.png" in s                            # slide: gambar
 
 
 def test_no_screenshot_no_img(tmp_path):
@@ -299,21 +299,21 @@ def test_missing_url_renders_dash(tmp_path):
 # --- gaya ZAP: alert dikelompokkan per kind, keyakinan, kredit pembuat ---
 
 def test_group_alerts_by_kind_with_instances():
-    gagal = [
-        {"modul": "authz-matrix", "judul": "[forged] http://t:18002/x", "kind": "forged-header",
-         "lulus": False, "severity": "critical", "status": 200, "evidence": "e1",
+    failed = [
+        {"module": "authz-matrix", "title": "[forged] http://t:18002/x", "kind": "forged-header",
+         "passed": False, "severity": "critical", "status": 200, "evidence": "e1",
          "url": "GET http://t:18002/x", "cve": [], "kb": R.lookup("forged-header")},
-        {"modul": "authz-matrix", "judul": "[forged] http://t:18004/y", "kind": "forged-header",
-         "lulus": False, "severity": "critical", "status": 200, "evidence": "e2",
+        {"module": "authz-matrix", "title": "[forged] http://t:18004/y", "kind": "forged-header",
+         "passed": False, "severity": "critical", "status": 200, "evidence": "e2",
          "url": "GET http://t:18004/y", "cve": [], "kb": R.lookup("forged-header")},
-        {"modul": "authz-matrix", "judul": "IDOR company", "kind": "idor",
-         "lulus": False, "severity": "high", "status": 200, "evidence": "e3",
+        {"module": "authz-matrix", "title": "IDOR company", "kind": "idor",
+         "passed": False, "severity": "high", "status": 200, "evidence": "e3",
          "url": "GET http://t/api/companies/9", "cve": [], "kb": R.lookup("idor")},
     ]
-    alerts = RP.group_alerts(gagal)
+    alerts = RP.group_alerts(failed)
     assert [a["kind"] for a in alerts] == ["forged-header", "idor"]   # critical dulu
-    assert len(alerts[0]["instances"]) == 2 and alerts[0]["keyakinan"] == "Tinggi"
-    assert alerts[0]["nama"] == RP.KIND_LABEL["forged-header"]
+    assert len(alerts[0]["instances"]) == 2 and alerts[0]["confidence"] == "Tinggi"
+    assert alerts[0]["name"] == RP.KIND_LABEL["forged-header"]
 
 
 def test_zap_module_confidence_sedang():
@@ -345,7 +345,7 @@ def test_professional_structure_present(tmp_path):
 
 def test_exec_summary_empty_vs_findings():
     assert "Tidak ditemukan temuan" in RP.exec_summary([], RP.summarize([]))
-    a = [{"nama": "X", "severity": "high", "instances": [1]}]
+    a = [{"name": "X", "severity": "high", "instances": [1]}]
     c = {k: 0 for k in RP.SEV_ORDER}
     c["high"] = 1
     assert "1 instance temuan" in RP.exec_summary(a, c)
@@ -365,7 +365,7 @@ def test_write_slides_selfcontained(tmp_path):
     h = (tmp_path / "s.html").read_text(encoding="utf-8")
     assert "id=\"deck\"" in h and "class=\"slide cover\"" in h      # struktur deck
     assert "SAK-001" in h and "Ringkasan Eksekutif" in h           # slide temuan + exec
-    assert RP.KIT_AUTHOR in h and RP.KLASIFIKASI in h              # kredit + klasifikasi
+    assert RP.KIT_AUTHOR in h and RP.CLASSIFICATION in h              # kredit + klasifikasi
     assert "cdn" not in h.lower() and "src=\"http" not in h        # tanpa dependency eksternal
 
 
@@ -445,9 +445,9 @@ class _FakePage:
 def test_capture_shot_viewport_default(tmp_path):
     cl = _leak()
     page = _FakePage()
-    rel = cl._capture_shot(page, {}, tmp_path, "/akun")
-    assert rel == "evidence/cache_akun.png"
-    assert (tmp_path / "evidence" / "cache_akun.png").exists()
+    rel = cl._capture_shot(page, {}, tmp_path, "/account")
+    assert rel == "evidence/cache_account.png"
+    assert (tmp_path / "evidence" / "cache_account.png").exists()
     assert page.calls == [("page", False, None)]          # viewport (full_page=False)
 
 
@@ -470,8 +470,8 @@ def test_capture_shot_disabled_or_no_dir(tmp_path):
 def test_cache_timeout_is_skipped_not_finding():
     # Timeout/unreachable pada cek cache = skip (ok=True), BUKAN temuan keamanan.
     cl = _leak()
-    sess = _LeakSess({"/akun": TimeoutError("timed out")})
-    res = cl.check_cache(sess, "http://t", ["/akun"])
+    sess = _LeakSess({"/account": TimeoutError("timed out")})
+    res = cl.check_cache(sess, "http://t", ["/account"])
     assert len(res) == 1
     row = res[0]
     assert row["ok"] is True and row["status"] == -1
@@ -518,16 +518,16 @@ def test_collect_reads_client_leak_skip_rows(tmp_path):
     # report.collect harus memperlakukan baris skip (status -1, ok True) sebagai lulus.
     (tmp_path / "client_leak.json").write_text(json.dumps({
         "module": "client-leak", "failures": 1, "results": [
-            {"kind": "cache", "label": "cache response /akun", "status": -1,
+            {"kind": "cache", "label": "cache response /account", "status": -1,
              "ok": True, "note": "skip: timed out"},
             {"kind": "file", "label": "File exposed: .env", "status": 200,
              "ok": False, "note": "12 byte dapat diunduh publik"},
         ]}), encoding="utf-8")
     findings = RP.collect(tmp_path)
-    by = {f["judul"]: f for f in findings}
-    assert by["cache response /akun"]["lulus"] is True
+    by = {f["title"]: f for f in findings}
+    assert by["cache response /account"]["passed"] is True
     leak = by["File exposed: .env"]
-    assert leak["lulus"] is False and leak["kind"] == "info-exposure"
+    assert leak["passed"] is False and leak["kind"] == "info-exposure"
 
 
 # --- tag HTML dari sumber eksternal (ZAP/trivy/testssl) tak boleh bocor sebagai teks ---

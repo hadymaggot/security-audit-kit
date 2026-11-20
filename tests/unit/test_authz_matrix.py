@@ -78,7 +78,7 @@ def test_example_configs_parse_and_have_forged_blocks():
         (ex / "authz_matrix.traefik-sanctum.example.yml").read_text(encoding="utf-8"))
     assert len(AZ.forged_blocks(plain.get("forged_headers"))) == 1
     blocks = AZ.forged_blocks(traefik.get("forged_headers"))
-    assert [b["as_role"] for b in blocks] == ["user_rendah", "anon"]
+    assert [b["as_role"] for b in blocks] == ["low_user", "anon"]
     assert any(ep.get("base_url") for ep in traefik["endpoints"])   # contoh bypass
     for cfg in (plain, traefik):
         roles = set(cfg["auth"]["roles"])

@@ -102,14 +102,14 @@ def test_italics_follow_effective_language_by_default(monkeypatch):
 
 # --- canonical-term mapping -------------------------------------------------------------------
 def test_padankan_keeps_case_and_applies_phrases_first():
-    assert G.padankan("Kebocoran info: sandi bocor di respons; Berkas terekspos", "id") == \
+    assert G.canonicalize("Kebocoran info: sandi bocor di respons; Berkas terekspos", "id") == \
         "Information disclosure: password breached di response; File exposed"
-    assert G.padankan("kata sandi lemah, header pembocor info", "id") == \
+    assert G.canonicalize("kata sandi lemah, header pembocor info", "id") == \
         "password lemah, header information disclosure"
 
 
 def test_padankan_whole_words_only():
-    assert G.padankan("responsif dan sesinya", "id") == "responsif dan sesinya"
+    assert G.canonicalize("responsif dan sesinya", "id") == "responsif dan sesinya"
 
 
 # --- reports and CLI --------------------------------------------------------------------------
@@ -173,9 +173,8 @@ def test_main_exports_lang_to_children(monkeypatch):
 # --- guard: display text must use the canonical terms -----------------------------------------
 DISPLAY_CALLS = {"print", "echo", "row", "row_info", "row_other_sessions", "row_old_password",
                  "SnapshotError", "ArgumentParser", "add_argument"}
-STORE_KEYS = {"note", "label", "check", "case", "endpoint", "expected", "nama", "name", "deskripsi", "description",
-              "dampak", "impact", "severity_dasar", "severity_basis", "rekomendasi", "recommendation",
-              "referensi", "references", "judul", "title"}
+STORE_KEYS = {"note", "label", "check", "case", "endpoint", "expected", "name", "description", "impact",
+              "severity_basis", "recommendation", "references", "title"}
 ASSIGN_NAMES = {"note", "mark", "verdict", "label", "msg", "message"}
 REGEX_CALLS = {"compile", "search", "match", "sub", "findall", "split", "fullmatch", "finditer"}
 FULL_FILES = {"remediation.py", "report.py"}      # every string is display text (or a classifier keyword)
@@ -232,7 +231,7 @@ def test_display_text_uses_canonical_terms():
         for n in ast.walk(tree):
             if isinstance(n, ast.Constant) and isinstance(n.value, str) and id(n) not in docs \
                     and _is_display(n, parents, f.name in FULL_FILES):
-                fixed = G.padankan(n.value, "id")
+                fixed = G.canonicalize(n.value, "id")
                 if fixed != n.value:
                     offenders.append(f"{f.relative_to(ROOT).as_posix()}:{n.lineno}: {n.value.strip()[:70]!r}")
     assert not offenders, "use the glossary term (see glosarium.yml):\n" + "\n".join(offenders)

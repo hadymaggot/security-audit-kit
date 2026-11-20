@@ -136,7 +136,7 @@ def phase_osint(cfg, run_tool, whicher=shutil.which):
                                 + (" ..." if len(subs) > 20 else ""),
                         "url": target})
     else:
-        results.append({"check": "subdomain enumeration", "ok": True, "severity": "lulus",
+        results.append({"check": "subdomain enumeration", "ok": True, "severity": "passed",
                         "note": "skip: subfinder/amass tidak terpasang", "url": target})
 
     # httpx: probe alive + tech-detect atas semua subdomain.
@@ -163,7 +163,7 @@ def phase_osint(cfg, run_tool, whicher=shutil.which):
             results.append({"check": f"host aktif {url}", "ok": False, "severity": "info",
                            "kind": "recon-subdomain", "note": note, "url": url})
     else:
-        results.append({"check": "probe HTTP (httpx)", "ok": True, "severity": "lulus",
+        results.append({"check": "probe HTTP (httpx)", "ok": True, "severity": "passed",
                         "note": "skip: httpx tidak terpasang"})
         # tanpa httpx, seed URL dari target agar fase lanjut tetap bisa jalan
         alive_urls = [cfg.get("base_url") or f"https://{target}"]
@@ -199,7 +199,7 @@ def phase_secrets(cfg, run_tool, whicher=shutil.which):
         return []
     th = _bin(cfg.get("tools", {}), "trufflehog", whicher)
     if not th:
-        return [{"check": "secret scan (trufflehog)", "ok": True, "severity": "lulus",
+        return [{"check": "secret scan (trufflehog)", "ok": True, "severity": "passed",
                  "note": "skip: trufflehog tidak terpasang", "url": code}]
     _, out = run_tool([th, "filesystem", code, "--json", "--no-update"],
                       cfg.get("timeout", 600))
@@ -219,7 +219,7 @@ def phase_secrets(cfg, run_tool, whicher=shutil.which):
                         "note": ("terverifikasi" if verified else "potensial")
                                 + f" di {where or code}", "url": where or code})
     if not results:
-        results.append({"check": "secret scan", "ok": True, "severity": "lulus",
+        results.append({"check": "secret scan", "ok": True, "severity": "passed",
                         "note": "Tidak ada secret terdeteksi trufflehog.", "url": code})
     return results
 
@@ -229,7 +229,7 @@ def phase_crawl(cfg, alive_urls, run_tool, whicher=shutil.which):
     target = cfg["target"]
     kt = _bin(cfg.get("tools", {}), "katana", whicher)
     if not kt:
-        return [], [{"check": "crawl (katana)", "ok": True, "severity": "lulus",
+        return [], [{"check": "crawl (katana)", "ok": True, "severity": "passed",
                      "note": "skip: katana tidak terpasang", "url": target}]
     if not alive_urls:
         return [], []
@@ -250,10 +250,10 @@ def phase_fuzz(cfg, alive_urls, run_tool, whicher=shutil.which):
     ff = _bin(cfg.get("tools", {}), "ffuf", whicher)
     wl = cfg.get("ffuf_wordlist")
     if not ff:
-        return [{"check": "content discovery (ffuf)", "ok": True, "severity": "lulus",
+        return [{"check": "content discovery (ffuf)", "ok": True, "severity": "passed",
                  "note": "skip: ffuf tidak terpasang", "url": target}]
     if not wl:
-        return [{"check": "content discovery (ffuf)", "ok": True, "severity": "lulus",
+        return [{"check": "content discovery (ffuf)", "ok": True, "severity": "passed",
                  "note": "skip: ffuf_wordlist tidak diset", "url": target}]
     base = (alive_urls[0] if alive_urls else cfg.get("base_url") or f"https://{target}")
     _, out = run_tool([ff, "-u", base.rstrip("/") + "/FUZZ", "-w", wl,
@@ -271,7 +271,7 @@ def phase_fuzz(cfg, alive_urls, run_tool, whicher=shutil.which):
                     "kind": "exposed-service",
                     "note": f"Path ditemukan ffuf, HTTP {st}.", "url": url})
     if not res:
-        res.append({"check": "content discovery ffuf", "ok": True, "severity": "lulus",
+        res.append({"check": "content discovery ffuf", "ok": True, "severity": "passed",
                     "note": "Tidak ada path ditemukan.", "url": target})
     return res
 
@@ -282,7 +282,7 @@ def phase_ports(cfg, run_tool, whicher=shutil.which):
     tools = cfg.get("tools", {})
     nb = _bin(tools, "naabu", whicher)
     if not nb:
-        return [{"check": "port scan (naabu)", "ok": True, "severity": "lulus",
+        return [{"check": "port scan (naabu)", "ok": True, "severity": "passed",
                  "note": "skip: naabu tidak terpasang", "url": target}]
     args = [nb, "-silent", "-json", "-host", target]
     if (cfg.get("mode") == "stealth"):
@@ -306,7 +306,7 @@ def phase_ports(cfg, run_tool, whicher=shutil.which):
                            "note": f"Port {port} terbuka pada {obj.get('host', target)}.",
                            "url": f"{obj.get('host', target)}:{port}"})
     if not open_any:
-        results.append({"check": "port scan", "ok": True, "severity": "lulus",
+        results.append({"check": "port scan", "ok": True, "severity": "passed",
                         "note": "Tidak ada port terbuka terdeteksi.", "url": target})
     return results
 
@@ -317,10 +317,10 @@ def phase_vuln(cfg, alive_urls, run_tool, whicher=shutil.which):
     nu = _bin(tools, "nuclei", whicher)
     target = cfg["target"]
     if not nu:
-        return [{"check": "vuln scan (nuclei)", "ok": True, "severity": "lulus",
+        return [{"check": "vuln scan (nuclei)", "ok": True, "severity": "passed",
                  "note": "skip: nuclei tidak terpasang", "url": target}]
     if not alive_urls:
-        return [{"check": "vuln scan (nuclei)", "ok": True, "severity": "lulus",
+        return [{"check": "vuln scan (nuclei)", "ok": True, "severity": "passed",
                  "note": "skip: tidak ada URL hidup untuk dipindai", "url": target}]
     mode = cfg.get("mode", "fast")
     tags, sev = _NUCLEI.get(mode, _NUCLEI["fast"])
@@ -349,11 +349,11 @@ def phase_vuln(cfg, alive_urls, run_tool, whicher=shutil.which):
                                or f"Template {obj.get('template-id', '?')} cocok.",
                        "url": at})
     if not results:
-        results.append({"check": "vuln scan nuclei", "ok": True, "severity": "lulus",
+        results.append({"check": "vuln scan nuclei", "ok": True, "severity": "passed",
                         "note": "Tidak ada temuan nuclei pada severity yang dipindai.",
                         "url": target})
     elif not worst:
-        results.append({"check": "severity vuln", "ok": True, "severity": "lulus",
+        results.append({"check": "severity vuln", "ok": True, "severity": "passed",
                         "note": "Tidak ada temuan nuclei medium/high/critical.", "url": target})
     return results
 
@@ -373,7 +373,7 @@ def orchestrate(cfg, run_tool=default_run_tool, whicher=shutil.which):
         if active_on and active.get("naabu"):
             results += phase_ports(cfg, run_tool, whicher)
         else:
-            results.append({"check": "port scan (naabu)", "ok": True, "severity": "lulus",
+            results.append({"check": "port scan (naabu)", "ok": True, "severity": "passed",
                             "note": "dilewati — fase aktif tidak diaktifkan "
                                     "(active.enabled & active.naabu).",
                             "url": cfg["target"]})
@@ -389,7 +389,7 @@ def orchestrate(cfg, run_tool=default_run_tool, whicher=shutil.which):
         if active_on and active.get("nuclei"):
             results += phase_vuln(cfg, alive, run_tool, whicher)
         else:
-            results.append({"check": "vuln scan (nuclei)", "ok": True, "severity": "lulus",
+            results.append({"check": "vuln scan (nuclei)", "ok": True, "severity": "passed",
                             "note": "dilewati — fase aktif tidak diaktifkan "
                                     "(active.enabled & active.nuclei).",
                             "url": cfg["target"]})
