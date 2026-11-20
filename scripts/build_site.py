@@ -31,7 +31,7 @@ PAGES = {"index": "index.html", "scan": "scan.html"}
 STATIC_URLS = [("contoh-laporan.html", "0.7"), ("contoh-laporan-html.html", "0.7"),
                ("contoh-laporan-slides.html", "0.6")]
 # Keys that go into attributes or plain text: never italicized.
-PLAIN = re.compile(r"^(meta_|og_|ld_|aria_|title$|placeholder$|code_|copy|copied$|term_title$|lg_map$|close$|minimize$)")
+PLAIN = re.compile(r"^(meta_|og_|ld_|aria_|me_|title$|placeholder$|code_|copy|copied$|term_title$|lg_map$|close$|minimize$)")
 
 
 def page_url(lang: str, page: str) -> str:
