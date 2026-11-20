@@ -2,13 +2,13 @@
 
 # Menerjemahkan laporan pentest menjadi test
 
-Cara menggunakan kit ini untuk "mengunci" temuan dari sebuah laporan pentest (misalnya dari
-BSSN/Gov-CSIRT) agar tidak kambuh. Per temuan, tentukan modul yang sesuai lalu tambahkan
-kasusnya.
+Mengunci temuan dari laporan pentest (misalnya BSSN/Gov-CSIRT) menjadi test, agar temuan itu tidak kambuh: tentukan modul yang sesuai per temuan, lalu tambahkan kasusnya.
+
+## Kelas temuan ke modul
 
 | Kelas temuan | Modul | Cara menambahkan kasus |
 |---|---|---|
-| Broken Access Control / privilege escalation | `authz` | Tambahkan endpoint sensitif, `expect: { role_rendah: deny }` |
+| Broken Access Control / privilege escalation | `authz` | Tambahkan endpoint sensitif, `expect: { regular_user: deny }` |
 | Lack of authorization status / lompat alur | `authz` | Endpoint ubah status + body status, `deny` untuk role yang tidak berwenang |
 | IDOR | `authz` | Endpoint menggunakan id milik akun lain, `deny` |
 | Header authz dipercaya dari client | `authz` | Isi blok `forged_headers` |
@@ -34,14 +34,9 @@ kasusnya.
 
 ## Alurnya
 
-Baca laporan, daftar tiap temuan beserta lokasinya (endpoint/parameter), petakan ke modul di
-tabel atas, lalu tambahkan kasusnya di `*.yml` modul terkait — jangan menaruh kredensial di
-situ, gunakan environment variable.
+1. Baca laporan dan daftar tiap temuan beserta lokasinya (endpoint/parameter).
+2. Petakan ke modul pada tabel di atas, lalu tambahkan kasusnya di `*.yml` modul terkait. Jangan menaruh kredensial di situ; gunakan environment variable.
+3. Jalankan `python audit.py all`. Temuan lama harus gagal (merah): artinya test benar-benar menangkap celahnya.
+4. Perbaiki app, jalankan lagi sampai lulus (hijau), lalu pasang di CI agar regresi terdeteksi otomatis.
 
-Jalankan `python audit.py all`, pastikan temuan lama sekarang menjadi gagal (merah) — artinya
-test-nya memang menangkap celahnya. Setelah itu perbaiki app-nya, jalankan lagi sampai lulus (hijau),
-lalu pasang di CI agar regresi terdeteksi otomatis.
-
-`reports/laporan.html` berisi per temuan: deskripsi, bukti, dampak, alasan severity,
-rekomendasi beserta contoh solusi, dan rujukan standar — siap dilampirkan sebagai bukti
-tindak lanjut.
+`reports/laporan.html` memuat per temuan: deskripsi, bukti, dampak, alasan severity, rekomendasi beserta contoh solusi, dan rujukan standar. Siap dilampirkan sebagai bukti tindak lanjut.

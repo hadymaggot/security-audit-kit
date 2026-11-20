@@ -1,33 +1,23 @@
 # Glossary and language
 
-The kit uses one glossary per language, [`glosarium.yml`](../glosarium.yml), so technical terms
-stay consistent across the console, reports, and documentation.
+The kit keeps one glossary per language, [`glosarium.yml`](../glosarium.yml), so technical terms stay consistent across the console, reports, and documentation.
 
 ## Writing rules
 
-- Sentences use the document language; **technical terms keep their original (English) form**,
-  for example response, request, password, session, file, header, endpoint.
-- In languages other than English, technical terms are printed in *italics* in HTML, Markdown, and
-  slide reports. Product names (OWASP ZAP, Docker, Trivy) and acronyms (CVE, XSS, RCE) are not
-  italicized; code, URLs, and header/path names stay plain.
-- One concept, one term. For example the Indonesian `respons`, `sandi`, `sesi`, `galat`, and `berkas`
-  are always written response, password, session, error, and file, and the "bocor" family is
-  standardized to information disclosure, exposed, or expose.
-- Code comments and docstrings are written in English, short and clear.
+- Sentences use the document language; **technical terms keep their original (English) form**, for example response, request, password, session, file, header, endpoint.
+- In languages other than English, technical terms are italicized in HTML, Markdown, and slide reports. Product names (OWASP ZAP, Docker, Trivy) and acronyms (CVE, XSS, RCE) are not italicized; code, URLs, and header/path names stay plain.
+- One concept, one term. The Indonesian `respons`, `sandi`, `sesi`, `galat`, and `berkas` are always written response, password, session, error, and file; the "bocor" family becomes information disclosure, exposed, or expose.
+- Code comments and docstrings are in English, short and clear.
 
 ## Choosing the language
 
-Priority: the `--lang id|en|de` option, the `SAK_LANG` environment variable, `report.language`
-in the project's `targets.yml`, then the glossary default (`en`).
+Priority: the `--lang id|en|de` option, the `SAK_LANG` environment variable, `report.language` in the project's `targets.yml`, then the glossary default (`en`).
 
 ```
 python audit.py --project my-app --lang de report
 ```
 
-The glossary exists for `id`, `en`, and `de` (the documentation languages). The report and console
-text catalog is currently complete for `id` only; other languages temporarily reuse the `id`
-text while still using their own glossary. Once a language's catalog is finished, add its code to
-`complete_text` in `glosarium.yml`.
+The glossary exists for `id`, `en`, and `de`. The report and console text catalog is complete for `id` only; other languages temporarily reuse the `id` text while still using their own glossary. When a language's catalog is finished, add its code to `complete_text` in `glosarium.yml`.
 
 ## `glosarium.yml` keys
 
@@ -42,17 +32,17 @@ text while still using their own glossary. Once a language's catalog is finished
 
 ## Adding terms, languages, or a project glossary
 
-- **New term:** add one line to `terms` of the right language.
-- **Word that must be standardized:** add a `word: term` pair to `map`.
-- **New language:** add one block under `languages` (ISO 639-1 code).
-- **One project only:** create `<project-folder>/config/glosarium.yml` with the same structure; it is
-  merged with the kit glossary.
-- **The website:** has its own glossary in `site/glosarium.yml` (same structure, not merged with the
-  kit glossary); see the website section of the contributing guide.
+Add a term:
 
-After changing it, run `python -m pytest tests/unit/test_glosarium.py`. The test fails when display
-text (console, report, recommendations) still uses a word mapped by `map` or `phrases`, so nothing
-is missed.
+1. Add one line to `terms` of the right language.
+2. If a local word must be replaced by that term, add a `word: term` pair to `map`.
+3. Run `python -m pytest tests/unit/test_glosarium.py`. It fails when display text (console, report, recommendations) still uses a word mapped by `map` or `phrases`.
+
+Other cases:
+
+- **New language:** add one block under `languages` (ISO 639-1 code).
+- **One project only:** create `<project-folder>/config/glosarium.yml` with the same structure; it is merged with the kit glossary.
+- **The website:** has its own glossary in `site/glosarium.yml` (same structure, not merged with the kit glossary); see the website section of the [contributing guide](../CONTRIBUTING.en.md).
 
 ## Language roadmap
 

@@ -2,72 +2,65 @@
 
 # Metodologi
 
-Kit ini mengadaptasi alur pentest berbasis OWASP menjadi automated regression testing.
-Terdapat dua tujuan: memastikan kelas kerentanan yang pernah ditemukan tidak muncul
-kembali tanpa terdeteksi, dan menyapu kelas kerentanan yang bersifat mekanis (security
-header, TLS, password policy, dependency rentan).
+Kit ini mengubah alur pentest berbasis OWASP menjadi automated regression test: kelas kerentanan yang pernah ditemukan tidak boleh muncul kembali tanpa terdeteksi, dan kelas yang bersifat mekanis (security header, TLS, password policy, dependency rentan) disapu pada setiap run.
 
 ## Acuan
 
-Severity mengikuti OWASP Risk Rating (Likelihood x Impact), kategori temuan mengikuti
-OWASP Top 10 2021 dan OWASP API Security Top 10 2023, dan kontrol yang diuji berbasis
-OWASP ASVS. Tooling yang digunakan: OWASP ZAP untuk DAST, Trivy untuk CVE dependency
-dan secret, testssl.sh untuk TLS, serta semgrep dan gitleaks untuk SAST dan deteksi
-secret yang telah ter-commit.
+| Topik | Standar atau tool |
+|---|---|
+| Severity | OWASP Risk Rating (Likelihood x Impact) |
+| Kategori temuan | OWASP Top 10 2021, OWASP API Security Top 10 2023 |
+| Kontrol yang diuji | OWASP ASVS |
+| DAST | OWASP ZAP |
+| CVE dependency dan secret | Trivy |
+| TLS | testssl.sh |
+| SAST dan secret yang ter-commit | semgrep, gitleaks |
 
 ## Tahapan
 
-Static scan dijalankan lebih dahulu — `python audit.py deps` — yang aman dijalankan
-pada PR karena tidak memerlukan target hidup: CVE dependency, SAST OWASP Top 10, dan
-secret yang ter-commit.
+**Static scan lebih dahulu:** `python audit.py deps`. Tidak memerlukan target hidup, sehingga aman dijalankan pada PR: CVE dependency, SAST OWASP Top 10, dan secret yang ter-commit.
 
-Setelah target dev/staging tersedia, pengujian dinamis dijalankan:
+**Pengujian dinamis** setelah target dev/staging tersedia:
 
-- `zap baseline` — passive scan, tidak menyerang.
-- `zap api` — scan dari definisi OpenAPI, dapat berjalan di balik login melalui `ZAP_AUTH_HEADER`.
-- `authz` — regression access control per role: privilege escalation, IDOR, header
-  `X-Auth-*` palsu dari client, dan bypass gateway langsung ke port service.
-- `mass-assignment` — mass assignment / Broken Object Property Level Authorization (BOPLA).
-- `clientleak` — cache response sensitif, secret/endpoint pada bundle JS dan HTML, source
-  map, serta file yang terekspos.
-- `upload` — penolakan file upload berbahaya.
-- `auth-policy` — kekuatan password dan regenerasi captcha.
-- `cors` dan `open-redirect` — CORS misconfiguration dan open redirect.
-- `injection` — SQL injection (error-based, boolean-based, time-based opsional);
-  non-destruktif, hanya probing baca.
-- `webstack` — deteksi versi web server dari banner lalu dipetakan ke CVE yang diketahui
-  (mis. Apache mod_http2, NGINX HTTP/2); non-destruktif.
-- `tls` dan `headers` — protokol/cipher TLS usang dan security header yang kurang.
+| Modul | Yang diuji |
+|---|---|
+| `zap baseline` | Passive scan, tidak menyerang. |
+| `zap api` | Scan dari definisi OpenAPI; dapat berjalan di balik login melalui `ZAP_AUTH_HEADER`. |
+| `authz` | Regression access control per role: privilege escalation, IDOR, header `X-Auth-*` palsu dari client, bypass gateway langsung ke port service. |
+| `mass-assignment` | Mass assignment / Broken Object Property Level Authorization (BOPLA). |
+| `clientleak` | Cache response sensitif, secret/endpoint pada bundle JS dan HTML, source map, file yang terekspos. |
+| `upload` | Penolakan file upload berbahaya. |
+| `auth-policy` | Kekuatan password dan regenerasi captcha. |
+| `cors`, `open-redirect` | CORS misconfiguration dan open redirect. |
+| `injection` | SQL injection (error-based, boolean-based, time-based opsional); non-destruktif, hanya probing baca. |
+| `webstack` | Versi web server dari banner, dipetakan ke CVE yang diketahui (mis. Apache mod_http2, NGINX HTTP/2); non-destruktif. |
+| `tls`, `headers` | Protokol/cipher TLS usang dan security header yang kurang. |
 
-Tahap terakhir, `python audit.py report` merangkai `reports/laporan.html` dan
-`laporan.md`. Perintah `audit.py all` memanggil report secara otomatis di akhir.
+**Laporan:** `python audit.py report` merangkai `reports/laporan.html`, `laporan.md`, dan `laporan-slides.html`. Perintah `audit.py all` memanggil report secara otomatis di akhir.
+
+Modul lain di `PY_MODULES`: `cookie-flags`, `response-leak`, `openapi-coverage`, `ratelimit`, `session-mgmt`, `captcha`, `jwt`, `ssrf`, serta `recon`.
 
 ## Non-destruktif dan rollback
 
-Mayoritas runner hanya mengirim request biasa lalu membaca status/isi response —
-tidak melakukan exploit, tidak menghapus data, dan tidak melakukan brute-force. Payload
-upload sengaja dibuat jinak (hanya penanda) untuk menguji validasi. `zap full` (active
-scan) dipisahkan dan disertai peringatan; jalankan hanya pada environment milik sendiri,
-bukan production.
+Mayoritas runner hanya mengirim request biasa dan membaca status/isi response: tanpa exploit, tanpa menghapus data, tanpa brute-force. Payload upload sengaja dibuat jinak (hanya penanda) untuk menguji validasi.
 
-Sebagian modul bersifat destruktif karena harus menulis ke target (mis.
-`mass-assignment` menyuntik field terlarang). Untuk modul semacam ini, setiap penulisan
-dicatat ke rollback journal segera setelah dieksekusi, lalu dipulihkan secara otomatis
-ke keadaan semula sebagai tahap terakhir setelah laporan dibuat. Dengan demikian
-pengujian destruktif tetap "terasa non-destruktif": target kembali seperti sedia kala.
-Log pemulihan tersimpan di `reports/rollback.json`, dan `python audit.py rollback`
-dapat menjalankan pemulihan ulang bila diperlukan.
+`zap full` (active scan) dipisahkan dan disertai peringatan; jalankan hanya pada environment milik sendiri, bukan production.
+
+Sebagian modul menulis ke target (`mass-assignment` menyuntik field terlarang) atau membuat data uji (`ratelimit`, `session-mgmt`). Untuk modul tersebut:
+
+1. Setiap penulisan dicatat ke rollback journal segera setelah dieksekusi.
+2. Sebagai tahap terakhir setelah laporan dibuat, target dipulihkan otomatis ke keadaan semula.
+3. Log pemulihan tersimpan di `reports/rollback.json`; `python audit.py rollback` menjalankan pemulihan ulang bila diperlukan.
+
+Dengan demikian pengujian destruktif tetap meninggalkan target seperti sedia kala.
 
 ## Lintas-OS
 
-Seluruh perintah dijalankan melalui `python audit.py ...`, sehingga perilakunya identik
-di Windows dan Linux. Scanner menggunakan Docker image resmi. Script `.sh` pada
-`scanners/` bersifat opsional untuk pengguna Linux; `.gitattributes` memaksa line ending
-LF agar aman saat di-bind-mount ke container dari Windows.
+Seluruh perintah dijalankan melalui `python audit.py ...`, sehingga perilakunya identik di Windows dan Linux. Scanner menggunakan Docker image resmi. Script `.sh` pada `scanners/` bersifat opsional untuk pengguna Linux; `.gitattributes` memaksa line ending LF agar aman saat di-bind-mount ke container dari Windows.
 
 ## Batasan
 
-Laporan ini merupakan hasil automation, bukan pengganti pentest manual. Temuan scanner
-dapat berupa false positive dan wajib diverifikasi sebelum severity final ditetapkan.
-Celah logika bisnis hanya terdeteksi apabila test-nya ditulis secara khusus. Cakupan
-pengujian terbatas pada target dan endpoint yang dikonfigurasi saat dijalankan.
+- Laporan adalah hasil automation, bukan pengganti pentest manual.
+- Temuan scanner dapat berupa false positive; verifikasi sebelum menetapkan severity final.
+- Celah logika bisnis hanya terdeteksi bila test-nya ditulis secara khusus.
+- Cakupan terbatas pada target dan endpoint yang dikonfigurasi saat dijalankan.
