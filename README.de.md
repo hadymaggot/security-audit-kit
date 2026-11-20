@@ -83,7 +83,8 @@ glossary.py         Glossar-Loader (Kursiv, Zuordnung); Daten in glosarium.yml
 config/             Ziele (Beispiel; die echten per gitignore ausgeschlossen)
 scanners/           Wrapper für ZAP, testssl, Header, trivy/semgrep/gitleaks
 tests/              authz-matrix, client-leak, upload-safety, auth-policy
-docs/               Methodik & Zuordnung Befund -> Test
+docs/               Methodik & Zuordnung Befund -> Test (gebaute Seitenseiten)
+site/               Vorlagen, id/en/de-Wörterbücher und Seiten-Glossar; Build: python scripts/build_site.py
 .github/workflows/  Beispiel-CI-Pipeline
 Makefile, audit.ps1 Wrapper für kurze Befehle je OS
 ```

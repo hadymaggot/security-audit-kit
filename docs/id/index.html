@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="/assets/images/ico2.png" type="image/png">
+<title>Security Audit Kit — toolkit uji keamanan web/API (DAST + SCA)</title>
+<meta name="description" content="Security Audit Kit: toolkit otomatisasi security testing web/API lintas sistem operasi, berbasis konfigurasi. Modul DAST (access control, upload, injection, CORS, dsb.) dan SCA (CVE, SAST, secret), non-destruktif dengan rollback otomatis, laporan berstandar konsultan. Open-source, Apache-2.0.">
+<meta name="keywords" content="security audit, DAST, SCA, OWASP, pentest, web security, api security, vulnerability scanner, SAST, devsecops, security testing, open scanner">
+<link rel="canonical" href="https://hadymaggot.github.io/security-audit-kit/id/">
+<link rel="alternate" hreflang="en" href="https://hadymaggot.github.io/security-audit-kit/">
+<link rel="alternate" hreflang="id" href="https://hadymaggot.github.io/security-audit-kit/id/">
+<link rel="alternate" hreflang="de" href="https://hadymaggot.github.io/security-audit-kit/de/">
+<link rel="alternate" hreflang="x-default" href="https://hadymaggot.github.io/security-audit-kit/">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="id_ID">
+<meta property="og:title" content="Security Audit Kit — toolkit uji keamanan web/API">
+<meta property="og:description" content="DAST + SCA, berbasis konfigurasi, non-destruktif dengan rollback otomatis, laporan standar konsultan. Open-source.">
+<meta property="og:url" content="https://hadymaggot.github.io/security-audit-kit/id/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Security Audit Kit",
+  "applicationCategory": "SecurityApplication",
+  "operatingSystem": "Windows, Linux, macOS",
+  "description": "Toolkit otomatisasi security testing web/API (DAST + SCA), berbasis konfigurasi, non-destruktif dengan rollback otomatis, laporan standar konsultan.",
+  "inLanguage": "id",
+  "url": "https://hadymaggot.github.io/security-audit-kit/id/",
+  "codeRepository": "https://github.com/hadymaggot/security-audit-kit",
+  "license": "https://www.apache.org/licenses/LICENSE-2.0",
+  "author": { "@type": "Person", "name": "hadymaggot" },
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+}
+</script>
+<style>
+ :root{
+   --primary:#7AC55A; --secondary:#C3DB65; --dark:#121212; --text:#f3f5f3; --muted:#9bb39b;
+   --terminal-bg:rgba(18,18,18,.95); --line:rgba(122,197,90,.22);
+   --mono:'JetBrains Mono',monospace; --sans:'Poppins',sans-serif;
+ }
+ *{box-sizing:border-box} html,body{height:100%}
+ body{
+   margin:0;color:var(--text);font-family:var(--sans);line-height:1.6;
+   height:100vh;overflow:hidden;display:flex;flex-direction:column;
+   background:radial-gradient(760px 420px at 50% -10%, rgba(122,197,90,.08), transparent 62%), var(--dark);
+ }
+ /* latar: jaringan titik-garis (network) digambar di canvas */
+ #net{position:fixed;inset:0;z-index:0;pointer-events:none;mask:radial-gradient(135% 125% at 50% 45%,#000 78%,transparent 100%);-webkit-mask:radial-gradient(135% 125% at 50% 45%,#000 78%,transparent 100%)}
+ a{color:var(--primary);text-decoration:none} a:hover{text-decoration:underline}
+ @keyframes cardIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+ @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+ @media (prefers-reduced-motion:reduce){.card,.scanpanel{animation:none!important}.cur{animation:none}}
+
+ .topbar{position:relative;z-index:3;display:flex;align-items:center;gap:1rem;padding:.8rem 1.4rem;font-family:var(--mono);font-size:.82rem;flex:0 0 auto}
+ .topbar a{color:var(--muted)} .topbar a:hover{color:var(--primary);text-decoration:none}
+ .topbar .tb-lang{margin-left:auto;display:inline-flex;align-items:center;gap:.5rem} .topbar .tb-lang img{vertical-align:-3px;border-radius:2px;display:block} .topbar .tb-lang a{line-height:0} .topbar .tb-lang a[aria-current]{opacity:1} .topbar .tb-lang a:not([aria-current]){opacity:.55} .topbar .tb-lang a:hover{opacity:1}
+
+ .stage{position:relative;z-index:2;flex:1 1 auto;min-height:0;width:100%;max-width:1480px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,0fr);align-items:center;gap:0;padding:0 1.2rem 1.3rem;transition:grid-template-columns .5s cubic-bezier(.4,0,.2,1),gap .5s ease}
+ .stage.scanning{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:1.4rem;align-items:stretch;align-content:center}
+ /* saat split: kartu dan terminal sama tinggi, sejajar */
+ /* saat split: tinggi kartu mengikuti isi; terminal menyamai (stretch) — kartu tak perlu scroll */
+ .stage.scanning .card{max-height:100%}
+
+ .card{position:relative;min-width:0;width:100%;max-width:700px;max-height:100%;overflow:auto;justify-self:center;
+   background:linear-gradient(180deg,rgba(24,28,24,.68),rgba(16,16,16,.7));
+   -webkit-backdrop-filter:blur(7px) saturate(130%);backdrop-filter:blur(7px) saturate(130%);
+   border:1px solid var(--line);border-radius:16px;padding:2.1rem 2.1rem 1.8rem;
+   box-shadow:0 20px 60px rgba(0,0,0,.4);animation:cardIn .5s ease backwards;
+   transition:opacity .3s ease, transform .3s ease}
+ .brand{display:flex;align-items:center;gap:.55rem;font-family:var(--mono);font-size:.78rem;color:var(--secondary);opacity:.9;margin:0}
+ .brand i{color:var(--primary)}
+ .cur{display:inline-block;width:.5em;height:1em;background:var(--primary);margin-left:1px;vertical-align:-2px;animation:blink 1.1s step-end infinite}
+ h1{font-size:1.95rem;font-weight:700;margin:0 0 .45rem;letter-spacing:-.01em}
+ .lead{opacity:.85;margin:0 0 1rem;font-size:.97rem}
+ .chips{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:1.25rem}
+ .chips span{font-family:var(--mono);font-size:.71rem;color:var(--secondary);padding:.15rem .55rem;border:1px solid rgba(122,197,90,.3);border-radius:999px}
+ .cta{display:flex;flex-wrap:wrap;gap:.55rem;margin-bottom:1.15rem}
+ .btn{display:inline-flex;align-items:center;gap:.4rem;border:1px solid rgba(122,197,90,.5);color:var(--primary);background:transparent;padding:.5rem .95rem;border-radius:9px;font-family:var(--mono);font-size:.83rem;font-weight:600;cursor:pointer;transition:background-color .2s,border-color .2s}
+ .btn:hover{text-decoration:none;background:rgba(122,197,90,.1);border-color:var(--primary)}
+ .btn.fill{background:var(--primary);color:#0c1a0c;border-color:var(--primary)} .btn.fill:hover{background:var(--secondary)}
+ .sect{font-family:var(--mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 .5rem}
+ .code-block{margin:0 0 1.05rem;border:1px solid var(--line);border-radius:11px;overflow:hidden;background:var(--terminal-bg)}
+ .code-head{display:flex;justify-content:space-between;align-items:center;padding:.38rem .8rem;background:rgba(122,197,90,.08);font-family:var(--mono);font-size:.71rem;color:var(--secondary)}
+ .code-copy{background:transparent;color:var(--primary);border:1px solid rgba(122,197,90,.4);border-radius:6px;padding:.1rem .55rem;font:inherit;font-size:.71rem;cursor:pointer;transition:background-color .2s,color .2s}
+ .code-copy:hover,.code-copy:focus-visible{background:var(--primary);color:var(--dark)}
+ .code-block pre{margin:0;background:transparent;font-size:.81rem;line-height:1.65;overflow:auto;padding:.85rem .95rem}
+ .hljs{background:transparent;color:#e6e6e6}
+ .hljs-comment{color:#8aa08a;font-style:italic} .hljs-keyword,.hljs-literal{color:#ff7b72}
+ .hljs-string{color:#e9c46a} .hljs-built_in,.hljs-type{color:#bb9af7} .hljs-meta,.hljs-name{color:#c3db65} .hljs-variable,.hljs-params{color:#7dcfff}
+ .mods{display:flex;flex-wrap:wrap;gap:.38rem;margin:0 0 1.05rem}
+ .mods span{font-size:.73rem;color:#d4ddd4;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:7px;padding:.2rem .5rem}
+ .foot{display:flex;flex-wrap:wrap;gap:.7rem;align-items:center;justify-content:space-between;border-top:1px solid rgba(122,197,90,.14);padding-top:.9rem;font-size:.79rem;color:var(--muted)}
+ .foot a{color:var(--primary)} .foot .lang{display:inline-flex;align-items:center;gap:.5rem} .foot .lang img{vertical-align:-3px;border-radius:2px} .foot .lang .sep{opacity:.5;margin-left:.1rem}
+ /* footer seperti situs utama (pill tetap di bawah-tengah) */
+ .site-footer{position:fixed;left:0;bottom:.4rem;width:100%;text-align:center;font-family:var(--mono);font-size:.78rem;line-height:1.3;z-index:999;pointer-events:none}
+ .footer-pill{display:inline-block;padding:.2rem .9rem;color:var(--text);background-color:rgba(18,18,18,.35);border:1px solid rgba(122,197,90,.25);border-radius:999px;-webkit-backdrop-filter:blur(10px) saturate(140%);backdrop-filter:blur(10px) saturate(140%);pointer-events:auto}
+ .glow-text{color:var(--primary);text-shadow:0 0 5px var(--primary)}
+
+ /* panel scanner (terminal) — muncul saat Open scanner */
+ .scanpanel{position:relative;min-width:0;width:100%;max-width:580px;justify-self:center;overflow:hidden;opacity:0;transform:translateX(26px);pointer-events:none;
+   transition:opacity .4s ease,transform .4s ease}
+ .stage.scanning .scanpanel{opacity:1;transform:none;pointer-events:auto;min-height:340px}
+ /* termcard mengisi selnya secara absolut -> tinggi terkunci (= tinggi kartu), tidak tumbuh mengikuti isi log */
+ .termcard{position:absolute;inset:0;display:flex;flex-direction:column;background-color:var(--terminal-bg);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+ .terminal-header{display:flex;align-items:center;background-color:rgba(60,60,60,.6);padding:.5rem 1rem;border-bottom:1px solid rgba(122,197,90,.3)}
+ .terminal-buttons{display:flex;gap:.4rem;align-items:center} .term-btn{width:12px;height:12px;border-radius:50%}
+ .red{background:#ff5f56}.yellow{background:#ffbd2e}.green{background:#27c93f}
+ button.term-btn{appearance:none;border:0;padding:0;cursor:pointer;position:relative}
+ button.red:hover::after,button.red:focus-visible::after{content:"\00d7";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;line-height:1;color:rgba(0,0,0,.6)}
+ .terminal-title{flex:1;text-align:center;font-family:var(--mono);font-size:.78rem;color:rgba(255,255,255,.7)} #log{flex:1;min-height:0;overflow:auto;padding:13px 15px;font-family:var(--mono);font-size:12.5px;line-height:1.55;white-space:pre-wrap;word-break:break-word;cursor:text;scrollbar-width:thin;scrollbar-color:rgba(122,197,90,.35) transparent;overflow-x:hidden}
+ #log::-webkit-scrollbar{width:6px}
+ #log::-webkit-scrollbar-track{background:transparent}
+ #log::-webkit-scrollbar-thumb{background:rgba(122,197,90,.35);border-radius:999px}
+ #log::-webkit-scrollbar-thumb:hover{background:rgba(122,197,90,.6)}
+ #log .ln{margin:1px 0} #log .ok{color:var(--primary)} #log .bad{color:#ff8a3d} #log .mut{color:rgba(255,255,255,.6)} #log a{color:var(--secondary);cursor:pointer;text-decoration:underline}
+ /* prompt elegan + input mengalir di dalam log (seperti terminal sungguhan) */
+ .cliln{margin:8px 0 2px;position:relative}
+ .ptop{display:flex;align-items:center;font-size:12.5px;line-height:1.05;opacity:.9}
+ .ptop .seg{white-space:nowrap;color:rgba(255,255,255,.4)} .ptop .seg .pu{color:var(--primary);font-weight:600} .ptop .seg .pd{color:rgba(255,255,255,.55)}
+ .ptop .fr,.pbot .fr{color:rgba(122,197,90,.5)}
+ .ptop .fill{flex:1;height:0;border-bottom:1px dotted rgba(122,197,90,.3);margin:0 .9ch}
+ .ptop .ptime{white-space:nowrap;color:rgba(255,255,255,.42)}
+ .pbot{display:flex;align-items:baseline;line-height:1.1} .pbot .pa{color:var(--primary);font-weight:700} .pbot .pd{color:rgba(255,255,255,.4)}
+ .cli{flex:1;min-width:0;background:transparent;border:0;outline:0;color:var(--text);font-family:var(--mono);font-size:12.5px;caret-color:transparent;padding:0;margin-left:1ch;white-space:pre}
+ .blockcur{position:absolute;width:1ch;height:1.05em;background:var(--primary);pointer-events:none;animation:tblink 1s step-end infinite}
+ @keyframes tblink{0%,100%{opacity:1}50%{opacity:0}}
+ #meas{position:absolute;left:-9999px;top:0;visibility:hidden;white-space:pre;font-family:var(--mono);font-size:12.5px}
+ .pr{white-space:nowrap} .pr .pu{color:var(--primary);font-weight:700} .pr .pd{color:rgba(255,255,255,.38)} .pr .pp{color:var(--secondary)} .pr .pa{color:var(--primary);font-weight:700}
+
+ /* mobile: terminal turun ke bawah */
+ @media (max-width:820px){
+   body{height:auto;overflow:auto}
+   .stage{grid-template-columns:1fr;grid-template-rows:auto 0fr;justify-content:stretch;transition:grid-template-rows .5s cubic-bezier(.4,0,.2,1),gap .5s ease}
+   .stage.scanning{grid-template-columns:1fr;grid-template-rows:auto 1fr;gap:1rem}
+   .card,.stage.scanning .card{height:auto;max-height:none}
+   .scanpanel{transform:translateY(16px)} .stage.scanning .scanpanel{transform:none}
+   .scanpanel{min-height:0}
+   .termcard{position:static;height:72vh}
+ }
+ /* minimize ke navbar + legend */
+ .winchip{background:rgba(122,197,90,.1);border:1px solid rgba(122,197,90,.3);color:var(--primary);font-family:var(--mono);font-size:.78rem;border-radius:999px;padding:.2rem .7rem;cursor:pointer;margin-right:.5rem}
+ .winchip:hover{background:rgba(122,197,90,.2)}
+ .card-top{display:flex;align-items:center;gap:.8rem;margin-bottom:.55rem}
+ .card-win{display:flex;gap:.4rem;align-items:center}
+ button.yellow:hover::after,button.yellow:focus-visible::after{content:"\2013";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;line-height:1;color:rgba(0,0,0,.6)}
+ body.cardmin .card{opacity:0;transform:scale(.97) translateY(-6px);pointer-events:none}
+ .legend{position:fixed;left:.9rem;bottom:.9rem;z-index:40;font-family:var(--mono);font-size:.72rem;color:var(--muted);background:rgba(18,18,18,.42);border:1px solid rgba(122,197,90,.22);border-radius:10px;padding:.55rem .7rem;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);line-height:1.65;max-width:230px}
+ .legend .lg-h{color:var(--secondary);margin-bottom:.2rem}
+ .legend .d{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:1px}
+ .legend .d.g{background:#7AC55A}.legend .d.a{background:#ff8a3d}.legend .d.t{background:#c86bff;box-shadow:0 0 6px #c86bff}
+ .legend .lg-note{opacity:.6;margin-top:.25rem}
+ @media (max-width:720px){.legend{display:none}}
+</style>
+</head>
+<body>
+<canvas id="net" aria-hidden="true"></canvas>
+<header class="topbar">
+  <a href="https://hadymaggot.github.io/">&larr; Beranda</a>
+  <span id="winmenu">
+    <button id="rCard" class="winchip" type="button" onclick="restoreCard()" hidden>&#9638; Audit Kit</button>
+    <button id="rTerm" class="winchip" type="button" onclick="restoreTerm()" hidden>&#9638; Scanner</button>
+  </span>
+  <span class="tb-lang">
+    <a href="../" hreflang="en" lang="en" title="English"><img src="https://flagcdn.com/gb.svg" width="20" alt="English"></a>
+    <a href="../id/" hreflang="id" lang="id" title="Indonesia" aria-current="page"><img src="https://flagcdn.com/id.svg" width="20" alt="Indonesia"></a>
+    <a href="../de/" hreflang="de" lang="de" title="Deutsch"><img src="https://flagcdn.com/de.svg" width="20" alt="Deutsch"></a>
+  </span>
+  <a href="https://github.com/hadymaggot/security-audit-kit"><i class="fab fa-github"></i> GitHub</a>
+</header>
+
+<main class="stage" id="stage">
+  <section class="card">
+    <div class="card-top">
+      <div class="card-win">
+        <button class="term-btn red" type="button" onclick="closeCard()" aria-label="Tutup box" title="Tutup"></button>
+        <button class="term-btn yellow" type="button" onclick="minCard()" aria-label="Minimize box" title="Minimize"></button>
+        <span class="term-btn green"></span>
+      </div>
+      <div class="brand"><i class="fas fa-shield-halved"></i> ~/security-audit-kit<span class="cur"></span></div>
+    </div>
+    <h1>Security Audit Kit</h1>
+    <p class="lead">Toolkit otomatisasi <b><i>security testing</i> web/API</b> lintas sistem operasi, berbasis konfigurasi. Mengubah alur pentest OWASP menjadi <b><i>automated regression testing</i></b> — jalan lokal maupun di CI, satu <i>entry point</i> <code>python audit.py</code>.</p>
+    <div class="chips"><span>DAST + SCA</span><span>Lintas-OS</span><span><i>Rollback</i> otomatis</span><span>Laporan konsultan</span><span>Apache-2.0</span></div>
+
+    <div class="cta">
+      <a class="btn fill" href="https://github.com/hadymaggot/security-audit-kit"><i class="fab fa-github"></i> GitHub</a>
+      <button class="btn" type="button" onclick="openScan()"><i class="fas fa-terminal"></i> Open scanner</button>
+      <a class="btn" href="../contoh-laporan.html"><i class="fas fa-file-lines"></i> Contoh laporan</a>
+    </div>
+
+    <p class="sect">Mulai cepat</p>
+    <div class="code-block">
+      <div class="code-head"><span>bash</span><button class="code-copy" type="button" data-copy>Salin</button></div>
+      <pre><code class="language-bash">pip install -r requirements.txt
+cp config/targets.example.yml config/targets.yml   # isi base_url target
+python audit.py all                                # scan + laporan</code></pre>
+    </div>
+
+    <p class="sect">Modul</p>
+    <div class="mods">
+      <span>Access control</span><span>IDOR / BOPLA</span><span>Mass assignment</span>
+      <span>Injection (SQLi)</span><span>Upload</span><span>CORS / redirect</span>
+      <span>TLS / header</span><span>Webstack &rarr; CVE</span><span>SCA + SAST</span>
+    </div>
+  </section>
+
+  <aside class="scanpanel" aria-hidden="true">
+    <div class="termcard">
+      <div class="terminal-header">
+        <div class="terminal-buttons"><button class="term-btn red" type="button" onclick="closeScan()" aria-label="Tutup scanner" title="Tutup"></button><button class="term-btn yellow" type="button" onclick="minTerm()" aria-label="Minimize scanner" title="Minimize"></button><span class="term-btn green"></span></div>
+        <div class="terminal-title">bash ~ open-scanner (pasif)</div>
+      </div>
+      <div id="log"></div>
+    </div>
+  </aside>
+</main>
+
+<aside class="legend" aria-hidden="true">
+  <div class="lg-h">Attack map &middot; simulasi</div>
+  <div><span class="d g"></span> trafik scan / normal</div>
+  <div><span class="d a"></span> indikasi alert</div>
+  <div><span class="d t"></span> target saat Open scanner</div>
+  <div class="lg-note">peta: GeoJSON Natural Earth</div>
+</aside>
+
+<footer class="site-footer"><div class="footer-pill"><span class="glow-text">anak8awan9hs</span> ☠️ 2025</div></footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+<script>
+ // ===== latar attack map (simulasi/ilustratif, bukan data serangan nyata) =====
+ (function(){
+   var c=document.getElementById("net"); if(!c||!c.getContext)return;
+   var ctx=c.getContext("2d"); var W,H,DPR,raf,grid,arcs=[],last=0;
+   var reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion:reduce)").matches;
+   // world map dari GeoJSON (Natural Earth land 110m) -> dotted; hotspot = kota (lon,lat)
+   var Y0=.1, Y1=.9, GEO=null;
+   function lon2x(lo){return (lo+180)/360*W;}
+   function lat2y(la){return (Y0+(90-la)/180*(Y1-Y0))*H;}
+   var CITIES=[[-74,40.7],[-118.2,34],[-87.6,41.9],[-79.4,43.7],[-99.1,19.4],[-46.6,-23.5],[-58.4,-34.6],[-70.7,-33.4],
+               [-0.1,51.5],[2.3,48.9],[8.7,50.1],[13.4,52.5],[37.6,55.8],[28,-26.2],[3.4,6.5],[31.2,30],[36.8,-1.3],
+               [55.3,25.2],[72.8,19.1],[77.2,28.6],[103.8,1.3],[106.8,-6.2],[116.4,39.9],[121.5,31.2],[139.7,35.7],[127,37.6],[151.2,-33.9]];
+   function hp(ci){return [lon2x(ci[0]),lat2y(ci[1])];}
+   function bez(s,c2,d,t){var u=1-t;return [u*u*s[0]+2*u*t*c2[0]+t*t*d[0], u*u*s[1]+2*u*t*c2[1]+t*t*d[1]];}
+   function landMask(){
+     if(!GEO)return null;
+     var mw=Math.min(980,W), sc=mw/W, mh=Math.round(H*sc);
+     var mc=document.createElement("canvas"); mc.width=mw; mc.height=mh; var m=mc.getContext("2d");
+     m.fillStyle="#fff"; m.beginPath();
+     GEO.features.forEach(function(f){ var g=f.geometry; if(!g)return;
+       var polys=g.type==="Polygon"?[g.coordinates]:g.type==="MultiPolygon"?g.coordinates:[];
+       polys.forEach(function(poly){ poly.forEach(function(r){ if(!r.length)return;
+         m.moveTo((r[0][0]+180)/360*mw,(Y0+(90-r[0][1])/180*(Y1-Y0))*mh);
+         for(var i=1;i<r.length;i++){ m.lineTo((r[i][0]+180)/360*mw,(Y0+(90-r[i][1])/180*(Y1-Y0))*mh); } }); }); });
+     m.fill("nonzero");
+     try{ return {d:m.getImageData(0,0,mw,mh).data, mw:mw, mh:mh, sc:sc}; }catch(e){ return null; }
+   }
+   function buildGrid(){
+     grid=document.createElement("canvas"); grid.width=W; grid.height=H; var g=grid.getContext("2d");
+     var im=landMask(), step=14*DPR;
+     if(im){ g.fillStyle="rgba(122,197,90,.2)";
+       for(var yy=0;yy<H;yy+=step){ for(var xx=0;xx<W;xx+=step){
+         var mx=xx*im.sc|0, my=yy*im.sc|0; if(mx<0||mx>=im.mw||my<0||my>=im.mh)continue;
+         if(im.d[(my*im.mw+mx)*4+3]>80){ g.beginPath(); g.arc(xx,yy,1.1*DPR,0,6.283); g.fill(); } } } }
+     g.fillStyle="rgba(122,197,90,.5)";
+     CITIES.forEach(function(ci){var q=hp(ci);g.beginPath();g.arc(q[0],q[1],2.1*DPR,0,6.283);g.fill();});
+   }
+   function size(){
+     DPR=Math.min(window.devicePixelRatio||1,2);
+     W=c.width=Math.floor(innerWidth*DPR); H=c.height=Math.floor(innerHeight*DPR);
+     c.style.width=innerWidth+"px"; c.style.height=innerHeight+"px";
+     buildGrid();
+   }
+   function spawn(){
+     var a=CITIES[Math.random()*CITIES.length|0], b=CITIES[Math.random()*CITIES.length|0]; if(a===b)return;
+     var s=hp(a), d=hp(b), mx=(s[0]+d[0])/2, my=(s[1]+d[1])/2, dx=d[0]-s[0], dy=d[1]-s[1], len=Math.hypot(dx,dy)||1;
+     arcs.push({s:s,c:[mx-dy/len*len*.26, my+dx/len*len*.26],d:d,t0:performance.now(),dur:1400+Math.random()*800,
+       col:Math.random()<.72?"122,197,90":"255,138,61"});
+     if(arcs.length>34)arcs.shift();
+   }
+   var focus=null; // saat scan: {x,y,host,until}
+   function hashLoc(h){ var n=0,i; for(i=0;i<h.length;i++){n=(n*31+h.charCodeAt(i))>>>0;}
+     var lon=(n%360)-180, lat=((n>>9)%115)-55; return [lon2x(lon),lat2y(lat)]; }
+   function spawnTo(f){
+     var a=CITIES[Math.random()*CITIES.length|0], s=hp(a), d=[f.x,f.y];
+     var mx=(s[0]+d[0])/2,my=(s[1]+d[1])/2,dx=d[0]-s[0],dy=d[1]-s[1],len=Math.hypot(dx,dy)||1;
+     arcs.push({s:s,c:[mx-dy/len*len*.26,my+dx/len*len*.26],d:d,t0:performance.now(),dur:1100+Math.random()*600,col:"200,107,255"});
+     if(arcs.length>38)arcs.shift();
+   }
+   function frame(now){
+     ctx.clearRect(0,0,W,H); ctx.shadowBlur=0; ctx.drawImage(grid,0,0);
+     var foc=focus&&now<focus.until;
+     if(!reduce){ var gap=foc?150+Math.random()*130:160+Math.random()*180;
+       if(now-last>gap){ foc?spawnTo(focus):spawn(); last=now; } }
+     ctx.lineCap="round";
+     for(var i=arcs.length-1;i>=0;i--){ var a=arcs[i], t=(now-a.t0)/a.dur;
+       if(t>1.4){arcs.splice(i,1);continue;}
+       var tt=Math.min(t,1); ctx.shadowBlur=0;
+       ctx.strokeStyle="rgba("+a.col+",.18)"; ctx.lineWidth=1*DPR;
+       ctx.beginPath(); ctx.moveTo(a.s[0],a.s[1]); ctx.quadraticCurveTo(a.c[0],a.c[1],a.d[0],a.d[1]); ctx.stroke();
+       var h0=Math.max(0,tt-.18), p0=bez(a.s,a.c,a.d,h0), ph=bez(a.s,a.c,a.d,tt);
+       var grd=ctx.createLinearGradient(p0[0],p0[1],ph[0],ph[1]);
+       grd.addColorStop(0,"rgba("+a.col+",0)"); grd.addColorStop(1,"rgba("+a.col+",.98)");
+       ctx.strokeStyle=grd; ctx.lineWidth=2*DPR; ctx.shadowColor="rgba("+a.col+",.9)"; ctx.shadowBlur=7*DPR;
+       ctx.beginPath(); ctx.moveTo(p0[0],p0[1]);
+       for(var k=1;k<=7;k++){var pp=bez(a.s,a.c,a.d,h0+(tt-h0)*k/7);ctx.lineTo(pp[0],pp[1]);} ctx.stroke();
+       if(tt<1){ctx.fillStyle="rgba("+a.col+",1)";ctx.beginPath();ctx.arc(ph[0],ph[1],2.4*DPR,0,6.283);ctx.fill();}
+       ctx.shadowBlur=0;
+       if(t>1){var r=(t-1)/.4; ctx.strokeStyle="rgba("+a.col+","+(.6*(1-r)).toFixed(3)+")"; ctx.lineWidth=1.6*DPR;
+         ctx.beginPath(); ctx.arc(a.d[0],a.d[1],2.4*DPR+r*20*DPR,0,6.283); ctx.stroke();}
+     }
+     if(foc){ var pr=(now%1500)/1500;
+       ctx.shadowBlur=0; ctx.strokeStyle="rgba(200,107,255,"+(0.6*(1-pr)).toFixed(3)+")"; ctx.lineWidth=1.6*DPR;
+       ctx.beginPath(); ctx.arc(focus.x,focus.y,3*DPR+pr*22*DPR,0,6.283); ctx.stroke();
+       ctx.shadowColor="rgba(200,107,255,.9)"; ctx.shadowBlur=9*DPR;
+       ctx.fillStyle="rgba(200,107,255,1)"; ctx.beginPath(); ctx.arc(focus.x,focus.y,3.2*DPR,0,6.283); ctx.fill();
+       ctx.shadowBlur=0;
+       ctx.fillStyle="rgba(230,190,255,.97)"; ctx.font="700 "+(11*DPR)+"px 'JetBrains Mono',monospace"; ctx.textAlign="center";
+       ctx.fillText(focus.host, focus.x, focus.y-11*DPR); ctx.textAlign="start";
+     }
+     if(!reduce) raf=requestAnimationFrame(frame);
+   }
+   window.sakScan=function(host,geo){
+     var p=(geo&&isFinite(geo.lon)&&isFinite(geo.lat))?[lon2x(+geo.lon),lat2y(+geo.lat)]:hashLoc(String(host||"target"));
+     focus={x:p[0],y:p[1],host:(String(host||"target")).slice(0,40),until:performance.now()+8000};
+     if(reduce){ctx.clearRect(0,0,W,H);ctx.drawImage(grid,0,0);}
+   };
+   size();
+   fetch("../world-land.geo.json").then(function(r){return r.json()}).then(function(j){GEO=j;buildGrid();if(reduce){ctx.clearRect(0,0,W,H);ctx.drawImage(grid,0,0);}}).catch(function(){});
+   if(reduce){ctx.drawImage(grid,0,0);} else {raf=requestAnimationFrame(frame);}
+   var to; addEventListener("resize",function(){clearTimeout(to);to=setTimeout(function(){cancelAnimationFrame(raf);size();if(reduce){ctx.clearRect(0,0,W,H);ctx.drawImage(grid,0,0);}else{last=0;raf=requestAnimationFrame(frame);}},200);});
+ })();
+
+ try{ if(window.hljs){ document.querySelectorAll("pre code").forEach(function(el){ hljs.highlightElement(el); }); } }catch(e){}
+ document.querySelectorAll("[data-copy]").forEach(function(btn){
+   btn.addEventListener("click",function(){
+     var code=btn.closest(".code-block").querySelector("code"); var txt=code?code.innerText:"";
+     navigator.clipboard.writeText(txt).then(function(){ var o=btn.textContent;btn.textContent=T.copied;setTimeout(function(){btn.textContent=o;},1400); }).catch(function(){btn.textContent=T.copy_fail;});
+   });
+ });
+
+ var SEVC={critical:"#ff6b6b",high:"#ff8a3d",medium:"#ffcf5c",low:"#5aa9ff",info:"#9bb39b",lulus:"#7AC55A",ok:"#7AC55A"};
+ function sevLabel(s){s=(""+(s||"")).toLowerCase();return (s==="lulus"||s==="ok")?"PASS":s.toUpperCase();}
+ var BANNER=[
+   "  ___  ___  ___  ___   _   _  _ _  _ ___ ___",
+   " / _ \\| _ \\/ __|/ __| /_\\ | \\| | \\| | __| _ \\",
+   "| (_) |  _/\\__ \\ (__ / _ \\| .` | .` | _||   /",
+   " \\___/|_|  |___/\\___/_/ \\_\\_|\\_|_|\\_|___|_|_\\"
+ ];
+ // backend tetap (Worker). ?api= hanya untuk self-host; tanpa override localStorage yang lengket.
+ var T = {"active_title": "! scan AKTIF/intrusif", "ai_1": "scan aktif tidak dijalankan via demo publik ini (mencegah penyalahgunaan).", "ai_2": "jalankan di mesin Anda — set base_url target di config/targets.yml, lalu:", "ai_authz": "<i>access control<\/i> / IDOR (kredensial per role)", "ai_foot": "kredensial lewat <i>environment variable<\/i>. panduan: docs/panduan-penggunaan.md", "backend_err": "tidak bisa menghubungi <i>backend<\/i> ({api}): {err}", "cancelled": "dibatalkan.", "chk1": "cek security <i>headers<\/i>, <i>cookie<\/i> flags...", "chk2": "cek CORS...", "chk3": "cek banner Server/X-Powered-By -&gt; CVE...", "continue_q": "lanjutkan? [y/N]", "copied": "Tersalin", "copy_fail": "Gagal", "done": "selesai: {n} temuan dari {m} pemeriksaan.", "error_prefix": "<i>error<\/i>", "failed_word": "gagal", "genrep": "klik untuk generate laporan HTML", "h_active": "konfirmasi scan aktif/intrusif (ditampilkan sebagai perintah CLI, bukan via demo)", "h_args": "ARGUMEN", "h_clear": "bersihkan layar", "h_exit": "tutup terminal", "h_help": "tampilkan bantuan ini", "h_note": "uji hanya target milik/berwenang Anda. tidak mengirim <i>payload<\/i> / menulis data.", "h_note_title": "CATATAN", "h_recon": "recon aktif (via CLI; demo publik tetap pasif)", "h_scan": "pindai target, mis. scan https://contoh.example", "h_scope": "(pasif · non-intrusif)", "h_scope_title": "CAKUPAN", "h_url": "(sama — kata 'scan' opsional)", "h_usage": "PENGGUNAAN", "help_title": "open scanner pasif (Security Audit Kit)", "hint": "ketik <span style='color:var(--primary)'>help<\/span> untuk bantuan.", "no_backend": "<i>backend<\/i> tidak tersedia.", "on": "pada", "only_own": "hanya untuk target yang Anda miliki/berwenang uji.", "r_badge": "PASIF · NON-INTRUSIF", "r_footer": "Dibuat oleh <b>hadymaggot<\/b> · Security Audit Kit · pemeriksaan pasif, bukan pengganti audit mendalam.", "r_lead": "<b>{n}<\/b> temuan dari <b>{m}<\/b> pemeriksaan pasif pada <code>{t}<\/code>.", "r_title": "Laporan Scan Pasif", "recon_c1": "osint+infra (default, non-intrusif)", "recon_foot": "butuh subfinder · dnsx · httpx · naabu · nuclei terpasang. panduan: docs/panduan-penggunaan.md", "recon_note": "demo publik ini pasif — recon aktif tidak dijalankan di sini. jalankan di mesin Anda pada target yang Anda miliki/berwenang:", "recon_title": "! recon AKTIF/intrusif", "report_opened": "laporan dibuka di tab baru.", "scanning": "memindai", "url_must": "URL harus diawali http(s)://", "use_recon": "penggunaan: recon &lt;target&gt; — mis. recon contoh.example", "use_scan": "penggunaan: scan &lt;url&gt; — mis. scan https://contoh.example"}, LANG = "id";
+ function fmt(s,o){return s.replace(/\{(\w+)\}/g,function(_,k){return o[k];});}
+ var api = new URLSearchParams(location.search).get("api") || "https://security-audit-kit-scanner.saptohadi.workers.dev";
+ var stage=document.getElementById("stage");
+ function logEl(){return document.getElementById("log")}
+ function esc(s){return String(s).replace(/[&<>]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;"}[c]})}
+ function out(html,cls){var d=document.createElement("div");d.className="ln"+(cls?" "+cls:"");d.innerHTML=html;logEl().appendChild(d);logEl().scrollTop=logEl().scrollHeight;return d;}
+ function chip(id,show){var e=document.getElementById(id);if(e)e.hidden=!show;}
+ var cardClosed=false;
+ function minCard(){document.body.classList.add("cardmin");chip("rCard",true);cardClosed=false;} // simpan posisi
+ function closeCard(){document.body.classList.add("cardmin");chip("rCard",true);cardClosed=true;} // reset saat restore
+ function restoreCard(){document.body.classList.remove("cardmin");chip("rCard",false);if(cardClosed){var e=document.querySelector(".card");if(e)e.scrollTop=0;cardClosed=false;}}
+ function minTerm(){stage.classList.remove("scanning");stage.querySelector(".scanpanel").setAttribute("aria-hidden","true");chip("rTerm",true);}
+ function restoreTerm(){chip("rTerm",false);openScan();}
+ function openScan(){
+   chip("rTerm",false);
+   stage.classList.add("scanning"); stage.querySelector(".scanpanel").setAttribute("aria-hidden","false");
+   if(!logEl().dataset.init){
+     logEl().dataset.init="1";
+     out("<span style='color:var(--primary)'>"+BANNER.map(esc).join("\n")+"</span>");
+     out("<span style='font-size:10.5px;color:var(--secondary);opacity:.9'>by: Security Audit Kit — hadymaggot</span>");
+     out("<span class='mut'>"+T.hint+"</span>");
+   }
+   ensurePrompt();
+ }
+ function closeScan(){ // tutup penuh: reset sesi
+   stage.classList.remove("scanning"); stage.querySelector(".scanpanel").setAttribute("aria-hidden","true"); chip("rTerm",false);
+   var l=logEl(); l.innerHTML=""; l.removeAttribute("data-init");
+ }
+ document.addEventListener("keydown",function(e){if(e.key==="Escape")closeScan()});
+
+ // ---- prompt elegan + input mengalir di dalam log (seperti terminal) ----
+ function nowTime(){ try{return new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true});}catch(e){return "";} }
+ function promptTop(){ return "<div class='ptop'><span class='seg'><span class='fr'>╭─</span> <span class='pu'>me</span><span class='pd'>@ahadizapto</span><span class='pa'>#</span></span><span class='fill'></span><span class='ptime'>"+nowTime()+"</span></div>"; }
+ function promptBot(){ return "<span class='pr'><span class='fr'>╰─</span><span class='pa'>❯</span></span>"; }
+ var _meas=null;
+ function measW(s){ if(!_meas){_meas=document.createElement("span");_meas.id="meas";document.body.appendChild(_meas);} _meas.textContent=s||""; return _meas.offsetWidth; }
+ function updateCur(inp){ var cur=inp.parentNode&&inp.parentNode.querySelector(".blockcur"); if(!cur)return;
+   var pos=(inp.selectionStart!=null)?inp.selectionStart:(inp.value||"").length;
+   var cx=measW((inp.value||"").slice(0,pos));
+   cur.style.left=(inp.offsetLeft+cx)+"px";
+   cur.style.top=(inp.offsetTop+(inp.offsetHeight-cur.offsetHeight)/2)+"px"; }
+ var cmdHist=[], histPos=0; // riwayat perintah (panah atas/bawah)
+ function setInput(inp,val){ inp.value=val||""; var p=inp.value.length; try{inp.setSelectionRange(p,p);}catch(e){} updateCur(inp); }
+ var COMMANDS=["scan","recon","help","clear","exit"];
+ // multi-match Tab: echo baris saat ini, cetak opsi di bawahnya, lalu gambar ulang prompt (input dipertahankan) — seperti shell
+ function showOpts(inp,opts){
+   var val=inp.value, line=inp.closest(".cliln");
+   line.className="ln"; line.innerHTML=curTop+"<div class='pbot'>"+curBot+" "+esc(val)+"</div>";
+   out("<span class='mut'>"+opts.map(esc).join("   ")+"</span>");
+   addPrompt(); var ni=logEl().querySelector(".cliln .cli"); if(ni){ setInput(ni,val); ni.focus(); }
+ }
+ function complete(inp){
+   var parts=(inp.value||"").split(/\s+/), last=parts[parts.length-1]||"", opts;
+   if(parts.length<=1){ opts=COMMANDS.filter(function(x){return x.indexOf(last)===0;}); if(last&&"https://".indexOf(last)===0)opts.push("https://"); }
+   else { opts=["--active"].filter(function(x){return x.indexOf(last)===0;}); if(last.charAt(0)==="-"&&!opts.length)opts=["--active"]; }
+   if(opts.length===1){ parts[parts.length-1]=opts[0]; var trail=(parts.length<=1&&opts[0]!=="https://")?" ":""; setInput(inp, parts.join(" ")+trail); }
+   else if(opts.length>1){ showOpts(inp, opts); }
+ }
+ var curTop="", curBot=""; // prompt aktif: baris atas (fish) + baris bawah/label
+ function addPrompt(label){
+   curTop = label ? "" : promptTop();   // prompt fish 2-baris untuk perintah normal
+   curBot = label || promptBot();        // atau label 1-baris (mis. 'lanjutkan? [y/N]')
+   var d=document.createElement("div"); d.className="ln cliln";
+   d.innerHTML=curTop+"<div class='pbot'>"+curBot+"<input class='cli' autocomplete='off' autocorrect='off' autocapitalize='off' spellcheck='false' aria-label='perintah scanner'><span class='blockcur'></span></div>";
+   logEl().appendChild(d);
+   var inp=d.querySelector(".cli");
+   inp.addEventListener("keydown",function(e){
+     if(e.ctrlKey&&(e.key==="l"||e.key==="L")){ e.preventDefault(); var val=inp.value; logEl().innerHTML=""; addPrompt(); var ni=logEl().querySelector(".cliln .cli"); if(ni){setInput(ni,val);ni.focus();} return; }
+     if(e.key==="Enter"){ e.preventDefault(); submitCmd(inp); return; }
+     if(e.key==="Tab"){ e.preventDefault(); complete(inp); return; }
+     if(e.key==="ArrowUp"){ e.preventDefault(); if(histPos>0){ histPos--; setInput(inp, cmdHist[histPos]); } return; }
+     if(e.key==="ArrowDown"){ e.preventDefault(); if(histPos<cmdHist.length){ histPos++; setInput(inp, histPos<cmdHist.length?cmdHist[histPos]:""); } return; }
+   });
+   inp.addEventListener("keyup",function(){ updateCur(inp); });
+   inp.addEventListener("input",function(){ updateCur(inp); });
+   inp.addEventListener("click",function(){ updateCur(inp); });
+   logEl().scrollTop=logEl().scrollHeight; setTimeout(function(){inp.focus(); updateCur(inp);},0);
+ }
+ function printHelp(){
+   out("<span style='color:var(--secondary)'>OPSCANNER</span> — "+T.help_title);
+   out("");
+   out("<span style='color:var(--secondary)'>"+T.h_usage+"</span>");
+   out("  <span style='color:var(--primary)'>scan &lt;url&gt;</span>  "+T.h_scan);
+   out("  <span style='color:var(--primary)'>&lt;url&gt;</span>       "+T.h_url);
+   out("  <span style='color:var(--primary)'>recon &lt;target&gt;</span> "+T.h_recon);
+   out("  <span style='color:var(--primary)'>help</span>        "+T.h_help);
+   out("  <span style='color:var(--primary)'>clear</span>       "+T.h_clear);
+   out("  <span style='color:var(--primary)'>exit</span>        "+T.h_exit);
+   out("");
+   out("<span style='color:var(--secondary)'>"+T.h_args+"</span>");
+   out("  <span style='color:var(--primary)'>--active</span>, <span style='color:var(--primary)'>-a</span>   "+T.h_active);
+   out("");
+   out("<span style='color:var(--secondary)'>"+T.h_scope_title+"</span> "+T.h_scope);
+   out("  security headers · cookie flags · CORS · banner&rarr;CVE · clientleak");
+   out("");
+   out("<span style='color:var(--secondary)'>"+T.h_note_title+"</span>");
+   out("  "+T.h_note,"mut");
+ }
+ function ensurePrompt(){ var i=logEl().querySelector(".cliln .cli"); if(i){setTimeout(function(){i.focus();},10);} else addPrompt(); }
+ var pendingActive=null; // url yang menunggu konfirmasi scan aktif
+ function submitCmd(inp){
+   var v=inp.value, line=inp.closest(".cliln");
+   line.className="ln"; line.innerHTML=curTop+"<div class='pbot'>"+curBot+" "+esc(v)+"</div>"; // echo prompt aktif
+   if(pendingActive!==null){ answerActive(v); ensurePrompt(); return; }
+   if(v.trim()&&cmdHist[cmdHist.length-1]!==v) cmdHist.push(v); // simpan ke riwayat
+   histPos=cmdHist.length;
+   var pending=run(v);
+   if(!pending) ensurePrompt();
+ }
+ function answerActive(v){
+   var ans=(v||"").trim().toLowerCase(), t=pendingActive; pendingActive=null;
+   if(ans==="y"||ans==="ya"||ans==="yes"||ans==="ja"||ans==="j"||ans==="j") activeInstructions(t); else out(T.cancelled,"mut");
+ }
+ logEl().addEventListener("click",function(e){ if(e.target.closest("a,button,input"))return; var i=logEl().querySelector(".cliln .cli"); if(i)i.focus(); });
+
+ function run(cmd){
+   var c=cmd.trim(); if(!c)return false;
+   if(c==="clear"){logEl().innerHTML="";logEl().removeAttribute("data-init");openScan();return false;}
+   if(c==="help"){printHelp();return false;}
+   if(c==="scan"){out(T.use_scan,"mut");return false;}
+   if(c==="exit"){closeScan();return true;} // tutup terminal
+   if(c==="recon"){out(T.use_recon,"mut");return false;}
+   var mRecon=c.match(/^recon\s+(\S+)/); if(mRecon){ reconInstructions(mRecon[1]); return false; } // recon aktif: hanya tampilkan perintah CLI
+   c=c.replace(/^scan\s+/,"");
+   var toks=c.split(/\s+/), url=toks[0];
+   var active=toks.slice(1).some(function(x){return x==="--active"||x==="-a"||x==="--aktif";});
+   if(!/^https?:\/\//.test(url)){out(T.url_must,"bad");return false;}
+   if(active){ askActive(url); return true; } // konfirmasi dulu (prompt [y/N] dibuat askActive)
+   if(!api){out(T.no_backend,"bad");return false;}
+   scan(url); return true; // async: prompt baru ditambah setelah scan selesai
+ }
+ function askActive(url){
+   pendingActive=url;
+   out("<span class='bad'>"+T.active_title+"</span> "+T.on+" <span style='color:var(--secondary)'>"+esc(url)+"</span>");
+   out(T.only_own,"mut");
+   addPrompt("<span class='pr' style='color:var(--secondary)'>"+T.continue_q+"</span>"); // input y/n tepat di sini
+ }
+ function activeInstructions(url){
+   out(T.ai_1,"mut");
+   out(T.ai_2);
+   out("  <span style='color:var(--primary)'>python audit.py injection</span>       # SQLi error/boolean/time-based");
+   out("  <span style='color:var(--primary)'>python audit.py open-redirect</span>");
+   out("  <span style='color:var(--primary)'>python audit.py authz</span>           # "+T.ai_authz+"");
+   out("  <span style='color:var(--primary)'>python audit.py upload</span>");
+   out(T.ai_foot,"mut");
+ }
+ function reconInstructions(target){
+   out("<span class='bad'>"+T.recon_title+"</span> (subdomain enum · port scan · nuclei) "+T.on+" <span style='color:var(--secondary)'>"+esc(target)+"</span>");
+   out(T.recon_note,"mut");
+   out("  <span style='color:var(--primary)'>python audit.py recon "+esc(target)+"</span>              # "+T.recon_c1+"");
+   out("  <span style='color:var(--primary)'>python audit.py recon "+esc(target)+" --active -m owasp</span>  # port scan + nuclei OWASP");
+   out(T.recon_foot,"mut");
+ }
+ function scan(url){
+   var host=url; try{host=new URL(url).hostname;}catch(e){}
+   if(window.sakScan)window.sakScan(host); // peta fokus ke target yang dipindai
+   out("-&gt; "+T.scanning+" "+esc(url)+" ...","mut");
+   out("-&gt; "+T.chk1,"mut");
+   out("-&gt; "+T.chk2,"mut");
+   out("-&gt; "+T.chk3,"mut");
+   fetch(api.replace(/\/+$/,"")+"/scan",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url:url})})
+     .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})})
+     .then(function(res){
+       if(res.j&&res.j.geo&&window.sakScan)window.sakScan(res.j.target||host,res.j.geo); // perhalus dgn geo asli bila ada
+       if(!res.ok){out(T.error_prefix+": "+esc(res.j.error||T.failed_word),"bad");return;}
+       var f=res.j.findings||[]; var fail=f.filter(function(x){return !x.ok});
+       out(fmt(T.done,{n:fail.length,m:f.length}), fail.length?"bad":"ok");
+       f.forEach(function(x){ var col=SEVC[x.severity]||"#9bb39b";
+         out("<span style='color:"+col+"'>["+esc(sevLabel(x.severity))+"]</span> ["+esc(x.module)+"] "+esc(x.check)+(x.note?" — "+esc(x.note):"")+(x.cve&&x.cve.length?" ("+esc(x.cve.join(", "))+")":"")); });
+       if(res.j.notice)out(esc(res.j.notice),"mut");
+       var a=out("► <a id='genrep'>"+T.genrep+"</a>");
+       a.querySelector("#genrep").addEventListener("click",function(){genReport(res.j)});
+     })
+     .catch(function(err){out(fmt(T.backend_err,{api:esc(api),err:esc(err)}),"bad")}) // URL hanya muncul saat error
+     .finally(function(){ensurePrompt();}); // prompt baru setelah scan selesai
+ }
+ function genReport(data){
+   var SEVR={critical:"#e5484d",high:"#f76808",medium:"#e0b400",low:"#3b82f6",info:"#8b8d98",lulus:"#1f9d57",ok:"#1f9d57"};
+   var ord={critical:0,high:1,medium:2,low:3,info:4,lulus:5,ok:5};
+   var f=(data.findings||[]).slice(); var cnt={critical:0,high:0,medium:0,low:0,info:0,lulus:0};
+   function key(x){return x.ok?"lulus":(x.severity||"info");}
+   f.sort(function(a,b){var ka=ord[key(a)],kb=ord[key(b)];return (ka==null?9:ka)-(kb==null?9:kb);});
+   f.forEach(function(x){var s=key(x);cnt[s]=(cnt[s]||0)+1});
+   var fail=f.filter(function(x){return !x.ok}).length;
+   var chips=[["critical","Critical"],["high","High"],["medium","Medium"],["low","Low"],["info","Info"],["lulus","PASS"]].map(function(p){
+     return "<div class='chip'><span class='dot' style='background:"+SEVR[p[0]]+"'></span><b>"+(cnt[p[0]]||0)+"</b> "+p[1]+"</div>";
+   }).join("");
+   var rows=f.map(function(x){var k=key(x),c=SEVR[k]||"#8b8d98";
+     return "<div class='find'><div class='fbody'><div class='fh'>"+esc(x.module)+" &middot; "+esc(x.check)+"</div>"+
+       (x.note?"<div class='fn'>"+esc(x.note)+"</div>":"")+
+       (x.cve&&x.cve.length?"<div class='fcve'>"+esc(x.cve.join(", "))+"</div>":"")+"</div>"+
+       "<span class='badge' style='background:"+c+"'>"+esc(sevLabel(k))+"</span></div>";
+   }).join("");
+   var html="<!doctype html><html lang='"+LANG+"'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"+
+     "<title>"+T.r_title+" — "+esc(data.target)+"</title><style>"+
+     "*{box-sizing:border-box}body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;color:#1b2420;background:#eef1ee}"+
+     ".wrap{max-width:860px;margin:0 auto;background:#fff;min-height:100vh;box-shadow:0 0 40px rgba(0,0,0,.08)}"+
+     "header{background:linear-gradient(135deg,#1c2b22,#2f6f3e);color:#fff;padding:26px 30px}"+
+     ".brand{font:600 12px/1 ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase;color:#bfe6b6;margin-bottom:10px}"+
+     "header h1{margin:0;font-size:22px;word-break:break-all}.sub{margin-top:9px;font-size:13px;color:#d6ebd0;display:flex;gap:10px;flex-wrap:wrap;align-items:center}"+
+     ".pasif{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:999px;padding:2px 10px;font-size:11px;font-weight:600;letter-spacing:.05em}"+
+     "main{padding:24px 30px}.lead{font-size:14px;color:#44524b;margin:0 0 18px}.lead code{background:#f0f3f0;padding:1px 6px;border-radius:4px}"+
+     ".chips{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 22px}.chip{display:flex;align-items:center;gap:6px;background:#f4f7f4;border:1px solid #e2e8e2;border-radius:999px;padding:5px 12px;font-size:13px}.chip .dot{width:9px;height:9px;border-radius:50%}"+
+     ".find{display:flex;gap:12px;align-items:flex-start;border:1px solid #e6ebe6;border-radius:10px;padding:12px 14px;margin:0 0 10px;background:#fff}"+
+     ".badge{color:#fff;font:700 11px/1 ui-monospace,monospace;letter-spacing:.04em;padding:5px 8px;border-radius:6px;white-space:nowrap;margin-top:1px}"+
+     ".fbody{min-width:0;flex:1}.fh{font-weight:600;font-size:14.5px}.fn{color:#4a564f;font-size:13.5px;margin-top:3px}.fcve{font:12px ui-monospace,monospace;color:#b4531a;margin-top:4px}"+
+     ".notice{background:#f4f7f4;border:1px solid #e2e8e2;border-radius:10px;padding:12px 14px;font-size:13px;color:#44524b;margin-top:16px}"+
+     "footer{padding:20px 30px;color:#7b857e;font-size:12px;border-top:1px solid #eef1ee;text-align:center}"+
+     "@media print{body{background:#fff}.wrap{box-shadow:none}}</style></head><body><div class='wrap'>"+
+     "<header><div class='brand'>Security Audit Kit · "+T.r_title+"</div><h1>"+esc(data.target)+"</h1>"+
+     "<div class='sub'><span>"+esc(data.scanned_at||"")+"</span><span class='pasif'>"+T.r_badge+"</span></div></header>"+
+     "<main><p class='lead'>"+fmt(T.r_lead,{n:fail,m:f.length,t:esc(data.target)})+"</p>"+
+     "<div class='chips'>"+chips+"</div>"+rows+
+     "<div class='notice'>"+esc(data.notice||"")+"</div></main>"+
+     "<footer>"+T.r_footer+"</footer>"+
+     "</div></body></html>";
+   var blob=new Blob([html],{type:"text/html"}); window.open(URL.createObjectURL(blob),"_blank");
+   out(T.report_opened,"ok");
+ }
+</script>
+</body>
+</html>

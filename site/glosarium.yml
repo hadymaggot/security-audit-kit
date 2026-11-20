@@ -1,0 +1,52 @@
+# Website glossary, separate from the kit glossary (glosarium.yml at the repo root).
+# Same schema (see docs/glosarium.md); it is loaded standalone by scripts/build_site.py, so site
+# wording and the kit's report wording can evolve independently.
+#
+# - terms:  English terms printed in italics on the id and de pages (en text is not italicized).
+# - map:    local word -> canonical term; tests/unit/test_site.py fails if a dictionary still uses it.
+# Do not list command names (scan, recon, help): they must stay plain in the terminal demo.
+
+default: en
+complete_text: [id, en, de]
+
+languages:
+
+  id:
+    terms: &site_terms
+      - security testing
+      - automated regression testing
+      - regression testing
+      - entry point
+      - access control
+      - rollback
+      - payload
+      - brute-force
+      - backend
+      - environment variable
+      - header
+      - cookie
+      - response
+      - request
+      - endpoint
+      - upload
+      - injection
+    map:
+      respons: response
+      permintaan: request
+      kata sandi: password
+      sandi: password
+      berkas: file
+      galat: error
+
+  en:
+    italic: false
+    terms: []
+    map:
+      reply: response
+
+  de:
+    terms: *site_terms
+    map:
+      antwort: Response
+      anfrage: Request
+      hochladen: Upload
