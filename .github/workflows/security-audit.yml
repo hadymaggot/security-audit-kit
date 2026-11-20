@@ -1,13 +1,13 @@
 name: Security Audit
 
-# Contoh pipeline. Scanner statis (deps) aman jalan di PR; pengujian DAST (zap,
-# authz, upload, auth-policy) butuh target hidup → jalankan terjadwal ke dev/staging,
-# bukan ke produksi. Kredensial lewat GitHub Secrets, bukan di berkas.
+# Example pipeline. Static scanners (deps) are safe to run on PRs; DAST tests (zap,
+# authz, upload, auth-policy) need a live target, so run them on a schedule against
+# dev/staging, never production. Credentials come from GitHub Secrets, not files.
 
 on:
   pull_request:
   schedule:
-    - cron: "0 1 * * 1"          # Senin pagi
+    - cron: "0 1 * * 1"          # Monday morning
   workflow_dispatch:
 
 jobs:
@@ -26,11 +26,11 @@ jobs:
         run: cp config/targets.example.yml config/targets.yml
       - name: Scan dependensi & rahasia (trivy/semgrep/gitleaks via Docker)
         run: python audit.py deps
-        # 'deps' informatif; tak menggagalkan build.
+        # 'deps' is informational; it never fails the build.
       - name: Susun laporan
         run: python audit.py report
       - uses: actions/upload-artifact@v4
-        # Kuota storage artifact dihitung per akun; penuh ≠ build gagal.
+        # Artifact storage quota is per account; a full quota must not fail the build.
         continue-on-error: true
         with:
           name: laporan-keamanan
@@ -40,7 +40,7 @@ jobs:
   dast:
     name: DAST + regresi kontrol akses
     runs-on: self-hosted
-    if: github.event_name != 'pull_request'    # butuh target hidup
+    if: github.event_name != 'pull_request'    # needs a live target
     env:
       TARGET_BASE_URL: ${{ secrets.TARGET_BASE_URL }}
       AUTHZ_ADMIN_USER: ${{ secrets.AUTHZ_ADMIN_USER }}

@@ -1,9 +1,9 @@
 #!/usr/bin/env pwsh
-# Sinkronkan label GitHub dari .github/labels.yml (sumber kebenaran).
-# Butuh: gh CLI (sudah login). Tanpa yq — parsing sederhana di PowerShell.
-# Idempoten: --force = bikin kalau belum ada, update warna/deskripsi kalau sudah.
+# Sync GitHub labels from .github/labels.yml (the source of truth).
+# Requires the gh CLI (logged in). No yq: simple parsing in PowerShell.
+# Idempotent: --force creates a missing label and updates color/description of an existing one.
 #
-# Pakai (dari root repo):
+# Usage (from the repo root):
 #   .\scripts\sync-labels.ps1
 
 param([string]$File = ".github/labels.yml")
@@ -13,7 +13,7 @@ if (-not (Test-Path $File)) { Write-Error "Tak ketemu $File"; exit 1 }
 if (-not (Get-Command gh -ErrorAction SilentlyContinue)) { Write-Error "Butuh gh CLI"; exit 1 }
 
 $content = Get-Content $File -Raw
-# Format flat: - name / color / description, berurutan.
+# Flat format: - name / color / description, in that order.
 $pattern = '(?ms)^-\s+name:\s*"([^"]+)"\s*\r?\n\s*color:\s*"([^"]+)"\s*\r?\n\s*description:\s*"([^"]*)"'
 $matches = [regex]::Matches($content, $pattern)
 

@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
-"""Deteksi kebocoran sisi klien: cache respons sensitif & rahasia di bundle JS.
+"""Detect client-side leaks: sensitive response caching and secrets in JS bundles.
 
-Dua pemeriksaan (non-destruktif, hanya GET):
+Two checks (non-destructive, GET only):
 
-A. Cache respons sensitif — respons terautentikasi HARUS melarang cache
-   (Cache-Control: no-store/private). Bila cacheable → temuan 'client-cache'.
+A. Sensitive response caching: authenticated responses MUST forbid caching
+   (Cache-Control: no-store/private). If cacheable, report a 'client-cache' finding.
 
-B. Kebocoran di JavaScript klien — unduh aset JS (dari konfigurasi atau hasil
-   parsing <script src> pada halaman), lalu sisir:
-     - rahasia (API key/token/JWT yang ter-hardcode),
-     - endpoint internal/admin,
-     - source map (.map) yang dapat diakses publik.
-   (Ini pola yang dipakai penguji BSSN: membaca JS untuk menemukan endpoint admin.)
+B. Leaks in client JavaScript: download JS assets (from config or by parsing
+   <script src> on the page), then scan for:
+     - hardcoded secrets (API keys/tokens/JWTs),
+     - internal/admin endpoints,
+     - publicly accessible source maps (.map).
+   (The pattern BSSN testers use: read the JS to find admin endpoints.)
 
-Opsional (browser_cache.enabled): konfirmasi lewat Chromium sungguhan (Playwright)
-bahwa respons sensitif memang tersimpan di cache browser, bukan hanya dari header.
+Optional (browser_cache.enabled): confirm with a real Chromium (Playwright) that
+sensitive responses are actually stored in the browser cache, not just from headers.
 
-Konfigurasi di client_leak.yml. Pakai:
+Configured in client_leak.yml. Usage:
     python run_client_leak.py --config client_leak.yml [--json out.json]
 """
 from __future__ import annotations
@@ -32,7 +32,7 @@ from urllib.parse import urljoin, urlparse
 import requests
 import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import _color as C  # noqa: E402  (warna ANSI konsol lintas-modul di tests/)
+import _color as C  # noqa: E402  (shared console ANSI colors in tests/)
 
 ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 
@@ -47,7 +47,7 @@ def expand(v):
     return v
 
 
-# Pola rahasia yang umum ter-hardcode. Sengaja konservatif agar sedikit false positive.
+# Common hardcoded-secret patterns; deliberately conservative to limit false positives.
 SECRET_PATTERNS = [
     ("AWS Access Key", re.compile(r"AKIA[0-9A-Z]{16}")),
     ("Google API Key", re.compile(r"AIza[0-9A-Za-z\-_]{35}")),
@@ -63,7 +63,7 @@ COMMENT_SENSITIVE_RE = re.compile(
     r"(?i)\b(todo|fixme|password|passwd|secret|api[_-]?key|token|debug|hardcode|"
     r"backdoor|internal|do not|jangan|sandi|rahasia)\b")
 
-# File/path sensitif yang umum ter-ekspos — tak butuh JS, berlaku lintas-stack.
+# Commonly exposed sensitive files/paths; no JS needed, works on any stack.
 DEFAULT_SENSITIVE_FILES = [
     ".env", ".env.local", ".env.backup", ".git/config", ".git/HEAD",
     ".svn/entries", "composer.json", "package.json", "docker-compose.yml",
@@ -88,12 +88,12 @@ def check_cache(s, base, paths):
         try:
             r = s.get(url, timeout=20, allow_redirects=False)
         except Exception as exc:  # noqa: BLE001
-            # Tak terjangkau/timeout = tak bisa diuji, bukan temuan keamanan.
+            # Unreachable/timeout means untestable, not a security finding.
             out.append({"kind": "cache", "label": f"cache {p}", "status": -1,
                         "ok": True, "note": f"skip: {exc}", "url": f"GET {url}"})
             continue
         cc = (r.headers.get("Cache-Control", "") or "").lower()
-        # Aman bila melarang penyimpanan.
+        # Safe only if storing is forbidden.
         safe = ("no-store" in cc) or ("private" in cc and "no-cache" in cc)
         cacheable_public = ("public" in cc) or (cc == "")
         ok = safe and not cacheable_public
@@ -103,9 +103,9 @@ def check_cache(s, base, paths):
     return out
 
 
-# Dijalankan di dalam halaman: fetch biasa (mengisi cache), lalu fetch ulang dengan
-# cache 'only-if-cached' — hanya berhasil bila respons benar-benar tersimpan di
-# cache HTTP browser (disk/memori), terlepas dari kedaluwarsa.
+# Runs inside the page: a plain fetch (fills the cache), then a refetch with cache
+# 'only-if-cached', which succeeds only if the response is really stored in the
+# browser HTTP cache (disk/memory), regardless of expiry.
 BROWSER_PROBE_JS = """async (u) => {
   let status = -1, cc = "";
   try {
@@ -121,8 +121,8 @@ BROWSER_PROBE_JS = """async (u) => {
 
 
 def _capture_shot(page, bc, reports_dir, p):
-    """Tangkap screenshot bukti via helper reusable tests/_screenshot.py.
-    Kembalikan path relatif terhadap reports_dir, atau '' bila gagal/dinonaktifkan."""
+    """Capture evidence screenshot via the shared tests/_screenshot.py helper.
+    Returns a path relative to reports_dir, or '' if it failed or is disabled."""
     if not reports_dir or not bc.get("screenshot", True):
         return ""
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -136,10 +136,10 @@ def _capture_shot(page, bc, reports_dir, p):
 
 
 def sanctum_cookies(cfg, base, origin, http=requests.Session):
-    """Login Laravel Sanctum (cookie sesi) lewat requests -> daftar cookie untuk konteks Chromium.
+    """Log in to Laravel Sanctum (session cookie) via requests and return cookies for a Chromium context.
 
     Config: auth.sanctum {enabled, csrf_path, origin} + auth.login {method, path, body}.
-    Mengembalikan [] bila Sanctum tak dikonfigurasi. Raise RuntimeError bila login gagal."""
+    Returns [] if Sanctum is not configured. Raises RuntimeError if login fails."""
     a = cfg.get("auth") or {}
     san = a.get("sanctum") if (a.get("sanctum") or {}).get("enabled") else None
     if not san:
@@ -158,11 +158,11 @@ def sanctum_cookies(cfg, base, origin, http=requests.Session):
 
 
 def check_browser_cache(cfg, base, paths, reports_dir=None):
-    """Konfirmasi via browser sungguhan (Playwright/Chromium) bahwa respons sensitif
-    benar-benar tersimpan di cache browser — cek header saja belum membuktikannya.
+    """Confirm with a real browser (Playwright/Chromium) that sensitive responses are
+    actually stored in the browser cache; headers alone do not prove it.
 
-    Opsional: butuh `pip install playwright` + `python -m playwright install chromium`.
-    Bila tak terpasang/tak bisa jalan, hasilnya 'skip', bukan temuan.
+    Optional: needs `pip install playwright` + `python -m playwright install chromium`.
+    If missing or unable to run, the result is 'skip', not a finding.
     """
     def skip(note):
         return [{"kind": "browser-cache", "label": "cache browser (Playwright)",
@@ -181,14 +181,14 @@ def check_browser_cache(cfg, base, paths, reports_dir=None):
     origin = "{0.scheme}://{0.netloc}".format(urlparse(start))
     out = []
     try:
-        cookies = sanctum_cookies(cfg, base, origin)       # sesi login (opsional) untuk browser
+        cookies = sanctum_cookies(cfg, base, origin)       # optional login session for the browser
     except Exception as exc:  # noqa: BLE001
         return skip(str(exc)[:200])
     try:
         with sync_playwright() as pw:
             browser = pw.chromium.launch()
             try:
-                # Jangan pasang page.route(): di Playwright, routing menonaktifkan cache HTTP.
+                # Do not use page.route(): in Playwright, routing disables the HTTP cache.
                 ctx = browser.new_context(
                     extra_http_headers=headers or None,
                     ignore_https_errors=os.environ.get("SAK_INSECURE_TLS") == "1")
@@ -219,7 +219,7 @@ def check_browser_cache(cfg, base, paths, reports_dir=None):
                            "note": (f"tersimpan di cache browser (Chromium, fetch "
                                     f"only-if-cached berhasil); Cache-Control: '{cc}'")
                                    if r["cached"] else ""}
-                    # Bukti: tangkap screenshot halaman sensitif hanya saat jadi temuan.
+                    # Evidence: screenshot the sensitive page only when it is a finding.
                     if r["cached"]:
                         try:
                             page.goto(url, timeout=20000)
@@ -232,13 +232,13 @@ def check_browser_cache(cfg, base, paths, reports_dir=None):
             finally:
                 browser.close()
     except Exception as exc:  # noqa: BLE001
-        # Chromium belum di-install, target tak terjangkau, dsb. — tak bisa diuji.
+        # Chromium not installed, target unreachable, etc.: untestable.
         return skip(str(exc).splitlines()[0][:200])
     return out
 
 
 def discover_js(s, base):
-    """Ambil <script src=...> dari halaman utama."""
+    """Collect <script src=...> URLs from the main page."""
     try:
         r = s.get(base, timeout=20)
     except Exception:  # noqa: BLE001
@@ -263,14 +263,14 @@ def check_js(s, base, js_urls, internal_hints):
             continue
         name = urlparse(url).path.rsplit("/", 1)[-1]
 
-        # Rahasia.
+        # Secrets.
         for label, pat in SECRET_PATTERNS:
             if pat.search(body):
                 out.append({"kind": "js", "label": f"Rahasia di {name}: {label}",
                             "status": r.status_code, "ok": False, "url": f"GET {url}",
                             "note": "pola rahasia ditemukan dalam bundle JS — verifikasi"})
 
-        # Endpoint internal/admin (dari petunjuk konfigurasi).
+        # Internal/admin endpoints (from config hints).
         for hint in internal_hints:
             if hint and hint in body:
                 out.append({"kind": "js", "label": f"Endpoint '{hint}' tersingkap di {name}",
@@ -279,7 +279,7 @@ def check_js(s, base, js_urls, internal_hints):
                             "note": "endpoint internal/admin tertera di JS klien"})
 
         # Source map.
-        m = SOURCEMAP_RE.search(body)
+        m =SOURCEMAP_RE.search(body)
         if m:
             map_url = urljoin(url, m.group(1).strip())
             accessible = False
@@ -298,7 +298,7 @@ def check_js(s, base, js_urls, internal_hints):
 
 
 def check_html(s, base, paths, internal_hints):
-    """Sisir HALAMAN HTML (untuk app tanpa JS): komentar, rahasia inline, endpoint."""
+    """Scan HTML PAGES (for apps without JS): comments, inline secrets, endpoints."""
     out = []
     pages = [base] + [urljoin(base + "/", p.lstrip("/")) for p in paths]
     for url in dict.fromkeys(pages):
@@ -311,7 +311,7 @@ def check_html(s, base, paths, internal_hints):
         except Exception:  # noqa: BLE001
             continue
         name = urlparse(url).path or "/"
-        # Komentar HTML yang mencurigakan.
+        # Suspicious HTML comments.
         for c in HTML_COMMENT_RE.findall(body):
             if COMMENT_SENSITIVE_RE.search(c):
                 snippet = " ".join(c.split())[:80]
@@ -319,13 +319,13 @@ def check_html(s, base, paths, internal_hints):
                             "status": r.status_code, "ok": False, "url": f"GET {url}",
                             "note": f"'{snippet}' — tinjau sebelum rilis"})
                 break
-        # Rahasia inline (mis. config di <script>window.__CONFIG__=...).
+        # Inline secrets (e.g. config in <script>window.__CONFIG__=...).
         for label, pat in SECRET_PATTERNS:
             if pat.search(body):
                 out.append({"kind": "html", "label": f"Rahasia inline di {name}: {label}",
                             "status": r.status_code, "ok": False, "url": f"GET {url}",
                             "note": "pola rahasia di HTML — verifikasi"})
-        # Endpoint internal tertera di HTML.
+        # Internal endpoints listed in the HTML.
         for hint in internal_hints:
             if hint and hint in body:
                 out.append({"kind": "html", "label": f"Endpoint '{hint}' tersingkap di {name}",
@@ -335,7 +335,7 @@ def check_html(s, base, paths, internal_hints):
 
 
 def check_files(s, base, files):
-    """Probe file sensitif yang umum ter-ekspos (hanya GET)."""
+    """Probe commonly exposed sensitive files (GET only)."""
     out = []
     for rel in files:
         url = urljoin(base + "/", rel.lstrip("/"))
@@ -343,7 +343,7 @@ def check_files(s, base, files):
             r = s.get(url, timeout=15, allow_redirects=False)
         except Exception:  # noqa: BLE001
             continue
-        # Terekspos bila 200 dan bukan halaman HTML error/SPA fallback.
+        # Exposed if 200 and not an HTML error page / SPA fallback.
         exposed = (r.status_code == 200 and r.content
                    and "html" not in r.headers.get("Content-Type", "").lower())
         if exposed:
@@ -378,11 +378,11 @@ def main():
     if cfg.get("auto_discover_js", True):
         js_urls += discover_js(s, base)
     js_urls = [urljoin(base + "/", u) if not u.startswith("http") else u
-               for u in dict.fromkeys(js_urls)]  # unik, pertahankan urutan
+               for u in dict.fromkeys(js_urls)]  # unique, keep order
     hints = cfg.get("internal_endpoints", [])
     results += check_js(s, base, js_urls, hints)
 
-    # Jalur non-JS: sisir HTML + probe file sensitif.
+    # Non-JS path: scan HTML + probe sensitive files.
     if cfg.get("scan_html", True):
         results += check_html(s, base, cfg.get("sensitive_paths", []), hints)
     if cfg.get("probe_sensitive_files", True):

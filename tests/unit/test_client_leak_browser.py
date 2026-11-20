@@ -1,7 +1,7 @@
-"""Unit test cek cache browser (Playwright) di run_client_leak.py.
+"""Unit tests for the browser cache check (Playwright) in run_client_leak.py.
 
-Uji Chromium sungguhan jalan ke server HTTP lokal; otomatis di-skip bila
-Playwright/Chromium tak terpasang (mis. di CI image python-slim).
+Real Chromium runs against a local HTTP server; skipped automatically when
+Playwright/Chromium is not installed (e.g. in the python-slim CI image).
 """
 import importlib.util
 import json
@@ -28,13 +28,13 @@ def _load():
 
 CL = _load()
 
-# path -> Cache-Control yang dikirim server uji.
+# path -> Cache-Control sent by the test server.
 ROUTES = {
     "/": "no-store",
     "/api/public": "public, max-age=600",
     "/api/nostore": "no-store",
-    "/api/pnc": "private, no-cache",  # lolos cek header, tapi tetap disimpan browser
-    "/api/empty": None,  # tanpa header + Last-Modified → cache heuristik
+    "/api/pnc": "private, no-cache",  # passes the header check, yet the browser still stores it
+    "/api/empty": None,  # no header + Last-Modified -> heuristic caching
 }
 
 
@@ -87,19 +87,19 @@ def test_real_browser_cache(server):
     res = CL.check_browser_cache({"browser_cache": {"enabled": True}}, server,
                                  ["/api/public", "/api/nostore", "/api/pnc", "/api/empty"])
     if len(res) == 1 and res[0]["note"].startswith("skip:"):
-        pytest.skip(res[0]["note"])  # Chromium belum di-install
+        pytest.skip(res[0]["note"])  # Chromium not installed
     by = {r["label"]: r for r in res}
-    assert not by["cache browser /api/public"]["ok"]   # public → tersimpan
-    assert by["cache browser /api/nostore"]["ok"]      # no-store → tidak tersimpan
-    assert not by["cache browser /api/empty"]["ok"]   # tanpa header → cache heuristik
-    # no-cache cuma memaksa revalidasi; isinya tetap tersimpan di disk browser.
+    assert not by["cache browser /api/public"]["ok"]   # public -> stored
+    assert by["cache browser /api/nostore"]["ok"]      # no-store -> not stored
+    assert not by["cache browser /api/empty"]["ok"]   # no header -> heuristic caching
+    # no-cache only forces revalidation; the body is still stored on the browser disk.
     assert not by["cache browser /api/pnc"]["ok"]
     assert "public, max-age=600" in by["cache browser /api/public"]["note"]
 
 
 def test_unreachable_target_is_skip():
     pytest.importorskip("playwright.sync_api")
-    # Target tak terjangkau (port tertutup) → tak bisa diuji, bukan temuan.
+    # Unreachable target (closed port) -> cannot be tested, not a finding.
     res = CL.check_browser_cache({"browser_cache": {"start_path": "/"}},
                                  "http://127.0.0.1:9", ["/api/public"])
     assert all(r["ok"] and r["note"].startswith("skip:") for r in res)

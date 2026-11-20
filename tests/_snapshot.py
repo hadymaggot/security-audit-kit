@@ -1,30 +1,30 @@
-"""Snapshot data (rollback level data) untuk scan aktif/destruktif — lintas-modul.
+"""Cross-module data snapshot (data-level rollback) for active/destructive scans.
 
-Jurnal rollback (`_rollback.py`) hanya dapat membalik tindakan yang DIKENAL satu per satu (mis. PATCH
-nilai asli). Scan aktif seperti ZAP full menulis ke banyak endpoint secara acak, sehingga satu-satunya
-rollback yang realistis adalah memulihkan DATA: ambil snapshot sebelum scan, pulihkan sesudahnya.
+The rollback journal (`_rollback.py`) can only reverse KNOWN actions one by one (e.g. PATCH back to
+the original value). An active scan such as ZAP full writes to many endpoints at random, so the only
+realistic rollback is restoring the DATA: snapshot before the scan, restore afterwards.
 
-Konfigurasi (blok `snapshot:` pada config/targets.yml):
+Config (`snapshot:` block in config/targets.yml):
 
   snapshot:
-    keep: false                       # hapus berkas snapshot setelah berhasil dipulihkan
+    keep: false                       # delete the snapshot files after a successful restore
     timeout_seconds: 1800
-    steps:                            # setiap langkah = satu pasang backup/restore (argv, tanpa shell)
+    steps:                            # each step = one backup/restore pair (argv, no shell)
       - name: "postgres auth"
         backup:  { cmd: ["docker","exec","pg","pg_dump","-U","u","-Fc","auth"], stdout_to: "{dir}/auth.dump" }
         restore: { cmd: ["docker","exec","-i","pg","pg_restore","-U","u","-d","auth","--clean",
                          "--if-exists","--no-owner","--single-transaction"], stdin_from: "{dir}/auth.dump" }
 
-  Atau preset ringkas untuk PostgreSQL di Docker:
+  Or the short preset for PostgreSQL in Docker:
     snapshot: { preset: postgres-docker, container: app-postgres-1, user: app-user,
                 databases: [auth, orders] }
 
-Placeholder {dir} = direktori snapshot. Perintah dijalankan tanpa shell (argv). Backup yang gagal atau
-berkas kosong MEMBATALKAN scan (tidak ada scan tanpa jaring pengaman). Entri jurnal rollback dicatat
-sebelum scan sehingga `python audit.py rollback` dapat memulihkan bila proses mati di tengah jalan.
+Placeholder {dir} = snapshot directory. Commands run without a shell (argv). A failed backup or an
+empty file ABORTS the scan (no scan without a safety net). The rollback journal entry is recorded
+before the scan so `python audit.py rollback` can restore if the process dies midway.
 
-Catatan cakupan: hanya data yang dicakup langkah snapshot yang dipulihkan (mis. PostgreSQL). Penyimpanan
-objek (MinIO/S3), antrean (RabbitMQ), dan cache (Redis) tidak ikut kecuali Anda menambah langkahnya.
+Coverage note: only data covered by a snapshot step is restored (e.g. PostgreSQL). Object storage
+(MinIO/S3), queues (RabbitMQ) and cache (Redis) are not included unless you add a step for them.
 """
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import _rollback  # noqa: E402
-import _color as C  # noqa: E402  (warna ANSI konsol lintas-modul di tests/)
+import _color as C  # noqa: E402  (console ANSI colors shared across tests/)
 
 
 class SnapshotError(RuntimeError):
@@ -44,7 +44,7 @@ class SnapshotError(RuntimeError):
 
 
 def default_runner(cmd, stdin_path=None, stdout_path=None, timeout=1800):
-    """Jalankan argv tanpa shell. stdout/stdin dapat diarahkan ke berkas. Return (rc, stderr_tail)."""
+    """Run argv without a shell. stdout/stdin can be redirected to files. Returns (rc, stderr_tail)."""
     fin = open(stdin_path, "rb") if stdin_path else None
     fout = open(stdout_path, "wb") if stdout_path else subprocess.DEVNULL
     try:
@@ -75,7 +75,7 @@ def _fmt(obj, vars_):
 
 
 def expand_preset(cfg):
-    """Daftar langkah dari `steps:` atau preset postgres-docker."""
+    """List of steps from `steps:` or the postgres-docker preset."""
     if cfg.get("preset") == "postgres-docker":
         c, u = cfg["container"], cfg["user"]
         steps = []
@@ -93,7 +93,7 @@ def expand_preset(cfg):
 
 
 def backup(cfg, outdir, runner=default_runner):
-    """Jalankan semua langkah backup. Return manifest. Raise SnapshotError bila ada yang gagal."""
+    """Run every backup step. Returns the manifest; raises SnapshotError if any step fails."""
     steps = expand_preset(cfg)
     if not steps:
         raise SnapshotError("snapshot dikonfigurasi tetapi tidak ada langkah (steps/preset kosong).")
@@ -126,7 +126,7 @@ def load_manifest(path):
 
 
 def restore(manifest, runner=default_runner):
-    """Pulihkan semua langkah. Return daftar (nama, ok, catatan); tidak berhenti di kegagalan pertama."""
+    """Restore every step. Returns a list of (name, ok, note); does not stop at the first failure."""
     timeout = int(manifest.get("timeout_seconds", 1800))
     out = []
     for s in manifest["steps"]:
@@ -144,7 +144,7 @@ def cleanup(manifest):
 
 
 def restore_entry(entry, runner=default_runner):
-    """Dipakai `audit.py rollback`: pulihkan dari manifest yang tercatat di jurnal."""
+    """Used by `audit.py rollback`: restore from the manifest recorded in the journal."""
     mp = entry["action"]["snapshot_manifest"]
     if not Path(mp).exists():
         return False, f"manifest tidak ditemukan: {mp} — pulihkan manual"
@@ -157,7 +157,7 @@ def restore_entry(entry, runner=default_runner):
 
 
 class Guard:
-    """Context manager: backup -> (scan) -> restore (selalu, termasuk saat scan gagal)."""
+    """Context manager: backup -> (scan) -> restore (always, including when the scan fails)."""
 
     def __init__(self, snap_cfg, reports_dir, label, runner=default_runner, echo=print):
         self.cfg, self.reports, self.label = snap_cfg, Path(reports_dir), label
@@ -172,7 +172,7 @@ class Guard:
             return self
         outdir = self.reports / "snapshots" / time.strftime("%Y%m%d-%H%M%S")
         self.echo(f"== Snapshot data sebelum {self.label} ==")
-        self.manifest = backup(self.cfg, outdir, self.runner)         # SnapshotError membatalkan scan
+        self.manifest = backup(self.cfg, outdir, self.runner)         # SnapshotError aborts the scan
         mpath = outdir / "manifest.json"
         save_manifest(self.manifest, mpath)
         for s in self.manifest["steps"]:
@@ -185,9 +185,9 @@ class Guard:
     def __exit__(self, exc_type, exc, tb):
         if not self.active or self.manifest is None:
             return False
-        # Idempoten: modul yang dijalankan DI DALAM guard (mis. audit.py mass-assignment) memanggil
-        # mod_rollback di akhirnya, yang ikut memproses entri snapshot pending ini lalu menghapus
-        # berkas dump. Bila entri sudah done, jangan memulihkan lagi (berkasnya sudah tiada).
+        # Idempotent: a module run INSIDE the guard (e.g. audit.py mass-assignment) calls
+        # mod_rollback at its end, which also processes this pending snapshot entry and then deletes
+        # the dump files. If the entry is already done, do not restore again (the files are gone).
         entry = next((e for e in _rollback.load(self.reports)
                       if e.get("label") == self._entry.get("label")), None)
         if entry and entry.get("done"):

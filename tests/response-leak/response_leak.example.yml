@@ -1,28 +1,28 @@
-# Salin ke response_leak.yml. PASIF: hanya GET. Nilai sensitif TIDAK pernah dicetak ke laporan
-# (hanya path kunci + panjang nilai).
+# Copy to response_leak.yml. PASSIVE: GET only. Sensitive values are NEVER printed to the report
+# (only the key path and value length).
 base_url: "${TARGET_BASE_URL}"
 
-# Opsional — login agar endpoint ber-autentikasi ikut diperiksa (kredensial via env var).
+# Optional: log in so authenticated endpoints are checked too (credentials via env vars).
 # auth:
 #   sanctum: { enabled: true, csrf_path: "/sanctum/csrf-cookie", origin: "${TARGET_BASE_URL}" }
 #   login: { method: POST, path: "/api/login", body: { email: "${RL_USER}", password: "${RL_PASS}" } }
-#   # atau token statis:  header: "Authorization"  /  value: "${RL_TOKEN}"
+#   # or a static token:  header: "Authorization"  /  value: "${RL_TOKEN}"
 
-# Endpoint data (GET). Jangan masukkan endpoint login/token — respons token di sana wajar.
+# Data endpoints (GET). Do not list login/token endpoints; tokens in their responses are expected.
 endpoints:
   - { name: "Profil sendiri", path: "/api/me" }
   # - { name: "Daftar pengguna", path: "/api/users" }
-  # - { name: "Katalog publik", path: "/api/public/katalog", anonymous: true }   # tanpa sesi
+  # - { name: "Katalog publik", path: "/api/public/katalog", anonymous: true }   # no session
 
-# Kunci yang diabaikan walau cocok pola sensitif (mis. nama kolom yang memang wajar).
+# Keys ignored even if they match a sensitive pattern (e.g. column names that are legitimate).
 allow_keys: ["csrf_token", "captcha_token"]
 
-# Kunci tambahan yang dianggap sensitif (cocok persis, huruf kecil).
+# Extra keys treated as sensitive (exact match, lowercase).
 # sensitive_keys: ["nik", "no_ktp"]
 
-# Probe error: path acak (404) otomatis dicek untuk halaman error verbose; tambahkan path lain.
+# Error probes: a random path (404) is checked automatically for verbose error pages; add more paths.
 random_404_probe: true
 # error_probes: ["/api/users/bukan-id-valid"]
 
-# Periksa kebocoran alamat IP internal (RFC1918) di isi respons.
+# Check for leaked internal IP addresses (RFC1918) in response bodies.
 check_internal_ips: true

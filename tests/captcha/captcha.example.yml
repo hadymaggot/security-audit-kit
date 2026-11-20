@@ -1,13 +1,13 @@
-# Salin ke captcha.yml. Analisis STATIS tantangan captcha (GET) — tidak menyelesaikan atau
-# mengirim jawaban captcha. Memeriksa apakah respons sudah membocorkan jawabannya.
+# Copy to captcha.yml. STATIC analysis of the captcha challenge (GET); it does not solve
+# or submit captcha answers. Checks whether the response already leaks the answer.
 base_url: "${TARGET_BASE_URL}"
 
 endpoint: { method: GET, path: "/api/captcha" }
 
-# Lokasi objek tantangan di respons JSON (kosongkan bila berada di akar).
+# Where the challenge object sits in the JSON response (leave empty if at the root).
 data_path: "data"
 
-# Jumlah tantangan yang diambil (untuk memeriksa keacakan posisi target). Endpoint captcha
-# biasanya dibatasi laju; naikkan delay_seconds bila perlu.
+# Number of challenges to fetch (to check target position randomness). Captcha endpoints
+# are usually rate limited; raise delay_seconds if needed.
 samples: 2
 delay_seconds: 0

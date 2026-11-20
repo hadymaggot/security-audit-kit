@@ -1,4 +1,4 @@
-"""Unit test runner injection (SQLi) — tanpa jaringan."""
+"""Unit tests for the SQL injection runner; no network."""
 import datetime as dt
 import importlib.util
 import json
@@ -53,8 +53,8 @@ def test_probe_detects_error_based():
 
 
 def test_probe_no_error_when_baseline_already_errors():
-    # Kalau baseline sudah memunculkan 'error' (mis. kata itu memang ada di halaman),
-    # jangan klaim error-based.
+    # If the baseline already contains 'error' (the word is just on the page),
+    # do not claim error-based.
     def send(v):
         return _R("mengandung kata SQL syntax di konten biasa")
     found = IJ.probe(send, "test", {})
@@ -68,16 +68,16 @@ def test_probe_detects_boolean_based():
 
     def send(v):
         if "1'='1" in v or "1=1" in v:
-            return _R(base)                 # TRUE → mirip baseline
+            return _R(base)                 # TRUE -> similar to baseline
         if "1'='2" in v or "1=2" in v:
-            return _R("kosong")             # FALSE → berbeda jauh
+            return _R("kosong")             # FALSE -> very different
         return _R(base)                     # baseline
     found = IJ.probe(send, "x", {})
     assert any(k == "boolean-based" for k, _, _ in found)
 
 
 def test_probe_clean_param_no_finding():
-    # Param aman: semua payload menghasilkan response identik, tak ada error.
+    # Safe param: every payload yields an identical response, no error.
     def send(v):
         return _R("response sama untuk apa pun")
     assert IJ.probe(send, "x", {}) == []

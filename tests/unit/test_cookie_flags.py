@@ -1,4 +1,4 @@
-"""Unit test modul cookie-flags — murni, tanpa jaringan."""
+"""Unit tests for the cookie-flags module: pure, no network."""
 import importlib.util
 import json
 from datetime import datetime, timedelta, timezone
@@ -26,7 +26,7 @@ def _by(rows):
     return {r["check"].split(": ", 1)[1]: r for r in rows}
 
 
-# ── parser ──────────────────────────────────────────────────────────────────
+# --- parser ---
 def test_parse_set_cookie():
     c = CF.parse_set_cookie("laravel_session=abc%3D; expires=Thu, 19 Nov 2026 12:00:00 GMT; "
                             "Max-Age=7200; path=/; HttpOnly; SameSite=lax")
@@ -36,46 +36,46 @@ def test_parse_set_cookie():
     assert CF.parse_set_cookie("") is None and CF.parse_set_cookie("tanpa-sama-dengan") is None
 
 
-# ── evaluasi atribut ────────────────────────────────────────────────────────
-def test_cookie_aman_https_lolos_semua():
+# --- attribute evaluation ---
+def test_secure_https_cookie_passes_all():
     c = CF.parse_set_cookie("sid=1; Secure; HttpOnly; SameSite=Strict; Max-Age=3600")
     rows = _by(CF.evaluate(c, HTTPS, {}))
     assert all(r["ok"] for r in rows.values())
     assert set(rows) == {"HttpOnly", "Secure", "SameSite", "masa berlaku"}
 
 
-def test_tanpa_httponly_gagal():
+def test_missing_httponly_fails():
     c = CF.parse_set_cookie("laravel_session=1; SameSite=lax")
     rows = _by(CF.evaluate(c, HTTP, {}))
     assert rows["HttpOnly"]["ok"] is False and "JavaScript" in rows["HttpOnly"]["note"]
 
 
-def test_xsrf_token_dikecualikan_dari_httponly():
+def test_xsrf_token_exempt_from_httponly():
     c = CF.parse_set_cookie("XSRF-TOKEN=abc; SameSite=lax")
     rows = _by(CF.evaluate(c, HTTP, {}))
     assert rows["HttpOnly"]["ok"] is True and "dikecualikan" in rows["HttpOnly"]["note"]
-    assert "masa berlaku" not in rows            # bukan cookie sesi
+    assert "masa berlaku" not in rows            # not a session cookie
 
 
-def test_secure_hanya_wajib_di_https():
+def test_secure_required_only_on_https():
     c = CF.parse_set_cookie("sid=1; HttpOnly; SameSite=lax")
-    assert _by(CF.evaluate(c, HTTP, {}))["Secure"]["ok"] is True       # skip di HTTP
+    assert _by(CF.evaluate(c, HTTP, {}))["Secure"]["ok"] is True       # skipped on HTTP
     assert "skip" in _by(CF.evaluate(c, HTTP, {}))["Secure"]["note"]
-    assert _by(CF.evaluate(c, HTTPS, {}))["Secure"]["ok"] is False     # wajib di HTTPS
+    assert _by(CF.evaluate(c, HTTPS, {}))["Secure"]["ok"] is False     # required on HTTPS
     assert _by(CF.evaluate(c, HTTP, {"require_secure": True}))["Secure"]["ok"] is False
 
 
-def test_samesite_variasi():
+def test_samesite_variants():
     base = "sid=1; HttpOnly; Secure"
     ok = lambda extra: _by(CF.evaluate(CF.parse_set_cookie(base + extra), HTTPS, {}))["SameSite"]["ok"]
     assert ok("; SameSite=Lax") and ok("; SameSite=Strict")
-    assert ok("; SameSite=None")                       # None + Secure = disengaja
-    assert not ok("")                                  # tak diset
+    assert ok("; SameSite=None")                       # None + Secure = intentional
+    assert not ok("")                                  # not set
     none_no_secure = CF.parse_set_cookie("sid=1; HttpOnly; SameSite=None")
     assert _by(CF.evaluate(none_no_secure, HTTP, {}))["SameSite"]["ok"] is False
 
 
-def test_masa_berlaku_cookie_sesi():
+def test_session_cookie_lifetime():
     now = datetime(2026, 11, 19, tzinfo=timezone.utc)
     long_exp = format_datetime(now + timedelta(days=400), usegmt=True)
     c = CF.parse_set_cookie(f"remember_token=x; HttpOnly; SameSite=lax; expires={long_exp}")
@@ -87,14 +87,14 @@ def test_masa_berlaku_cookie_sesi():
     assert "hilang saat browser" in _by(CF.evaluate(session_cookie, HTTP, {}))["masa berlaku"]["note"]
 
 
-def test_evaluate_all_dedup_per_nama():
+def test_evaluate_all_dedups_by_name():
     a = CF.parse_set_cookie("sid=1; HttpOnly; SameSite=lax")
     b = CF.parse_set_cookie("sid=2; HttpOnly; SameSite=lax")
     rows = CF.evaluate_all([(a, "/", 200), (b, "/login", 200)], HTTP, {})
     assert len([r for r in rows if r["check"].endswith("HttpOnly")]) == 1
 
 
-# ── collect (session palsu) ─────────────────────────────────────────────────
+# --- collect (fake session) ---
 class _Raw:
     def __init__(self, cookies):
         self._c = cookies
@@ -125,13 +125,13 @@ class _Sess:
         return _Resp(["sid=9; HttpOnly; SameSite=lax"], 200)
 
 
-def test_collect_dari_probe_path():
+def test_collect_from_probe_path():
     s = _Sess({"/": ["laravel_session=1; SameSite=lax", "XSRF-TOKEN=2; SameSite=lax"]})
     seen, notes = CF.collect({"base_url": HTTP, "probe_paths": ["/"]}, sess=s)
     assert {c["name"] for c, _, _ in seen} == {"laravel_session", "XSRF-TOKEN"} and notes == []
 
 
-def test_collect_login_sanctum():
+def test_collect_sanctum_login():
     s = _Sess({"/sanctum/csrf-cookie": ["XSRF-TOKEN=2; SameSite=lax"]})
     cfg = {"base_url": HTTP, "probe_paths": [],
            "auth": {"sanctum": {"enabled": True, "origin": HTTP},
@@ -140,8 +140,8 @@ def test_collect_login_sanctum():
     assert {"XSRF-TOKEN", "sid"} <= {c["name"] for c, _, _ in seen}
 
 
-# ── integrasi report ────────────────────────────────────────────────────────
-def test_report_memuat_cookie_flags(tmp_path):
+# --- report integration ---
+def test_report_includes_cookie_flags(tmp_path):
     rows = CF.evaluate(CF.parse_set_cookie("laravel_session=1; SameSite=lax"), HTTP, {})
     (tmp_path / "cookie_flags.json").write_text(json.dumps(
         {"module": "cookie-flags", "failures": 1, "results": rows}), encoding="utf-8")

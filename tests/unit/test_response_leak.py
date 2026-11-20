@@ -1,4 +1,4 @@
-"""Unit test modul response-leak — murni, tanpa jaringan."""
+"""Unit tests for the response-leak module: pure, no network."""
 import importlib.util
 import json
 from pathlib import Path
@@ -27,8 +27,8 @@ def _by(rows):
     return {r["check"].split(": ", 1)[1]: r for r in rows}
 
 
-# ── kunci sensitif ──────────────────────────────────────────────────────────
-def test_kunci_sensitif_terdeteksi_tanpa_membocorkan_nilai():
+# sensitive keys
+def test_sensitive_keys_detected_without_leaking_values():
     rows = _by(_rows({"data": {"id": 1, "password": "hunter2-rahasia",
                                "two_factor_secret": "ABCDEF123456"}}))
     r = rows["kunci sensitif"]
@@ -38,32 +38,32 @@ def test_kunci_sensitif_terdeteksi_tanpa_membocorkan_nilai():
     assert "panjang nilai 15" in r["note"]
 
 
-def test_nilai_kosong_topeng_dan_boolean_diabaikan():
+def test_empty_masked_and_boolean_values_are_ignored():
     rows = _by(_rows({"password": "********", "remember_token": None, "secret": "",
                       "api_key": "[REDACTED]", "has_password": True}))
     assert rows["kunci sensitif"]["ok"] is True
 
 
-def test_metadata_berakhiran_at_atau_flag_diabaikan():
+def test_metadata_ending_in_at_or_flags_is_ignored():
     rows = _by(_rows({"password_changed_at": "2026-01-01", "two_factor_enabled": "yes",
                       "password_expires": "x", "password_policy": "kuat"}))
     assert rows["kunci sensitif"]["ok"] is True
 
 
-def test_allow_keys_dan_sensitive_keys_config():
+def test_allow_keys_and_sensitive_keys_config():
     assert _by(_rows({"csrf_secret": "abc"}, cfg={"allow_keys": ["csrf_secret"]}))[
         "kunci sensitif"]["ok"] is True
     r = _by(_rows({"nik": "3171234567890001"}, cfg={"sensitive_keys": ["nik"]}))
     assert r["kunci sensitif"]["ok"] is False
 
 
-def test_walk_json_array_bersarang():
+def test_walk_json_nested_array():
     rows = _by(_rows({"items": [{"name": "a"}, {"api_key": "k-123456"}]}))
     assert "items[1].api_key" in rows["kunci sensitif"]["note"]
 
 
-# ── pola secret ─────────────────────────────────────────────────────────────
-def test_pola_secret_di_isi_respons():
+# secret patterns
+def test_secret_patterns_in_response_body():
     rows = _by(_rows({"x": "AKIAABCDEFGHIJKLMNOP"}))
     r = rows["pola secret"]
     assert r["ok"] is False and "AWS access key" in r["note"]
@@ -72,21 +72,21 @@ def test_pola_secret_di_isi_respons():
     assert pk["pola secret"]["ok"] is False
 
 
-# ── debug / verbose ─────────────────────────────────────────────────────────
-def test_stack_trace_dan_sql_terdeteksi():
+# debug / verbose
+def test_stack_trace_and_sql_detected():
     r = _by(_rows("Stack trace:\n#0 /var/www/app/Http/X.php(10)\nSQLSTATE[42S02]",
                   status=500, ctype="text/html"))["response verbose/debug"]
     assert r["ok"] is False and r["kind"] == "verbose-error"
     assert "stack trace" in r["note"] and "pesan SQL" in r["note"]
 
 
-def test_halaman_error_bersih_lolos_pada_probe():
+def test_clean_error_page_passes_on_probe():
     r = _by(_rows({"message": "Not Found"}, status=404, probe=True))["response verbose/debug"]
     assert r["ok"] is True and "tidak expose" in r["note"]
     assert "kunci sensitif" not in _by(_rows({"message": "x"}, status=404, probe=True))
 
 
-# ── IP internal ─────────────────────────────────────────────────────────────
+# internal IPs
 def test_ip_internal():
     rows = _by(_rows({"upstream": "http://10.1.2.3:8080/api", "x": "172.20.0.5"}))
     assert rows["alamat internal"]["ok"] is False
@@ -95,7 +95,7 @@ def test_ip_internal():
     assert "alamat internal" not in _by(_rows({"u": "10.1.2.3"}, cfg={"check_internal_ips": False}))
 
 
-# ── run_checks dengan session palsu ─────────────────────────────────────────
+# run_checks with a fake session
 class _Resp:
     def __init__(self, status, body, ctype="application/json"):
         self.status_code, self.text = status, body
@@ -113,7 +113,7 @@ class _Sess:
         return _Resp(404, json.dumps({"message": "Not Found"}))
 
 
-def test_run_checks_endpoint_dan_probe():
+def test_run_checks_endpoint_and_probe():
     sess = _Sess({"/api/me": (200, json.dumps({"data": {"name": "A", "password": "xx-yy-zz"}}))})
     cfg = {"base_url": "http://t.example", "endpoints": [{"name": "me", "path": "/api/me"}]}
     res = RL.run_checks(cfg, sess=sess, anon=_Sess({}))
@@ -122,7 +122,7 @@ def test_run_checks_endpoint_dan_probe():
     assert any(r["check"].startswith("probe error /") and r["ok"] for r in res)
 
 
-def test_header_stateful_hanya_pada_request_terautentikasi(monkeypatch):
+def test_stateful_header_only_on_authenticated_requests(monkeypatch):
     seen = []
 
     class _Rec(_Sess):
@@ -142,7 +142,7 @@ def test_header_stateful_hanya_pada_request_terautentikasi(monkeypatch):
     assert "Origin" not in by_tag[("anon", "pub")]
 
 
-def test_run_checks_endpoint_ditolak_di_skip():
+def test_run_checks_denied_endpoint_is_skipped():
     sess = _Sess({"/api/admin": (403, "{}")})
     cfg = {"base_url": "http://t.example", "random_404_probe": False,
            "endpoints": [{"name": "admin", "path": "/api/admin"}]}
@@ -150,8 +150,8 @@ def test_run_checks_endpoint_ditolak_di_skip():
     assert res[0]["ok"] is True and "skip" in res[0]["note"]
 
 
-# ── integrasi report ────────────────────────────────────────────────────────
-def test_report_memuat_response_leak(tmp_path):
+# report integration
+def test_report_includes_response_leak(tmp_path):
     rows = _rows({"password": "abc-123-xyz", "upstream": "http://10.0.0.9"})
     (tmp_path / "response_leak.json").write_text(json.dumps(
         {"module": "response-leak", "failures": 2, "results": rows}), encoding="utf-8")

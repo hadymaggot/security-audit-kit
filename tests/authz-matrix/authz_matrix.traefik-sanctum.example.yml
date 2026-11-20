@@ -1,31 +1,31 @@
-# Contoh matriks authz untuk stack MICROSERVICE di balik Traefik ForwardAuth,
-# dengan auth Laravel Sanctum (SPA, berbasis session cookie — BUKAN Bearer/JWT).
+# Example authz matrix for a MICROSERVICE stack behind Traefik ForwardAuth,
+# with Laravel Sanctum auth (SPA, session cookie based, NOT Bearer/JWT).
 #
-# Pola arsitektur yang disasar (umum di stack Laravel + Traefik):
-#   - Gateway (Traefik) memanggil middleware ForwardAuth; service hilir hanya
-#     mempercayai header X-Auth-* yang disuntik gateway, tak punya auth sendiri.
-#   - Risiko klasik: (a) service ikut terekspos LANGSUNG di port host (bypass
-#     gateway), (b) gateway tak menimpa X-Auth-* kiriman klien → eskalasi hak.
-#   Dua-duanya diuji di bawah dalam SATU run: 'base_url' per endpoint untuk port
-#   service langsung, dan 'forged_headers' berupa daftar blok (gateway & bypass).
+# Target architecture (common in Laravel + Traefik stacks):
+#   - The gateway (Traefik) calls ForwardAuth middleware; downstream services only
+#     trust the X-Auth-* headers injected by the gateway and have no auth of their own.
+#   - Classic risks: (a) a service is also exposed DIRECTLY on a host port (gateway
+#     bypass), (b) the gateway does not overwrite client-sent X-Auth-* (privilege escalation).
+#   Both are tested below in ONE run: per-endpoint 'base_url' for the direct service
+#   port, and 'forged_headers' as a list of blocks (gateway and bypass).
 #
-# Salin ke authz_matrix.yml, sesuaikan path & role. Kredensial dari ENV, jangan di sini.
+# Copy to authz_matrix.yml, adjust paths and roles. Credentials come from ENV, not here.
 #   export AUTHZ_ADMIN_USER=... AUTHZ_ADMIN_PASS=...
 #   export AUTHZ_LOW_USER=...   AUTHZ_LOW_PASS=...
-#   export SERVICE_DIRECT_URL=http://localhost:<port>   # port service yg terpublish
+#   export SERVICE_DIRECT_URL=http://localhost:<port>   # the published service port
 
-base_url: "${TARGET_BASE_URL}"        # mis. http://localhost:8080 (lewat gateway)
+base_url: "${TARGET_BASE_URL}"        # e.g. http://localhost:8080 (via gateway)
 
 auth:
-  mode: session_cookie                # simpan cookie sesi dari respons login
+  mode: session_cookie                # keep the session cookie from the login response
 
-  # Aktifkan alur Sanctum: ambil cookie CSRF dulu, kirim Origin yang stateful,
-  # lalu sertakan X-XSRF-TOKEN otomatis di tiap request.
+  # Enable the Sanctum flow: fetch the CSRF cookie first, send a stateful Origin,
+  # then attach X-XSRF-TOKEN automatically on every request.
   sanctum:
     enabled: true
     csrf_path: "/sanctum/csrf-cookie"
-    # WAJIB cocok dengan SANCTUM_STATEFUL_DOMAINS di server. Kalau tidak, login
-    # balas 500 "Session store not set on request." (dianggap request stateless).
+    # MUST match SANCTUM_STATEFUL_DOMAINS on the server. Otherwise login returns
+    # 500 "Session store not set on request." (treated as a stateless request).
     origin: "${TARGET_BASE_URL}"
 
   login:
@@ -34,19 +34,19 @@ auth:
     body:
       email: "{username}"
       password: "{password}"
-    # mode session_cookie tak perlu token_field — auth dibawa lewat cookie sesi.
+    # session_cookie mode needs no token_field; auth is carried by the session cookie.
 
   roles:
     admin:
       username: "${AUTHZ_ADMIN_USER}"
       password: "${AUTHZ_ADMIN_PASS}"
-    low_user:                      # peran paling rendah; harus ditolak di area admin
+    low_user:                      # lowest role; must be denied in the admin area
       username: "${AUTHZ_LOW_USER}"
       password: "${AUTHZ_LOW_PASS}"
     anon: { anonymous: true }
 
 endpoints:
-  # Area admin — hanya admin yang boleh; peran rendah & anon harus ditolak.
+  # Admin area: admin only; the low role and anon must be denied.
   - name: "Daftar pengguna (admin only)"
     method: GET
     path: "/api/users"
@@ -62,7 +62,7 @@ endpoints:
     path: "/api/activity-logs"
     expect: { admin: allow, low_user: deny, anon: deny }
 
-  # IDOR — peran rendah mengakses objek milik entitas lain harus ditolak.
+  # IDOR: the low role accessing another entity's object must be denied.
   - name: "IDOR — perusahaan/company lain"
     method: GET
     path: "/api/companies/1"
@@ -73,26 +73,26 @@ endpoints:
     path: "/api/reports/1"
     expect: { low_user: deny }
 
-  # Business-logic — ubah status/approve tanpa peran berwenang harus ditolak.
+  # Business logic: changing status / approving without authority must be denied.
   - name: "Approve laporan tanpa wewenang"
     method: POST
     path: "/api/reports/1/approve"
     body: { note: "probe" }
     expect: { low_user: deny }
 
-  # Bypass gateway — 'base_url' per endpoint menunjuk LANGSUNG ke port service
-  # (tanpa Traefik/ForwardAuth). Anon tanpa header apa pun harus tetap ditolak.
+  # Gateway bypass: per-endpoint 'base_url' points DIRECTLY at the service port
+  # (no Traefik/ForwardAuth). Anon without any header must still be denied.
   - name: "Area admin langsung ke service (tanpa gateway)"
     method: GET
     path: "/api/admin/settings"
-    base_url: "${SERVICE_DIRECT_URL}"   # mis. http://localhost:<port-service>
+    base_url: "${SERVICE_DIRECT_URL}"   # e.g. http://localhost:<service-port>
     expect: { anon: deny }
 
-# Uji header palsu — satu blok, atau daftar blok seperti di bawah.
-# Endpoint admin HARUS tetap menolak. Kalau tembus: header X-Auth-* kiriman klien
-# dipercaya mentah oleh service hilir.
+# Forged-header test: one block, or a list of blocks as below.
+# Admin endpoints MUST still deny. If they get through, the downstream service
+# trusts client-sent X-Auth-* headers as-is.
 forged_headers:
-  # 1) Lewat gateway sebagai peran rendah: ForwardAuth wajib menimpa X-Auth-*.
+  # 1) Via the gateway as the low role: ForwardAuth must overwrite X-Auth-*.
   - as_role: low_user
     inject:
       X-Auth-Roles: "admin"
@@ -101,15 +101,15 @@ forged_headers:
     endpoints:
       - { method: GET, path: "/api/users" }
       - { method: GET, path: "/api/roles" }
-  # 2) Bypass gateway: anonim + identitas admin palsu langsung ke port service.
-  #    Service yang hanya membaca X-Auth-* tanpa verifikasi akan tembus di sini.
+  # 2) Gateway bypass: anonymous + forged admin identity straight to the service port.
+  #    A service that reads X-Auth-* without verification gets through here.
   - as_role: anon
-    base_url: "${SERVICE_DIRECT_URL}"   # berlaku utk semua endpoint di blok ini
+    base_url: "${SERVICE_DIRECT_URL}"   # applies to all endpoints in this block
     inject:
       X-Auth-Roles: "admin"
       X-Auth-User-Id: "1"
       X-Auth-Company-Id: ""
     endpoints:
       - { method: GET, path: "/api/admin/settings" }
-      # base_url per endpoint menimpa base_url blok, mis. service lain:
+      # Per-endpoint base_url overrides the block's, e.g. another service:
       - { method: GET, path: "/api/notifications/templates", base_url: "${SERVICE2_DIRECT_URL}" }

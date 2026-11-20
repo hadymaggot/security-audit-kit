@@ -1,50 +1,50 @@
-# Salin ke client_leak.yml. Non-destruktif (hanya GET).
+# Copy to client_leak.yml. Non-destructive (GET only).
 base_url: "${TARGET_BASE_URL}"
 
-# Sertakan auth agar respons terautentikasi ikut diuji cache-nya (opsional).
+# Optional: include auth so authenticated responses get their caching checked too.
 auth:
   header: "Authorization"
-  value: "${CLIENT_LEAK_TOKEN}"   # mis. "Bearer xxx"
-  # Atau Laravel Sanctum (cookie sesi) — dipakai probe cache BROWSER (browser_cache): login lewat
-  # requests, lalu cookie sesi dipasang ke Chromium agar endpoint sensitif benar-benar terautentikasi.
-  # Hapus header/value di atas bila memakai Sanctum.
+  value: "${CLIENT_LEAK_TOKEN}"   # e.g. "Bearer xxx"
+  # Or Laravel Sanctum (session cookie), used by the BROWSER cache probe (browser_cache):
+  # log in via requests, then load the session cookies into Chromium so sensitive
+  # endpoints are really authenticated. Remove header/value above when using Sanctum.
   # sanctum: { enabled: true, csrf_path: "/sanctum/csrf-cookie", origin: "${TARGET_BASE_URL}" }
   # login: { method: POST, path: "/api/login", body: { email: "${CL_USER}", password: "${CL_PASS}" } }
 
-# A. Respons sensitif yang HARUS melarang cache (no-store/private).
+# A. Sensitive responses that MUST forbid caching (no-store/private).
 sensitive_paths:
   - "/api/users/me"
   - "/api/profile"
   - "/dashboard"
 
-# A2. (Opsional) Konfirmasi lewat browser sungguhan bahwa respons di sensitive_paths
-#     benar-benar tersimpan di cache browser (bukan hanya dibaca dari header).
-#     Butuh: pip install playwright && python -m playwright install chromium
-#     Bila tak terpasang, cek ini di-skip (bukan temuan).
+# A2. (Optional) Confirm with a real browser that responses in sensitive_paths are
+#     actually stored in the browser cache (not just inferred from headers).
+#     Needs: pip install playwright && python -m playwright install chromium
+#     If not installed, this check is skipped (not a finding).
 browser_cache:
   enabled: false
-  start_path: "/"                 # halaman se-origin tempat probe dijalankan;
-                                  # ganti bila "/" dialihkan ke SSO/origin lain
-  # Bukti: tangkap screenshot halaman sensitif HANYA saat jadi temuan, disimpan ke
-  # reports/evidence/ dan disematkan di laporan & slide.
-  screenshot: true               # set false untuk mematikan
-  full_page: false               # default viewport (ter-crop ke area terlihat)
-  # selector: "#konten"          # crop ke elemen tertentu (opsional)
-  # clip: { x: 0, y: 0, width: 1024, height: 400 }   # crop ke region (opsional)
+  start_path: "/"                 # same-origin page the probe runs from;
+                                  # change if "/" redirects to SSO/another origin
+  # Evidence: screenshot the sensitive page ONLY when it is a finding, saved to
+  # reports/evidence/ and embedded in the report and slides.
+  screenshot: true               # set false to disable
+  full_page: false               # default viewport (cropped to the visible area)
+  # selector: "#konten"          # crop to a specific element (optional)
+  # clip: { x: 0, y: 0, width: 1024, height: 400 }   # crop to a region (optional)
 
-# B. Aset JS yang disisir. Kosongkan untuk mengandalkan auto-discover dari halaman.
-#    (Aman untuk app TANPA JS — bila tak ada bundle, cek ini otomatis kosong.)
+# B. JS assets to scan. Leave empty to rely on auto-discovery from the page.
+#    (Safe for apps WITHOUT JS: with no bundle, this check is simply empty.)
 js_assets: []
-auto_discover_js: true            # parse <script src> dari base_url
+auto_discover_js: true            # parse <script src> from base_url
 
-# Petunjuk endpoint internal/admin; bila string ini muncul di JS/HTML → ditandai.
+# Internal/admin endpoint hints; if one of these strings appears in JS/HTML it is flagged.
 internal_endpoints:
   - "/users"
   - "/user-role"
   - "/admin"
 
-# C. Jalur NON-JS (app server-rendered / API).
-scan_html: true                   # sisir komentar & rahasia inline di halaman HTML
-probe_sensitive_files: true       # probe berkas sensitif yang umum ter-ekspos (GET)
-# Timpa daftar bawaan bila perlu (default sudah mencakup .env, .git/, dump, backup, dll):
+# C. NON-JS path (server-rendered apps / APIs).
+scan_html: true                   # scan HTML pages for comments and inline secrets
+probe_sensitive_files: true       # probe commonly exposed sensitive files (GET)
+# Override the default list if needed (default covers .env, .git/, dumps, backups, etc.):
 sensitive_files: []

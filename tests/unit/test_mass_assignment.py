@@ -1,8 +1,8 @@
-"""Unit test runner mass-assignment — tanpa jaringan.
+"""Unit tests for the mass-assignment runner; no network.
 
-Memakai requests.Session tiruan: GET pertama = snapshot, GET kedua = keadaan setelah
-inject. Memastikan deteksi temuan, jurnal rollback tercatat (tanpa restore inline),
-dan bukti endpoint ikut.
+Uses a fake requests.Session: first GET = snapshot, second GET = state after the
+inject. Checks finding detection, the rollback journal (no inline restore), and
+that the endpoint evidence is included.
 """
 import importlib.util
 import json
@@ -35,7 +35,7 @@ class _Resp:
 
 
 class _Sess:
-    """GET mengembalikan body dari antrean per-path; request (PATCH) mencatat & 200."""
+    """GET returns bodies from a per-path queue; request (PATCH) records the write and returns 200."""
 
     def __init__(self, get_queue, patch_status=200):
         self.headers = {}
@@ -54,7 +54,7 @@ class _Sess:
 
 CFG = {
     "base_url": "http://t",
-    "auth": {},                       # tanpa sanctum → tak ada login/jaringan
+    "auth": {},                       # no sanctum -> no login/network
     "targets": [{
         "name": "Eskalasi role via profil",
         "get": {"path": "/api/me"}, "data_path": "data",
@@ -81,7 +81,7 @@ def _run(tmp_path, monkeypatch, get_queue, patch_status=200):
 
 
 def test_flags_accepted_injection_and_journals(tmp_path, monkeypatch):
-    # snapshot: role=member; setelah inject: role=admin (DITERIMA → temuan).
+    # snapshot: role=member; after inject: role=admin (ACCEPTED -> finding).
     snap = {"data": {"role": "member", "is_admin": False}}
     after = {"data": {"role": "admin", "is_admin": True}}
     rc, res, journal, sess = _run(tmp_path, monkeypatch, [snap, after])
@@ -89,33 +89,33 @@ def test_flags_accepted_injection_and_journals(tmp_path, monkeypatch):
     r = res[0]
     assert r["ok"] is False and "role" in r["note"] and "is_admin" in r["note"]
     assert "PATCH http://t/api/me" in r["url"]
-    # Jurnal mencatat pemulihan ke nilai ASLI, dan BELUM dipulihkan (restore pasca-laporan).
+    # Journal records the ORIGINAL value and is NOT restored yet (restore happens after the report).
     assert len(journal) == 1
     act = journal[0]["action"]
     assert act["json"] == {"role": "member", "is_admin": False}
     assert journal[0]["done"] is False
-    # Runner hanya menulis SEKALI (inject); tak ada restore inline.
+    # Runner writes only ONCE (inject); no inline restore.
     assert len(sess.writes) == 1 and sess.writes[0][2] == {"role": "admin", "is_admin": True}
 
 
 def test_server_ignores_injection_is_ok(tmp_path, monkeypatch):
-    # Server mengabaikan field terlarang: nilai tetap seperti semula → bukan temuan.
+    # Server ignores the forbidden field: value unchanged -> not a finding.
     snap = {"data": {"role": "member", "is_admin": False}}
     after = {"data": {"role": "member", "is_admin": False}}
     rc, res, journal, _ = _run(tmp_path, monkeypatch, [snap, after])
     assert rc == 0 and res[0]["ok"] is True
-    # Tetap mencatat jurnal (crash-safe); restore ke nilai asli = aman/no-op.
+    # Journal is still written (crash-safe); restoring the original value is a safe no-op.
     assert len(journal) == 1 and journal[0]["action"]["json"]["role"] == "member"
 
 
 def test_snapshot_unreadable_skips(tmp_path, monkeypatch):
     rc, res, journal, _ = _run(tmp_path, monkeypatch, [{"data": "bukan-objek"}])
     assert res[0]["ok"] is True and "skip" in res[0]["note"]
-    assert journal == []            # tak menulis apa pun → tak ada yang perlu di-rollback
+    assert journal == []            # nothing written -> nothing to roll back
 
 
 def test_rollback_restores_via_journal(tmp_path, monkeypatch):
-    # Setelah temuan, replay jurnal harus mengirim PATCH nilai asli.
+    # After a finding, replaying the journal must PATCH the original value.
     snap = {"data": {"role": "member", "is_admin": False}}
     after = {"data": {"role": "admin", "is_admin": True}}
     _, _, _, _ = _run(tmp_path, monkeypatch, [snap, after])
@@ -127,4 +127,4 @@ def test_rollback_restores_via_journal(tmp_path, monkeypatch):
 
     RB.replay(tmp_path, do_restore)
     assert sent == [{"role": "member", "is_admin": False}]
-    assert RB.pending(tmp_path) == []        # semua dipulihkan
+    assert RB.pending(tmp_path) == []        # all restored

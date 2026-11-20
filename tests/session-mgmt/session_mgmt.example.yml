@@ -1,5 +1,5 @@
-# Salin ke session_mgmt.yml. Menguji pencabutan sesi (logout dan ganti sandi) pada AKUN UJI
-# SEKALI PAKAI yang dibuat lalu dihapus lewat API admin (blok `fixture`). Akun nyata tak tersentuh.
+# Copy to session_mgmt.yml. Tests session revocation (logout and password change) on a DISPOSABLE
+# TEST ACCOUNT created and deleted via the admin API (the `fixture` block). Real accounts are untouched.
 base_url: "${TARGET_BASE_URL}"
 
 fixture:
@@ -22,8 +22,8 @@ fixture:
   login: { method: POST, path: "/api/login", body: { email: "{email}", password: "{password}" } }
 
 session:
-  me_path: "/api/me"                         # endpoint ter-autentikasi untuk memeriksa sesi hidup
-  delay_seconds: 0                           # jeda antar login (naikkan bila kena rate limit login)
+  me_path: "/api/me"                         # authenticated endpoint used to check the session is alive
+  delay_seconds: 0                           # delay between logins (raise if login is rate limited)
   logout: { method: POST, path: "/api/logout" }
   change_password:
     method: POST

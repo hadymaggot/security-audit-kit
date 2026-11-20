@@ -1,6 +1,6 @@
-"""Unit test runner authz: base_url per endpoint & forged_headers berbentuk list.
+"""Unit tests for the authz runner: per-endpoint base_url and list-shaped forged_headers.
 
-Tanpa jaringan — requests.Session diganti tiruan yang menjawab per URL.
+No network: requests.Session is replaced by a fake that answers per URL.
 """
 import importlib.util
 import json
@@ -33,7 +33,7 @@ class _Jar(dict):
 
 
 class _Sess:
-    """requests.Session tiruan: status ditentukan tabel {url: status}, default 403."""
+    """Fake requests.Session: status comes from the {url: status} table, default 403."""
 
     table = {}
     calls = []
@@ -54,7 +54,7 @@ class _Sess:
 # --- forged_blocks ---
 
 def test_forged_blocks_single_dict_needs_enabled():
-    # Format lama: dict tanpa enabled: true tetap diabaikan.
+    # Legacy format: a dict without enabled: true is still ignored.
     assert AZ.forged_blocks({"as_role": "low"}) == []
     assert AZ.forged_blocks({"enabled": True, "as_role": "low"}) == [
         {"enabled": True, "as_role": "low"}]
@@ -65,13 +65,13 @@ def test_forged_blocks_list_default_enabled():
     blocks = AZ.forged_blocks([
         {"as_role": "low"},
         {"as_role": "anon", "enabled": False},
-        {"inject": {}},                       # tanpa as_role → dibuang
+        {"inject": {}},                       # no as_role -> dropped
     ])
     assert [b["as_role"] for b in blocks] == ["low"]
 
 
 def test_example_configs_parse_and_have_forged_blocks():
-    # Contoh config harus tetap terbaca runner (tak diam-diam rusak).
+    # Example configs must stay parseable by the runner (no silent breakage).
     ex = ROOT / "tests" / "authz-matrix"
     plain = yaml.safe_load((ex / "authz_matrix.example.yml").read_text(encoding="utf-8"))
     traefik = yaml.safe_load(
@@ -79,7 +79,7 @@ def test_example_configs_parse_and_have_forged_blocks():
     assert len(AZ.forged_blocks(plain.get("forged_headers"))) == 1
     blocks = AZ.forged_blocks(traefik.get("forged_headers"))
     assert [b["as_role"] for b in blocks] == ["low_user", "anon"]
-    assert any(ep.get("base_url") for ep in traefik["endpoints"])   # contoh bypass
+    assert any(ep.get("base_url") for ep in traefik["endpoints"])   # bypass example
     for cfg in (plain, traefik):
         roles = set(cfg["auth"]["roles"])
         for ep in cfg["endpoints"]:
@@ -99,7 +99,7 @@ def test_request_base_url_override():
     assert [c[1] for c in _Sess.calls] == ["http://gw/api/x", "http://svc:8002/api/x"]
 
 
-# --- main(): gateway + port langsung dalam satu matriks ---
+# --- main(): gateway + direct port in one matrix ---
 
 CFG = {
     "base_url": "http://gw",
@@ -144,15 +144,15 @@ def test_main_all_denied_passes(tmp_path, monkeypatch):
     hit = {c[1] for c in _Sess.calls}
     assert "http://svc:8002/api/admin" in hit and "http://gw/api/admin" in hit
     labels = [r["endpoint"] for r in res]
-    assert "[forged] /api/admin" in labels                       # lewat gateway
-    assert "[forged] http://svc:8002/api/admin" in labels        # bypass gateway
+    assert "[forged] /api/admin" in labels                       # via gateway
+    assert "[forged] http://svc:8002/api/admin" in labels        # gateway bypass
 
 
 def test_main_flags_direct_port_forged_bypass(tmp_path, monkeypatch):
-    # Service mempercayai X-Auth-* mentah di port langsung → harus jadi temuan.
+    # Service trusts raw X-Auth-* on the direct port -> must be a finding.
     rc, res = _run(tmp_path, monkeypatch, {("GET", "http://svc:8002/api/admin"): 200})
     assert rc == 1
     bad = {r["endpoint"] for r in res if not r["ok"]}
     assert "[forged] http://svc:8002/api/admin" in bad
     assert "admin langsung ke service" in bad
-    assert "[forged] /api/admin" not in bad                      # gateway tetap aman
+    assert "[forged] /api/admin" not in bad                      # gateway stays safe

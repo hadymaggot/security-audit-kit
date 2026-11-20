@@ -1,25 +1,25 @@
-# Salin ke openapi_coverage.yml. Non-destruktif: hanya GET ANONIM (tanpa kredensial) yang dikirim;
-# operasi tulis (POST/PUT/PATCH/DELETE) hanya dianalisis statis dan TIDAK pernah dikirim.
+# Copy to openapi_coverage.yml. Non-destructive: only ANONYMOUS GET requests are sent;
+# write operations (POST/PUT/PATCH/DELETE) are analyzed statically and never sent.
 
-# Spesifikasi OpenAPI 3.x: URL atau path berkas (JSON/YAML).
-# Banyak framework meng-generate otomatis (Laravel Scramble: /docs/api.json, springdoc, drf-spectacular).
+# OpenAPI 3.x spec: URL or file path (JSON/YAML).
+# Many frameworks generate it (Laravel Scramble: /docs/api.json, springdoc, drf-spectacular).
 openapi: "${TARGET_BASE_URL}/docs/api.json"
 
-# Prefiks API yang dipanggil. Kosong -> memakai servers[0].url dari spesifikasi.
+# API prefix to call. Empty -> uses servers[0].url from the spec.
 base_url: "${TARGET_BASE_URL}/api"
 
-# Beberapa spesifikasi sekaligus (mis. per microservice) — menimpa nilai di atas:
+# Multiple specs at once (e.g. per microservice); overrides the values above:
 # specs:
 #   - { name: "iam",  openapi: "http://127.0.0.1:18001/docs/api.json", base_url: "http://127.0.0.1:18001/api" }
 #   - { name: "core", openapi: "http://127.0.0.1:18002/docs/api.json", base_url: "http://127.0.0.1:18002/api" }
 
-# Endpoint yang memang publik (cocok bila path MENGANDUNG teks ini). Default sudah memuat login,
-# register, captcha, forgot/reset-password, health, docs, csrf-cookie, dst.
+# Endpoints that are intentionally public (matches if the path CONTAINS the text). The default
+# already covers login, register, captcha, forgot/reset-password, health, docs, csrf-cookie, etc.
 # public_allowlist: ["/login", "/captcha", "/public/"]
 
-# Nilai untuk path parameter ({id} dst). Default: placeholder 26 digit nol (cukup untuk uji auth).
+# Values for path parameters ({id} etc.). Default: a 26-zero placeholder (enough for auth tests).
 # path_params: { id: "00000000000000000000000000" }
 
-# Batas request dan jeda antar request (detik) agar tak memicu rate limit.
+# Request cap and delay between requests (seconds), to avoid triggering rate limits.
 max_requests: 400
 delay_seconds: 0

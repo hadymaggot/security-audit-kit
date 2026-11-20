@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Deteksi CORS misconfiguration (non-destruktif, hanya GET dengan header Origin).
+"""Detect CORS misconfiguration (non-destructive, GET with an Origin header only).
 
-Buat tiap path, kirim request dengan Origin uji lalu baca Access-Control-Allow-Origin
-(ACAO) dan Access-Control-Allow-Credentials (ACAC). Ditandai kalau:
-  - ACAO memantulkan Origin uji yang asing (reflected arbitrary origin), apalagi + ACAC true
-  - ACAO '*' dipadu ACAC true
-  - Origin 'null' diterima (ACAO: null)
+For each path, sends a request with a test Origin and reads Access-Control-Allow-Origin
+(ACAO) and Access-Control-Allow-Credentials (ACAC). Flagged when:
+  - ACAO reflects a foreign test Origin (reflected arbitrary origin), worse with ACAC true
+  - ACAO '*' is combined with ACAC true
+  - Origin 'null' is accepted (ACAO: null)
 
-Konfigurasi di cors.yml. Pakai:
+Configured in cors.yml. Usage:
     python run_cors.py --config cors.yml [--json out.json]
 """
 from __future__ import annotations
@@ -23,7 +23,7 @@ import requests
 import yaml
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import _color as C  # noqa: E402  (warna ANSI konsol lintas-modul di tests/)
+import _color as C  # noqa: E402  (shared console ANSI colors in tests/)
 
 ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 
@@ -39,7 +39,7 @@ def expand(v):
 
 
 def probe(s, url, origin):
-    """Kembalikan (acao, acac) untuk satu Origin uji."""
+    """Return (acao, acac, error) for one test Origin."""
     try:
         r = s.get(url, headers={"Origin": origin}, timeout=20, allow_redirects=False)
     except Exception as exc:  # noqa: BLE001
@@ -68,7 +68,7 @@ def evaluate(path, s, url, evil_origin):
     else:
         results.append({"label": f"CORS {path}", "status": 200, "ok": True, "note": ""})
 
-    # 2. Origin 'null' diterima.
+    # 2. Origin 'null' accepted.
     acao2, acac2, err2 = probe(s, url, "null")
     if not err2 and acao2 == "null":
         cred = " + credentials" if acac2 == "true" else ""

@@ -1,21 +1,21 @@
 #!/usr/bin/env pwsh
-# Pembungkus PowerShell untuk Windows — perintah pendek, meneruskan ke `python audit.py`.
-# Contoh:
+# PowerShell wrapper for Windows: short commands that forward to `python audit.py`.
+# Examples:
 #   .\audit.ps1 install
 #   .\audit.ps1 all
 #   .\audit.ps1 zap baseline
 #   .\audit.ps1 clientleak
 #   .\audit.ps1 report
-# Multi-project (paralel, satu terminal per project):
-#   .\audit.ps1 init authz,upload -Project my-app   # buat projects\my-app\
+# Multi-project (parallel, one terminal per project):
+#   .\audit.ps1 init authz,upload -Project my-app   # creates projects\my-app\
 #   .\audit.ps1 all -Project my-app
-#   .\audit.ps1 headers -Project D:\audit\client-b           # folder di mana saja
+#   .\audit.ps1 headers -Project D:\audit\client-b           # any folder
 
 param(
     [Parameter(Position = 0)]
     [string]$Module = "help",
 
-    # Nama project (-> <kit>\projects\<nama>) atau folder; setara `--project` / SAK_PROJECT_DIR.
+    # Project name (-> <kit>\projects\<name>) or folder; same as `--project` / SAK_PROJECT_DIR.
     [string]$Project = "",
 
     [Parameter(Position = 1, ValueFromRemainingArguments = $true)]
@@ -23,11 +23,11 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-# Path project relatif diselesaikan terhadap folder pemanggil, bukan folder kit.
+# Relative project paths resolve against the caller's folder, not the kit folder.
 $env:SAK_CALLER_CWD = (Get-Location).Path
 Set-Location -Path $PSScriptRoot
 
-# Pilih interpreter Python yang tersedia.
+# Pick whichever Python interpreter is available.
 $py = (Get-Command python -ErrorAction SilentlyContinue) `
     ?? (Get-Command python3 -ErrorAction SilentlyContinue)
 if (-not $py) { Write-Error "Python tidak ditemukan di PATH."; exit 2 }
@@ -58,7 +58,7 @@ switch ($Module) {
         & $py.Source -m pip install -r requirements.txt
     }
     default {
-        # Teruskan apa adanya: [--project X] modul + argumen sisa (mis. 'zap baseline').
+        # Forward as-is: [--project X] module + remaining args (e.g. 'zap baseline').
         & $py.Source "audit.py" @projectArgs $Module @Rest
         exit $LASTEXITCODE
     }

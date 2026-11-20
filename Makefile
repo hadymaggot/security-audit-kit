@@ -1,8 +1,8 @@
-# Perintah pendek untuk Linux/macOS. Windows: pakai audit.ps1 (make tak selalu ada).
-# Semua target meneruskan ke `python audit.py`, jadi perilakunya identik lintas-OS.
+# Short commands for Linux/macOS. On Windows use audit.ps1 (make is not always available).
+# Every target forwards to `python audit.py`, so behavior is identical across OSes.
 
 PYTHON ?= python3
-# Multi-project: make all PROJECT=my-app  (nama -> projects/<nama>, atau path folder)
+# Multi-project: make all PROJECT=my-app  (name -> projects/<name>, or a folder path)
 PROJECT ?=
 AUDIT = $(PYTHON) audit.py $(if $(PROJECT),--project "$(PROJECT)")
 

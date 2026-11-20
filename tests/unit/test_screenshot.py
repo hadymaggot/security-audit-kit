@@ -1,4 +1,4 @@
-"""Unit test helper screenshot — tanpa browser nyata (sync_playwright di-stub)."""
+"""Unit tests for the screenshot helper: no real browser (sync_playwright is stubbed)."""
 import importlib.util
 from pathlib import Path
 
@@ -15,7 +15,7 @@ def _load(name, rel):
 SS = _load("_screenshot_t", "tests/_screenshot.py")
 
 
-# ── stub Playwright ───────────────────────────────────────────────────────────
+# Playwright stub
 class FakePage:
     def __init__(self):
         self.goto_url = None
@@ -77,7 +77,7 @@ class FakePW:
         return FakePW._Chromium()
 
 
-# ── capture_page ──────────────────────────────────────────────────────────────
+# capture_page
 def test_capture_page_writes_file(tmp_path):
     rel = SS.capture_page(FakePage(), tmp_path, "admin/users", prefix="authz")
     assert rel == "evidence/authz_admin_users.png"
@@ -88,7 +88,7 @@ def test_capture_page_no_reports_dir():
     assert SS.capture_page(FakePage(), None, "x") == ""
 
 
-# ── capture_url (dengan stub) ────────────────────────────────────────────────
+# capture_url (with stub)
 def test_capture_url_with_stub(tmp_path):
     rel = SS.capture_url("https://x.example/admin", tmp_path, "admin", prefix="authz",
                          headers={"Authorization": "Bearer t"}, _pw=FakePW())
@@ -97,16 +97,16 @@ def test_capture_url_with_stub(tmp_path):
 
 
 def test_capture_url_graceful_without_playwright(tmp_path):
-    # _pw=None → coba import playwright; di CI tak terpasang → "" (graceful, tak crash)
+    # _pw=None tries to import playwright; not installed in CI -> "" (graceful, no crash)
     out = SS.capture_url("https://x.example", tmp_path, "t")
-    assert out == "" or out.startswith("evidence/")   # kosong bila playwright absen
+    assert out == "" or out.startswith("evidence/")   # empty when playwright is absent
 
 
 def test_capture_url_no_url(tmp_path):
     assert SS.capture_url("", tmp_path, "t", _pw=FakePW()) == ""
 
 
-# ── cookies_from_requests ─────────────────────────────────────────────────────
+# cookies_from_requests
 def test_cookies_from_requests():
     class _C:
         def __init__(self, n, v, d="x.example", p="/"):
@@ -119,13 +119,13 @@ def test_cookies_from_requests():
     assert out and out[0]["name"] == "session" and out[0]["value"] == "abc"
 
 
-# ── authz: _evidence_shot mati secara default ────────────────────────────────
+# authz: _evidence_shot is off by default
 def test_authz_shot_disabled_by_default():
     AZ = _load("authz_t", "tests/authz-matrix/run_authz_matrix.py")
 
     class _S:
         bearer = "t"
         sess = None
-    # shot_cfg.enabled=False → langsung "" tanpa menyentuh browser
+    # shot_cfg.enabled=False returns "" without touching the browser
     assert AZ._evidence_shot({"enabled": False}, "/tmp", _S(), "GET",
                              "https://x.example/a", None, "tag") == ""
