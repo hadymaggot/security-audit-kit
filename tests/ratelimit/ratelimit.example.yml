@@ -1,22 +1,22 @@
-# Salin ke ratelimit.yml. Menguji kontrol anti brute-force: rate limit, lockout akun, enumerasi akun.
-# Lockout HANYA diuji pada AKUN UJI SEKALI PAKAI yang dibuat lalu dihapus lewat API admin (blok
-# `fixture`) — akun nyata tidak pernah dikunci. Kredensial admin lewat environment variable.
+# Copy to ratelimit.yml. Tests anti brute-force controls: rate limit, account lockout, account enumeration.
+# Lockout is ONLY tested on a DISPOSABLE test account created and deleted via the admin API (the
+# `fixture` block); real accounts are never locked. Admin credentials come from environment variables.
 base_url: "${TARGET_BASE_URL}"
 
-# 1) Rate limit: kirim `count` request cepat; harus muncul HTTP 429 / Retry-After.
+# 1) Rate limit: send `count` rapid requests; HTTP 429 / Retry-After must appear.
 burst:
   - name: "Login (identitas fiktif)"
     method: POST
     path: "/api/login"
     body: { email: "kit-tidak-ada@contoh.example", password: "Salah-Salah-1!" }
     count: 20
-    # sanctum: true             # untuk target Sanctum SPA (cookie + CSRF)
+    # sanctum: true             # for Sanctum SPA targets (cookie + CSRF)
     # origin: "${TARGET_BASE_URL}"
 
-# Jeda setelah burst agar kuota rate limit gateway pulih sebelum fixture login (detik).
+# Pause after the burst so the gateway rate limit quota recovers before the login fixture (seconds).
 pause_after_burst_seconds: 0
 
-# 2) Fixture akun uji sekali pakai (wajib bila lockout/enumerasi diuji).
+# 2) Disposable test account fixture (required when lockout/enumeration is tested).
 fixture:
   admin_auth:
     sanctum: { enabled: true, csrf_path: "/sanctum/csrf-cookie", origin: "${TARGET_BASE_URL}" }
@@ -36,14 +36,14 @@ fixture:
   delete: { method: DELETE, path: "/api/users/{id}" }
   login: { method: POST, path: "/api/login", body: { email: "{email}", password: "{password}" } }
 
-# 3) Kebijakan lockout yang diharapkan.
+# 3) Expected lockout policy.
 lockout:
   enabled: true
-  max_attempts: 5                 # ambang gagal sebelum akun terkunci
+  max_attempts: 5                 # failed attempts before the account locks
   tolerance: 1
-  delay_seconds: 0.5              # jeda antar percobaan (naikkan bila gateway punya rate limit login)
-  lock_statuses: [423]            # status yang menandakan akun terkunci
+  delay_seconds: 0.5              # delay between attempts (raise if the gateway rate limits login)
+  lock_statuses: [423]            # statuses that indicate a locked account
   lock_message_regex: "dikunci|terkunci|locked|too many failed"
-  max_lock_minutes: 60            # durasi kunci wajar (kunci selamanya dianggap berlebihan)
+  max_lock_minutes: 60            # reasonable lock duration (a permanent lock is considered excessive)
   wrong_password: "Salah-Salah-1!"
-  enumeration_check: true         # bandingkan respons akun terdaftar vs fiktif
+  enumeration_check: true         # compare registered vs fake account responses
