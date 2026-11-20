@@ -248,10 +248,12 @@ KIT_AUTHOR = "hadymaggot"
 KIT_URL = "https://github.com/hadymaggot/security-audit-kit"
 CREDIT = f"{KIT_NAME} — dibuat oleh {KIT_AUTHOR} · {KIT_URL}"
 
-# Default penyusun & perusahaan penyusun laporan; timpa per project di targets.yml (blok
-# `report:`) atau lewat env SAK_REPORT_AUTHOR / SAK_REPORT_ORG.
+# Default penyusun, perusahaan, dan kontak penyusun laporan; timpa per project di targets.yml
+# (blok `report:`) atau lewat env SAK_REPORT_AUTHOR / SAK_REPORT_ORG / SAK_REPORT_CONTACT.
+# DEFAULT_CONTACT hanya dipakai bila perusahaannya juga DEFAULT_ORG (kontak milik perusahaan itu).
 DEFAULT_AUTHOR = "Sapto Hadi"
 DEFAULT_ORG = "PT. Wahana Reka Tekindo"
+DEFAULT_CONTACT = "wahanarekatekindo@gmail.com"
 
 # Nama alert yang terbaca manusia per 'kind' (gaya ZAP: satu alert, banyak instance).
 KIND_LABEL = {
@@ -443,7 +445,8 @@ def report_meta(cfg=None):
 
     Sumber (prioritas): env SAK_REPORT_AUTHOR / SAK_REPORT_ORG / SAK_REPORT_CONTACT, lalu blok
     `report:` di targets.yml (prepared_by, organization, contact, version). Perusahaan default
-    DEFAULT_ORG bila tak diset sama sekali; isi string kosong untuk menyembunyikannya."""
+    DEFAULT_ORG bila tak diset sama sekali; isi string kosong untuk menyembunyikannya. Kontak
+    default DEFAULT_CONTACT hanya bila perusahaan = DEFAULT_ORG dan kontak tak diset."""
     rc = ((read_config() if cfg is None else cfg) or {}).get("report") or {}
     rc = rc if isinstance(rc, dict) else {}
 
@@ -454,7 +457,7 @@ def report_meta(cfg=None):
 
     by = pick("SAK_REPORT_AUTHOR", "prepared_by", DEFAULT_AUTHOR)
     org = pick("SAK_REPORT_ORG", "organization", DEFAULT_ORG)
-    contact = pick("SAK_REPORT_CONTACT", "contact")
+    contact = pick("SAK_REPORT_CONTACT", "contact", DEFAULT_CONTACT if org == DEFAULT_ORG else "")
     line = " — ".join(x for x in (by, org) if x)
     if line and contact:
         line = f"{line} ({contact})"

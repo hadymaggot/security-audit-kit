@@ -170,7 +170,7 @@ Baris "Disusun oleh" pada laporan HTML, Markdown, dan slide diambil dari blok `r
 report:
   prepared_by: "Sapto Hadi"                  # default: Sapto Hadi
   organization: "PT. Wahana Reka Tekindo"    # default; isi "" untuk menyembunyikan
-  contact: "security@contoh.co.id"           # opsional
+  contact: "wahanarekatekindo@gmail.com"     # default hanya bila perusahaan default; "" = sembunyikan
   version: "1.0"                             # versi dokumen
 ```
 

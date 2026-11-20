@@ -161,7 +161,8 @@ def test_trivy_cache_dir_default_dan_override(tmp_path):
 def test_report_meta_default():
     m = RP.report_meta({})
     assert m["by"] == "Sapto Hadi" and m["org"] == "PT. Wahana Reka Tekindo"
-    assert m["line"] == "Sapto Hadi — PT. Wahana Reka Tekindo" and m["version"] == "1.0"
+    assert m["line"] == "Sapto Hadi — PT. Wahana Reka Tekindo (wahanarekatekindo@gmail.com)"
+    assert m["version"] == "1.0"
 
 
 def test_report_meta_dari_config_dan_kosongkan_org():
@@ -169,6 +170,13 @@ def test_report_meta_dari_config_dan_kosongkan_org():
                                    "contact": "sec@contoh.id", "version": "2.1"}})
     assert m["line"] == "Budi — PT Contoh (sec@contoh.id)" and m["version"] == "2.1"
     assert RP.report_meta({"report": {"organization": ""}})["line"] == "Sapto Hadi"
+
+
+def test_report_meta_kontak_default_hanya_untuk_perusahaan_default():
+    assert RP.report_meta({"report": {"organization": "PT Lain"}})["line"] == "Sapto Hadi — PT Lain"
+    assert RP.report_meta({"report": {"contact": ""}})["line"] == "Sapto Hadi — PT. Wahana Reka Tekindo"
+    assert RP.report_meta({"report": {"prepared_by": "Budi"}})["line"] == \
+        "Budi — PT. Wahana Reka Tekindo (wahanarekatekindo@gmail.com)"
 
 
 def test_report_meta_env_menimpa_config(monkeypatch):
