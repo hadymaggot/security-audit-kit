@@ -1,16 +1,21 @@
 <!doctype html>
-<html lang="id">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="icon" href="/assets/images/ico2.png" type="image/png">
-<title>Security Audit Kit — toolkit uji keamanan web/API (DAST + SCA)</title>
-<meta name="description" content="Security Audit Kit: toolkit otomatisasi security testing web/API lintas sistem operasi, berbasis konfigurasi. Modul DAST (access control, upload, injection, CORS, dsb.) dan SCA (CVE, SAST, secret), non-destruktif dengan rollback otomatis, laporan berstandar konsultan. Open-source, Apache-2.0.">
+<title>Security Audit Kit — web/API security testing toolkit (DAST + SCA)</title>
+<meta name="description" content="Security Audit Kit: cross-platform, configuration-driven web/API security testing automation. DAST modules (access control, upload, injection, CORS, and more) and SCA (CVE, SAST, secrets), non-destructive with automatic rollback, consultant-grade reports. Open source, Apache-2.0.">
 <meta name="keywords" content="security audit, DAST, SCA, OWASP, pentest, web security, api security, vulnerability scanner, SAST, devsecops, security testing, open scanner">
 <link rel="canonical" href="https://hadymaggot.github.io/security-audit-kit/">
+<link rel="alternate" hreflang="en" href="https://hadymaggot.github.io/security-audit-kit/">
+<link rel="alternate" hreflang="id" href="https://hadymaggot.github.io/security-audit-kit/id/">
+<link rel="alternate" hreflang="de" href="https://hadymaggot.github.io/security-audit-kit/de/">
+<link rel="alternate" hreflang="x-default" href="https://hadymaggot.github.io/security-audit-kit/">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Security Audit Kit — toolkit uji keamanan web/API">
-<meta property="og:description" content="DAST + SCA, berbasis konfigurasi, non-destruktif dengan rollback otomatis, laporan standar konsultan. Open-source.">
+<meta property="og:locale" content="en_US">
+<meta property="og:title" content="Security Audit Kit — web/API security testing toolkit">
+<meta property="og:description" content="DAST + SCA, configuration-driven, non-destructive with automatic rollback, consultant-grade reports. Open source.">
 <meta property="og:url" content="https://hadymaggot.github.io/security-audit-kit/">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -24,7 +29,8 @@
   "name": "Security Audit Kit",
   "applicationCategory": "SecurityApplication",
   "operatingSystem": "Windows, Linux, macOS",
-  "description": "Toolkit otomatisasi security testing web/API (DAST + SCA), berbasis konfigurasi, non-destruktif dengan rollback otomatis, laporan standar konsultan.",
+  "description": "Web/API security testing automation toolkit (DAST + SCA), configuration-driven, non-destructive with automatic rollback, consultant-grade reports.",
+  "inLanguage": "en",
   "url": "https://hadymaggot.github.io/security-audit-kit/",
   "codeRepository": "https://github.com/hadymaggot/security-audit-kit",
   "license": "https://www.apache.org/licenses/LICENSE-2.0",
@@ -53,7 +59,7 @@
 
  .topbar{position:relative;z-index:3;display:flex;align-items:center;gap:1rem;padding:.8rem 1.4rem;font-family:var(--mono);font-size:.82rem;flex:0 0 auto}
  .topbar a{color:var(--muted)} .topbar a:hover{color:var(--primary);text-decoration:none}
- .topbar .tb-lang{margin-left:auto;display:inline-flex;align-items:center;gap:.5rem} .topbar .tb-lang img{vertical-align:-3px;border-radius:2px;display:block} .topbar .tb-lang a{line-height:0}
+ .topbar .tb-lang{margin-left:auto;display:inline-flex;align-items:center;gap:.5rem} .topbar .tb-lang img{vertical-align:-3px;border-radius:2px;display:block} .topbar .tb-lang a{line-height:0} .topbar .tb-lang a[aria-current]{opacity:1} .topbar .tb-lang a:not([aria-current]){opacity:.55} .topbar .tb-lang a:hover{opacity:1}
 
  .stage{position:relative;z-index:2;flex:1 1 auto;min-height:0;width:100%;max-width:1480px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,0fr);align-items:center;gap:0;padding:0 1.2rem 1.3rem;transition:grid-template-columns .5s cubic-bezier(.4,0,.2,1),gap .5s ease}
  .stage.scanning{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:1.4rem;align-items:stretch;align-content:center}
@@ -155,15 +161,15 @@
 <body>
 <canvas id="net" aria-hidden="true"></canvas>
 <header class="topbar">
-  <a href="https://hadymaggot.github.io/">&larr; Beranda</a>
+  <a href="https://hadymaggot.github.io/">&larr; Home</a>
   <span id="winmenu">
     <button id="rCard" class="winchip" type="button" onclick="restoreCard()" hidden>&#9638; Audit Kit</button>
     <button id="rTerm" class="winchip" type="button" onclick="restoreTerm()" hidden>&#9638; Scanner</button>
   </span>
   <span class="tb-lang">
-    <a href="https://github.com/hadymaggot/security-audit-kit/blob/main/README.md" title="Indonesia"><img src="https://flagcdn.com/id.svg" width="20" alt="Indonesia"></a>
-    <a href="https://github.com/hadymaggot/security-audit-kit/blob/main/README.en.md" title="English"><img src="https://flagcdn.com/gb.svg" width="20" alt="English"></a>
-    <a href="https://github.com/hadymaggot/security-audit-kit/blob/main/README.de.md" title="Deutsch"><img src="https://flagcdn.com/de.svg" width="20" alt="Deutsch"></a>
+    <a href="" hreflang="en" lang="en" title="English" aria-current="page"><img src="https://flagcdn.com/gb.svg" width="20" alt="English"></a>
+    <a href="id/" hreflang="id" lang="id" title="Indonesia"><img src="https://flagcdn.com/id.svg" width="20" alt="Indonesia"></a>
+    <a href="de/" hreflang="de" lang="de" title="Deutsch"><img src="https://flagcdn.com/de.svg" width="20" alt="Deutsch"></a>
   </span>
   <a href="https://github.com/hadymaggot/security-audit-kit"><i class="fab fa-github"></i> GitHub</a>
 </header>
@@ -172,31 +178,31 @@
   <section class="card">
     <div class="card-top">
       <div class="card-win">
-        <button class="term-btn red" type="button" onclick="closeCard()" aria-label="Tutup box" title="Tutup"></button>
+        <button class="term-btn red" type="button" onclick="closeCard()" aria-label="Close box" title="Close"></button>
         <button class="term-btn yellow" type="button" onclick="minCard()" aria-label="Minimize box" title="Minimize"></button>
         <span class="term-btn green"></span>
       </div>
       <div class="brand"><i class="fas fa-shield-halved"></i> ~/security-audit-kit<span class="cur"></span></div>
     </div>
     <h1>Security Audit Kit</h1>
-    <p class="lead">Toolkit otomatisasi <b>security testing web/API</b> lintas sistem operasi, berbasis konfigurasi. Mengubah alur pentest OWASP menjadi <b>automated regression testing</b> — jalan lokal maupun di CI, satu entry point <code>python audit.py</code>.</p>
-    <div class="chips"><span>DAST + SCA</span><span>Lintas-OS</span><span>Rollback otomatis</span><span>Laporan konsultan</span><span>Apache-2.0</span></div>
+    <p class="lead">Cross-platform, configuration-driven <b>web/API security testing</b> automation. Turns the OWASP pentest workflow into <b>automated regression testing</b> — runs locally or in CI, one entry point: <code>python audit.py</code>.</p>
+    <div class="chips"><span>DAST + SCA</span><span>Cross-OS</span><span>Automatic rollback</span><span>Consultant-grade report</span><span>Apache-2.0</span></div>
 
     <div class="cta">
       <a class="btn fill" href="https://github.com/hadymaggot/security-audit-kit"><i class="fab fa-github"></i> GitHub</a>
       <button class="btn" type="button" onclick="openScan()"><i class="fas fa-terminal"></i> Open scanner</button>
-      <a class="btn" href="contoh-laporan.html"><i class="fas fa-file-lines"></i> Contoh laporan</a>
+      <a class="btn" href="contoh-laporan.html"><i class="fas fa-file-lines"></i> Sample report (Indonesian)</a>
     </div>
 
-    <p class="sect">Mulai cepat</p>
+    <p class="sect">Quick start</p>
     <div class="code-block">
-      <div class="code-head"><span>bash</span><button class="code-copy" type="button" data-copy>Salin</button></div>
+      <div class="code-head"><span>bash</span><button class="code-copy" type="button" data-copy>Copy</button></div>
       <pre><code class="language-bash">pip install -r requirements.txt
-cp config/targets.example.yml config/targets.yml   # isi base_url target
-python audit.py all                                # scan + laporan</code></pre>
+cp config/targets.example.yml config/targets.yml   # set the target base_url
+python audit.py all                                # scan + report</code></pre>
     </div>
 
-    <p class="sect">Modul</p>
+    <p class="sect">Modules</p>
     <div class="mods">
       <span>Access control</span><span>IDOR / BOPLA</span><span>Mass assignment</span>
       <span>Injection (SQLi)</span><span>Upload</span><span>CORS / redirect</span>
@@ -207,8 +213,8 @@ python audit.py all                                # scan + laporan</code></pre>
   <aside class="scanpanel" aria-hidden="true">
     <div class="termcard">
       <div class="terminal-header">
-        <div class="terminal-buttons"><button class="term-btn red" type="button" onclick="closeScan()" aria-label="Tutup scanner" title="Tutup"></button><button class="term-btn yellow" type="button" onclick="minTerm()" aria-label="Minimize scanner" title="Minimize"></button><span class="term-btn green"></span></div>
-        <div class="terminal-title">bash ~ open-scanner (pasif)</div>
+        <div class="terminal-buttons"><button class="term-btn red" type="button" onclick="closeScan()" aria-label="Close scanner" title="Close"></button><button class="term-btn yellow" type="button" onclick="minTerm()" aria-label="Minimize scanner" title="Minimize"></button><span class="term-btn green"></span></div>
+        <div class="terminal-title">bash ~ open-scanner (passive)</div>
       </div>
       <div id="log"></div>
     </div>
@@ -216,11 +222,11 @@ python audit.py all                                # scan + laporan</code></pre>
 </main>
 
 <aside class="legend" aria-hidden="true">
-  <div class="lg-h">Attack map &middot; simulasi</div>
-  <div><span class="d g"></span> trafik scan / normal</div>
-  <div><span class="d a"></span> indikasi alert</div>
-  <div><span class="d t"></span> target saat Open scanner</div>
-  <div class="lg-note">peta: GeoJSON Natural Earth</div>
+  <div class="lg-h">Attack map &middot; simulation</div>
+  <div><span class="d g"></span> scan / normal traffic</div>
+  <div><span class="d a"></span> alert indication</div>
+  <div><span class="d t"></span> target during Open scanner</div>
+  <div class="lg-note">map: Natural Earth GeoJSON</div>
 </aside>
 
 <footer class="site-footer"><div class="footer-pill"><span class="glow-text">anak8awan9hs</span> ☠️ 2025</div></footer>
@@ -335,7 +341,7 @@ python audit.py all                                # scan + laporan</code></pre>
  document.querySelectorAll("[data-copy]").forEach(function(btn){
    btn.addEventListener("click",function(){
      var code=btn.closest(".code-block").querySelector("code"); var txt=code?code.innerText:"";
-     navigator.clipboard.writeText(txt).then(function(){ var o=btn.textContent;btn.textContent="Tersalin";setTimeout(function(){btn.textContent=o;},1400); }).catch(function(){btn.textContent="Gagal";});
+     navigator.clipboard.writeText(txt).then(function(){ var o=btn.textContent;btn.textContent=T.copied;setTimeout(function(){btn.textContent=o;},1400); }).catch(function(){btn.textContent=T.copy_fail;});
    });
  });
 
@@ -348,6 +354,8 @@ python audit.py all                                # scan + laporan</code></pre>
    " \\___/|_|  |___/\\___/_/ \\_\\_|\\_|_|\\_|___|_|_\\"
  ];
  // backend tetap (Worker). ?api= hanya untuk self-host; tanpa override localStorage yang lengket.
+ var T = {"active_title": "! ACTIVE/intrusive scan", "ai_1": "active scans do not run through this public demo (to prevent abuse).", "ai_2": "run it on your machine — set the target base_url in config/targets.yml, then:", "ai_authz": "access control / IDOR (credentials per role)", "ai_foot": "credentials via environment variable. guide: docs/panduan-penggunaan.en.md", "backend_err": "cannot reach the backend ({api}): {err}", "cancelled": "cancelled.", "chk1": "checking security headers, cookie flags...", "chk2": "checking CORS...", "chk3": "checking Server/X-Powered-By banner -&gt; CVE...", "continue_q": "continue? [y/N]", "copied": "Copied", "copy_fail": "Failed", "done": "done: {n} findings out of {m} checks.", "error_prefix": "error", "failed_word": "failed", "genrep": "click to generate the HTML report", "h_active": "confirm an active/intrusive scan (shown as a CLI command, not run via the demo)", "h_args": "ARGUMENTS", "h_clear": "clear the screen", "h_exit": "close the terminal", "h_help": "show this help", "h_note": "only test targets you own or are authorized to test. no payloads are sent and no data is written.", "h_note_title": "NOTE", "h_recon": "active recon (via CLI; the public demo stays passive)", "h_scan": "scan a target, e.g. scan https://example.com", "h_scope": "(passive · non-intrusive)", "h_scope_title": "SCOPE", "h_url": "(same — the word 'scan' is optional)", "h_usage": "USAGE", "help_title": "passive open scanner (Security Audit Kit)", "hint": "type <span style='color:var(--primary)'>help<\/span> for help.", "no_backend": "backend unavailable.", "on": "on", "only_own": "only for targets you own or are authorized to test.", "r_badge": "PASSIVE · NON-INTRUSIVE", "r_footer": "Made by <b>hadymaggot<\/b> · Security Audit Kit · passive checks, not a substitute for an in-depth audit.", "r_lead": "<b>{n}<\/b> findings out of <b>{m}<\/b> passive checks on <code>{t}<\/code>.", "r_title": "Passive Scan Report", "recon_c1": "osint+infra (default, non-intrusive)", "recon_foot": "needs subfinder · dnsx · httpx · naabu · nuclei installed. guide: docs/panduan-penggunaan.en.md", "recon_note": "this public demo is passive — active recon does not run here. run it on your machine against a target you own or are authorized to test:", "recon_title": "! ACTIVE/intrusive recon", "report_opened": "report opened in a new tab.", "scanning": "scanning", "url_must": "the URL must start with http(s)://", "use_recon": "usage: recon &lt;target&gt; — e.g. recon example.com", "use_scan": "usage: scan &lt;url&gt; — e.g. scan https://example.com"}, LANG = "en";
+ function fmt(s,o){return s.replace(/\{(\w+)\}/g,function(_,k){return o[k];});}
  var api = new URLSearchParams(location.search).get("api") || "https://security-audit-kit-scanner.saptohadi.workers.dev";
  var stage=document.getElementById("stage");
  function logEl(){return document.getElementById("log")}
@@ -367,7 +375,7 @@ python audit.py all                                # scan + laporan</code></pre>
      logEl().dataset.init="1";
      out("<span style='color:var(--primary)'>"+BANNER.map(esc).join("\n")+"</span>");
      out("<span style='font-size:10.5px;color:var(--secondary);opacity:.9'>by: Security Audit Kit — hadymaggot</span>");
-     out("<span class='mut'>ketik <span style='color:var(--primary)'>help</span> untuk bantuan.</span>");
+     out("<span class='mut'>"+T.hint+"</span>");
    }
    ensurePrompt();
  }
@@ -426,24 +434,24 @@ python audit.py all                                # scan + laporan</code></pre>
    logEl().scrollTop=logEl().scrollHeight; setTimeout(function(){inp.focus(); updateCur(inp);},0);
  }
  function printHelp(){
-   out("<span style='color:var(--secondary)'>OPSCANNER</span> — open scanner pasif (Security Audit Kit)");
+   out("<span style='color:var(--secondary)'>OPSCANNER</span> — "+T.help_title);
    out("");
-   out("<span style='color:var(--secondary)'>PENGGUNAAN</span>");
-   out("  <span style='color:var(--primary)'>scan &lt;url&gt;</span>  pindai target, mis. scan https://contoh.example");
-   out("  <span style='color:var(--primary)'>&lt;url&gt;</span>       (sama — kata 'scan' opsional)");
-   out("  <span style='color:var(--primary)'>recon &lt;target&gt;</span> recon aktif (via CLI; demo publik tetap pasif)");
-   out("  <span style='color:var(--primary)'>help</span>        tampilkan bantuan ini");
-   out("  <span style='color:var(--primary)'>clear</span>       bersihkan layar");
-   out("  <span style='color:var(--primary)'>exit</span>        tutup terminal");
+   out("<span style='color:var(--secondary)'>"+T.h_usage+"</span>");
+   out("  <span style='color:var(--primary)'>scan &lt;url&gt;</span>  "+T.h_scan);
+   out("  <span style='color:var(--primary)'>&lt;url&gt;</span>       "+T.h_url);
+   out("  <span style='color:var(--primary)'>recon &lt;target&gt;</span> "+T.h_recon);
+   out("  <span style='color:var(--primary)'>help</span>        "+T.h_help);
+   out("  <span style='color:var(--primary)'>clear</span>       "+T.h_clear);
+   out("  <span style='color:var(--primary)'>exit</span>        "+T.h_exit);
    out("");
-   out("<span style='color:var(--secondary)'>ARGUMEN</span>");
-   out("  <span style='color:var(--primary)'>--active</span>, <span style='color:var(--primary)'>-a</span>   konfirmasi scan aktif/intrusif (ditampilkan sebagai perintah CLI, bukan via demo)");
+   out("<span style='color:var(--secondary)'>"+T.h_args+"</span>");
+   out("  <span style='color:var(--primary)'>--active</span>, <span style='color:var(--primary)'>-a</span>   "+T.h_active);
    out("");
-   out("<span style='color:var(--secondary)'>CAKUPAN</span> (pasif · non-intrusif)");
+   out("<span style='color:var(--secondary)'>"+T.h_scope_title+"</span> "+T.h_scope);
    out("  security headers · cookie flags · CORS · banner&rarr;CVE · clientleak");
    out("");
-   out("<span style='color:var(--secondary)'>CATATAN</span>");
-   out("  uji hanya target milik/berwenang Anda. tidak mengirim payload / menulis data.","mut");
+   out("<span style='color:var(--secondary)'>"+T.h_note_title+"</span>");
+   out("  "+T.h_note,"mut");
  }
  function ensurePrompt(){ var i=logEl().querySelector(".cliln .cli"); if(i){setTimeout(function(){i.focus();},10);} else addPrompt(); }
  var pendingActive=null; // url yang menunggu konfirmasi scan aktif
@@ -458,7 +466,7 @@ python audit.py all                                # scan + laporan</code></pre>
  }
  function answerActive(v){
    var ans=(v||"").trim().toLowerCase(), t=pendingActive; pendingActive=null;
-   if(ans==="y"||ans==="ya"||ans==="yes") activeInstructions(t); else out("dibatalkan.","mut");
+   if(ans==="y"||ans==="ya"||ans==="yes"||ans==="ja"||ans==="j"||ans==="j") activeInstructions(t); else out(T.cancelled,"mut");
  }
  logEl().addEventListener("click",function(e){ if(e.target.closest("a,button,input"))return; var i=logEl().querySelector(".cliln .cli"); if(i)i.focus(); });
 
@@ -466,61 +474,61 @@ python audit.py all                                # scan + laporan</code></pre>
    var c=cmd.trim(); if(!c)return false;
    if(c==="clear"){logEl().innerHTML="";logEl().removeAttribute("data-init");openScan();return false;}
    if(c==="help"){printHelp();return false;}
-   if(c==="scan"){out("penggunaan: scan &lt;url&gt; — mis. scan https://contoh.example","mut");return false;}
+   if(c==="scan"){out(T.use_scan,"mut");return false;}
    if(c==="exit"){closeScan();return true;} // tutup terminal
-   if(c==="recon"){out("penggunaan: recon &lt;target&gt; — mis. recon contoh.example","mut");return false;}
+   if(c==="recon"){out(T.use_recon,"mut");return false;}
    var mRecon=c.match(/^recon\s+(\S+)/); if(mRecon){ reconInstructions(mRecon[1]); return false; } // recon aktif: hanya tampilkan perintah CLI
    c=c.replace(/^scan\s+/,"");
    var toks=c.split(/\s+/), url=toks[0];
    var active=toks.slice(1).some(function(x){return x==="--active"||x==="-a"||x==="--aktif";});
-   if(!/^https?:\/\//.test(url)){out("URL harus diawali http(s)://","bad");return false;}
+   if(!/^https?:\/\//.test(url)){out(T.url_must,"bad");return false;}
    if(active){ askActive(url); return true; } // konfirmasi dulu (prompt [y/N] dibuat askActive)
-   if(!api){out("backend tidak tersedia.","bad");return false;}
+   if(!api){out(T.no_backend,"bad");return false;}
    scan(url); return true; // async: prompt baru ditambah setelah scan selesai
  }
  function askActive(url){
    pendingActive=url;
-   out("<span class='bad'>! scan AKTIF/intrusif</span> pada <span style='color:var(--secondary)'>"+esc(url)+"</span>");
-   out("hanya untuk target yang Anda miliki/berwenang uji.","mut");
-   addPrompt("<span class='pr' style='color:var(--secondary)'>lanjutkan? [y/N]</span>"); // input y/n tepat di sini
+   out("<span class='bad'>"+T.active_title+"</span> "+T.on+" <span style='color:var(--secondary)'>"+esc(url)+"</span>");
+   out(T.only_own,"mut");
+   addPrompt("<span class='pr' style='color:var(--secondary)'>"+T.continue_q+"</span>"); // input y/n tepat di sini
  }
  function activeInstructions(url){
-   out("scan aktif tidak dijalankan via demo publik ini (mencegah penyalahgunaan).","mut");
-   out("jalankan di mesin Anda — set base_url target di config/targets.yml, lalu:");
+   out(T.ai_1,"mut");
+   out(T.ai_2);
    out("  <span style='color:var(--primary)'>python audit.py injection</span>       # SQLi error/boolean/time-based");
    out("  <span style='color:var(--primary)'>python audit.py open-redirect</span>");
-   out("  <span style='color:var(--primary)'>python audit.py authz</span>           # access control / IDOR (kredensial per role)");
+   out("  <span style='color:var(--primary)'>python audit.py authz</span>           # "+T.ai_authz+"");
    out("  <span style='color:var(--primary)'>python audit.py upload</span>");
-   out("kredensial lewat environment variable. panduan: docs/panduan-penggunaan.md","mut");
+   out(T.ai_foot,"mut");
  }
  function reconInstructions(target){
-   out("<span class='bad'>! recon AKTIF/intrusif</span> (subdomain enum · port scan · nuclei) pada <span style='color:var(--secondary)'>"+esc(target)+"</span>");
-   out("demo publik ini pasif — recon aktif tidak dijalankan di sini. jalankan di mesin Anda pada target yang Anda miliki/berwenang:","mut");
-   out("  <span style='color:var(--primary)'>python audit.py recon "+esc(target)+"</span>              # osint+infra (default, non-intrusif)");
+   out("<span class='bad'>"+T.recon_title+"</span> (subdomain enum · port scan · nuclei) "+T.on+" <span style='color:var(--secondary)'>"+esc(target)+"</span>");
+   out(T.recon_note,"mut");
+   out("  <span style='color:var(--primary)'>python audit.py recon "+esc(target)+"</span>              # "+T.recon_c1+"");
    out("  <span style='color:var(--primary)'>python audit.py recon "+esc(target)+" --active -m owasp</span>  # port scan + nuclei OWASP");
-   out("butuh subfinder · dnsx · httpx · naabu · nuclei terpasang. panduan: docs/panduan-penggunaan.md","mut");
+   out(T.recon_foot,"mut");
  }
  function scan(url){
    var host=url; try{host=new URL(url).hostname;}catch(e){}
    if(window.sakScan)window.sakScan(host); // peta fokus ke target yang dipindai
-   out("-&gt; memindai "+esc(url)+" ...","mut");
-   out("-&gt; cek security headers, cookie flags...","mut");
-   out("-&gt; cek CORS...","mut");
-   out("-&gt; cek banner Server/X-Powered-By -&gt; CVE...","mut");
+   out("-&gt; "+T.scanning+" "+esc(url)+" ...","mut");
+   out("-&gt; "+T.chk1,"mut");
+   out("-&gt; "+T.chk2,"mut");
+   out("-&gt; "+T.chk3,"mut");
    fetch(api.replace(/\/+$/,"")+"/scan",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url:url})})
      .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})})
      .then(function(res){
        if(res.j&&res.j.geo&&window.sakScan)window.sakScan(res.j.target||host,res.j.geo); // perhalus dgn geo asli bila ada
-       if(!res.ok){out("galat: "+esc(res.j.error||"gagal"),"bad");return;}
+       if(!res.ok){out(T.error_prefix+": "+esc(res.j.error||T.failed_word),"bad");return;}
        var f=res.j.findings||[]; var fail=f.filter(function(x){return !x.ok});
-       out("selesai: "+fail.length+" temuan dari "+f.length+" pemeriksaan.", fail.length?"bad":"ok");
+       out(fmt(T.done,{n:fail.length,m:f.length}), fail.length?"bad":"ok");
        f.forEach(function(x){ var col=SEVC[x.severity]||"#9bb39b";
          out("<span style='color:"+col+"'>["+esc(sevLabel(x.severity))+"]</span> ["+esc(x.module)+"] "+esc(x.check)+(x.note?" — "+esc(x.note):"")+(x.cve&&x.cve.length?" ("+esc(x.cve.join(", "))+")":"")); });
        if(res.j.notice)out(esc(res.j.notice),"mut");
-       var a=out("► <a id='genrep'>klik untuk generate laporan HTML</a>");
+       var a=out("► <a id='genrep'>"+T.genrep+"</a>");
        a.querySelector("#genrep").addEventListener("click",function(){genReport(res.j)});
      })
-     .catch(function(err){out("tidak bisa menghubungi backend ("+esc(api)+"): "+esc(err),"bad")}) // URL hanya muncul saat error
+     .catch(function(err){out(fmt(T.backend_err,{api:esc(api),err:esc(err)}),"bad")}) // URL hanya muncul saat error
      .finally(function(){ensurePrompt();}); // prompt baru setelah scan selesai
  }
  function genReport(data){
@@ -540,8 +548,8 @@ python audit.py all                                # scan + laporan</code></pre>
        (x.cve&&x.cve.length?"<div class='fcve'>"+esc(x.cve.join(", "))+"</div>":"")+"</div>"+
        "<span class='badge' style='background:"+c+"'>"+esc(sevLabel(k))+"</span></div>";
    }).join("");
-   var html="<!doctype html><html lang='id'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"+
-     "<title>Laporan Scan Pasif — "+esc(data.target)+"</title><style>"+
+   var html="<!doctype html><html lang='"+LANG+"'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"+
+     "<title>"+T.r_title+" — "+esc(data.target)+"</title><style>"+
      "*{box-sizing:border-box}body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;color:#1b2420;background:#eef1ee}"+
      ".wrap{max-width:860px;margin:0 auto;background:#fff;min-height:100vh;box-shadow:0 0 40px rgba(0,0,0,.08)}"+
      "header{background:linear-gradient(135deg,#1c2b22,#2f6f3e);color:#fff;padding:26px 30px}"+
@@ -556,15 +564,15 @@ python audit.py all                                # scan + laporan</code></pre>
      ".notice{background:#f4f7f4;border:1px solid #e2e8e2;border-radius:10px;padding:12px 14px;font-size:13px;color:#44524b;margin-top:16px}"+
      "footer{padding:20px 30px;color:#7b857e;font-size:12px;border-top:1px solid #eef1ee;text-align:center}"+
      "@media print{body{background:#fff}.wrap{box-shadow:none}}</style></head><body><div class='wrap'>"+
-     "<header><div class='brand'>Security Audit Kit · Laporan Scan Pasif</div><h1>"+esc(data.target)+"</h1>"+
-     "<div class='sub'><span>"+esc(data.scanned_at||"")+"</span><span class='pasif'>PASIF · NON-INTRUSIF</span></div></header>"+
-     "<main><p class='lead'><b>"+fail+"</b> temuan dari <b>"+f.length+"</b> pemeriksaan pasif pada <code>"+esc(data.target)+"</code>.</p>"+
+     "<header><div class='brand'>Security Audit Kit · "+T.r_title+"</div><h1>"+esc(data.target)+"</h1>"+
+     "<div class='sub'><span>"+esc(data.scanned_at||"")+"</span><span class='pasif'>"+T.r_badge+"</span></div></header>"+
+     "<main><p class='lead'>"+fmt(T.r_lead,{n:fail,m:f.length,t:esc(data.target)})+"</p>"+
      "<div class='chips'>"+chips+"</div>"+rows+
      "<div class='notice'>"+esc(data.notice||"")+"</div></main>"+
-     "<footer>Dibuat oleh <b>hadymaggot</b> · Security Audit Kit · pemeriksaan pasif, bukan pengganti audit mendalam.</footer>"+
+     "<footer>"+T.r_footer+"</footer>"+
      "</div></body></html>";
    var blob=new Blob([html],{type:"text/html"}); window.open(URL.createObjectURL(blob),"_blank");
-   out("laporan dibuka di tab baru.","ok");
+   out(T.report_opened,"ok");
  }
 </script>
 </body>

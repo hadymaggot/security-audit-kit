@@ -53,6 +53,16 @@ Ein Check = ein Runner in `tests/<name>/run_<name>.py` + ein Eintrag in `remedia
 - Einen Begriff zu ergänzen braucht eine Zeile in `glosarium.yml`; `tests/unit/test_glosarium.py`
   schlägt fehl, wenn angezeigter Text noch ein bereits vereinheitlichtes Wort verwendet.
 
+## Website (GitHub Pages)
+
+Die Seite in `docs/` wird gebaut und nicht direkt bearbeitet. Die Quellen liegen in `site/`: Vorlagen
+(`*.template.html`), Sprachwörterbücher (`site/i18n/id|en|de.json`) und das Seiten-Glossar, das vom
+Kit-Glossar getrennt ist (`site/glosarium.yml`).
+
+1. Vorlage oder Wörterbücher ändern. Denselben Schlüssel in allen drei Sprachen ergänzen.
+2. Bauen: `python scripts/build_site.py` (schreibt `docs/`, `docs/id/`, `docs/de/`, `sitemap.xml`).
+3. `python -m pytest tests/unit/test_site.py` ausführen; er schlägt fehl, wenn der Build veraltet oder ein Wörterbuch unvollständig ist.
+
 ## Commit & PR
 
 - **Conventional Commits:** `feat:`, `fix:`, `docs:`, `test:`, `ci:`, `refactor:`,

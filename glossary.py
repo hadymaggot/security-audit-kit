@@ -35,18 +35,14 @@ def reset_cache() -> None:
     _rx_cache.clear()
 
 
-def _raw(project: Path | None = None) -> dict:
-    """Kit glossary merged with the project's (if any), cached per project."""
-    proj = Path(project) if project else project_dir()
-    key = str(proj)
-    if key in _cache:
-        return _cache[key]
-    base = _read(ROOT / "glosarium.yml")
-    merged = {"default": str(base.get("default") or FALLBACK_DEFAULT),
-              "complete_text": [str(x) for x in (base.get("complete_text") or [])],
-              "languages": {}}
-    extra = _read(proj / "config" / "glosarium.yml") if proj.resolve() != ROOT else {}
-    for src in (base, extra):
+def _merge(sources: list[dict]) -> dict:
+    """Merge glossary documents in order; later ones extend or override earlier ones."""
+    merged = {"default": FALLBACK_DEFAULT, "complete_text": [], "languages": {}}
+    for src in sources:
+        if src.get("default"):
+            merged["default"] = str(src["default"])
+        if src.get("complete_text"):
+            merged["complete_text"] = [str(x) for x in src["complete_text"]]
         for code, blk in (src.get("languages") or {}).items():
             blk = blk or {}
             cur = merged["languages"].setdefault(
@@ -56,11 +52,28 @@ def _raw(project: Path | None = None) -> dict:
             cur["terms"] += [str(x) for x in (blk.get("terms") or []) if str(x).strip()]
             cur["map"].update({str(k).lower(): str(v) for k, v in (blk.get("map") or {}).items()})
             cur["phrases"] += [tuple(x) for x in (blk.get("phrases") or [])
-                             if isinstance(x, (list, tuple)) and len(x) == 2]
-    if extra.get("default"):
-        merged["default"] = str(extra["default"])
-    _cache[key] = merged
+                               if isinstance(x, (list, tuple)) and len(x) == 2]
     return merged
+
+
+def _raw(project: Path | None = None) -> dict:
+    """Kit glossary merged with the project's (if any), cached per project."""
+    proj = Path(project) if project else project_dir()
+    key = str(proj)
+    if key not in _cache:
+        extra = _read(proj / "config" / "glosarium.yml") if proj.resolve() != ROOT else {}
+        _cache[key] = _merge([_read(ROOT / "glosarium.yml"), extra])
+    return _cache[key]
+
+
+def use_standalone(path: Path) -> Path:
+    """Register a glossary file that stands alone (the kit glossary is NOT merged in).
+
+    Returns a key to pass as `project=` to the other functions, e.g. for the website glossary.
+    """
+    key = Path(path).resolve()
+    _cache[str(key)] = _merge([_read(key)])
+    return key
 
 
 def languages(project: Path | None = None) -> list[str]:

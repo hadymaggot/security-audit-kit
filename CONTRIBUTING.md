@@ -50,6 +50,16 @@ Satu check = satu runner di `tests/<nama>/run_<nama>.py` + entri di `remediation
 - Menambah istilah cukup satu baris di `glosarium.yml`; `tests/unit/test_glosarium.py` gagal bila
   ada teks tampil yang masih memakai kata yang sudah dibakukan.
 
+## Situs web (GitHub Pages)
+
+Situs di `docs/` dibangun, jangan disunting langsung. Sumbernya ada di `site/`: templat
+(`*.template.html`), kamus bahasa (`site/i18n/id|en|de.json`), dan glosarium situs yang terpisah
+dari glosarium kit (`site/glosarium.yml`).
+
+1. Ubah templat atau kamus. Tambahkan kunci yang sama di ketiga bahasa.
+2. Bangun: `python scripts/build_site.py` (hasil ke `docs/`, `docs/id/`, `docs/de/`, `sitemap.xml`).
+3. Jalankan `python -m pytest tests/unit/test_site.py`; test gagal bila hasil build basi atau kamus tidak lengkap.
+
 ## Commit & PR
 
 - **Conventional Commits:** `feat:`, `fix:`, `docs:`, `test:`, `ci:`, `refactor:`,

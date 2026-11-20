@@ -79,7 +79,8 @@ glossary.py         pemuat glosarium (miring, padanan); data di glosarium.yml
 config/             target (contoh; yang asli di-gitignore)
 scanners/           wrapper ZAP, testssl, header, trivy/semgrep/gitleaks
 tests/              authz-matrix, client-leak, upload-safety, auth-policy
-docs/               metodologi & pemetaan temuan -> test
+docs/               metodologi & pemetaan temuan -> test (halaman situs hasil build)
+site/               templat, kamus id/en/de, dan glosarium situs; build: python scripts/build_site.py
 .github/workflows/  contoh pipeline CI
 Makefile, audit.ps1 wrapper perintah pendek per OS
 ```

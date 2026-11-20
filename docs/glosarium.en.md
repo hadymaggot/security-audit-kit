@@ -47,6 +47,8 @@ text while still using their own glossary. Once a language's catalog is finished
 - **New language:** add one block under `languages` (ISO 639-1 code).
 - **One project only:** create `<project-folder>/config/glosarium.yml` with the same structure; it is
   merged with the kit glossary.
+- **The website:** has its own glossary in `site/glosarium.yml` (same structure, not merged with the
+  kit glossary); see the website section of the contributing guide.
 
 After changing it, run `python -m pytest tests/unit/test_glosarium.py`. The test fails when display
 text (console, report, recommendations) still uses a word mapped by `map` or `phrases`, so nothing

@@ -50,6 +50,16 @@ One check = one runner at `tests/<name>/run_<name>.py` + an entry in `remediatio
 - Adding a term takes one line in `glosarium.yml`; `tests/unit/test_glosarium.py` fails if any
   displayed text still uses a word that has been standardized.
 
+## Website (GitHub Pages)
+
+The site in `docs/` is built; do not edit it directly. Its sources are in `site/`: templates
+(`*.template.html`), language dictionaries (`site/i18n/id|en|de.json`), and the site glossary, which
+is separate from the kit glossary (`site/glosarium.yml`).
+
+1. Change the template or dictionaries. Add the same key in all three languages.
+2. Build: `python scripts/build_site.py` (writes `docs/`, `docs/id/`, `docs/de/`, `sitemap.xml`).
+3. Run `python -m pytest tests/unit/test_site.py`; it fails if the build is stale or a dictionary is incomplete.
+
 ## Commits & PRs
 
 - **Conventional Commits:** `feat:`, `fix:`, `docs:`, `test:`, `ci:`, `refactor:`,

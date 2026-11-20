@@ -47,6 +47,8 @@ ihr Code in `complete_text` in `glosarium.yml` ergänzt.
 - **Neue Sprache:** einen Block unter `languages` ergänzen (ISO-639-1-Code).
 - **Nur ein Projekt:** `<projektordner>/config/glosarium.yml` mit gleicher Struktur anlegen; es wird
   mit dem Kit-Glossar zusammengeführt.
+- **Die Website:** hat ein eigenes Glossar in `site/glosarium.yml` (gleiche Struktur, nicht mit dem
+  Kit-Glossar zusammengeführt); siehe den Website-Abschnitt im Beitragsleitfaden.
 
 Danach `python -m pytest tests/unit/test_glosarium.py` ausführen. Der Test schlägt fehl, wenn
 angezeigter Text (Konsole, Bericht, Empfehlungen) noch ein in `map` oder `phrases` abgebildetes Wort

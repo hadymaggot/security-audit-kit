@@ -80,7 +80,8 @@ glossary.py         glossary loader (italics, mapping); data in glosarium.yml
 config/             targets (example; the real one is gitignored)
 scanners/           ZAP, testssl, header, trivy/semgrep/gitleaks wrappers
 tests/              authz-matrix, client-leak, upload-safety, auth-policy
-docs/               methodology & finding -> test mapping
+docs/               methodology & finding -> test mapping (built site pages)
+site/               templates, id/en/de dictionaries, and the site glossary; build: python scripts/build_site.py
 .github/workflows/  example CI pipeline
 Makefile, audit.ps1 short-command wrappers per OS
 ```
