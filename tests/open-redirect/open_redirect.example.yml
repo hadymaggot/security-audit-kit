@@ -1,21 +1,21 @@
-# Salin ke open_redirect.yml. Non-destruktif (GET, redirect tak diikuti).
+# Copy to open_redirect.yml. Non-destructive (GET, redirects not followed).
 base_url: "${TARGET_BASE_URL}"
 
-# Auth opsional, untuk endpoint yang redirect-nya di balik login.
+# Optional auth, for endpoints whose redirect sits behind a login.
 auth:
   header: "Authorization"
   value: "${OPEN_REDIRECT_TOKEN}"
 
-# Tujuan eksternal uji. Ganti bila perlu.
+# External test destination. Change if needed.
 evil_target: "https://evil.example"
 
-# Endpoint yang mungkin memproses parameter pengalih.
+# Endpoints that may process a redirect parameter.
 paths:
   - "/login"
   - "/logout"
   - "/"
 
-# Nama parameter yang dicoba. Default sudah mencakup yang umum; timpa kalau perlu.
+# Parameter names to try. The default already covers common ones; override if needed.
 params:
   - "next"
   - "url"

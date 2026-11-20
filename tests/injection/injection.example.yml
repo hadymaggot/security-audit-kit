@@ -1,18 +1,18 @@
-# Salin ke injection.yml. Non-destruktif: hanya probing baca (SELECT-style), tidak
-# mengubah/menghapus data. Jalankan hanya ke target yang berwenang.
+# Copy to injection.yml. Non-destructive: read-only (SELECT-style) probing, does not
+# modify or delete data. Run only against authorized targets.
 base_url: "${TARGET_BASE_URL}"
 
 auth:
-  # Token statis (Bearer/JWT atau header kustom):
+  # Static token (Bearer/JWT or a custom header):
   header: "Authorization"
-  value: "${TOKEN}"           # mis. "Bearer xxx"
-  # Atau Laravel Sanctum (SPA, session cookie) — hapus header/value di atas:
+  value: "${TOKEN}"           # e.g. "Bearer xxx"
+  # Or Laravel Sanctum (SPA, session cookie); remove header/value above:
   # sanctum: { enabled: true, csrf_path: "/sanctum/csrf-cookie", origin: "${TARGET_BASE_URL}" }
   # login: { method: POST, path: "/api/login", body: { email: "${USER}", password: "${PASS}" } }
 
 options:
-  time_based: false            # aktifkan hanya bila perlu; menambah latency ke target
-  time_threshold: 4            # detik ambang untuk deteksi time-based
+  time_based: false            # enable only if needed; adds latency to the target
+  time_threshold: 4            # threshold in seconds for time-based detection
 
 targets:
   - name: "Pencarian (param q)"
@@ -20,5 +20,5 @@ targets:
     path: "/api/products"
     location: query            # query | body | json
     param: "q"
-    baseline: "test"           # nilai normal yang dikembalikan hasil valid
-    # extra: { page: 1 }       # field lain yang wajib ikut dikirim
+    baseline: "test"           # normal value that returns a valid result
+    # extra: { page: 1 }       # other fields that must be sent as well

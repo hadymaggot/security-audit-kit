@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""Deteksi SQL injection (OWASP A03) — non-destruktif, hanya probing baca.
+"""Detect SQL injection (OWASP A03); non-destructive, read-only probing.
 
-Tiga teknik, semuanya tidak mengubah data (hanya SELECT-style probing):
+Three techniques, none of which modify data (SELECT-style probing only):
 
-  1. Error-based   — kirim karakter perusak query (', ", \\) lalu deteksi tanda error
-     SQL pada response. Keyakinan tinggi bila baseline tidak memunculkan error.
-  2. Boolean-based — bandingkan response untuk kondisi TRUE (mis. OR 1=1) vs FALSE
-     (mis. AND 1=2). Perbedaan yang konsisten mengindikasikan injeksi.
-  3. Time-based    — (opsional, off secara default) kirim payload sleep DB, ukur selisih
-     waktu. Diaktifkan lewat options.time_based.
+  1. Error-based   - send query-breaking characters (', ", \\) and look for SQL error
+     markers in the response. High confidence if the baseline shows no error.
+  2. Boolean-based - compare responses for a TRUE condition (e.g. OR 1=1) vs FALSE
+     (e.g. AND 1=2). A consistent difference indicates injection.
+  3. Time-based    - (optional, off by default) send DB sleep payloads and measure the
+     time difference. Enabled via options.time_based.
 
-Payload sengaja TIDAK mengubah/menghapus data. Jalankan hanya ke target yang berwenang.
+Payloads deliberately do NOT modify or delete data. Run only against authorized targets.
 
-Pakai: python run_injection.py --config injection.yml [--json out.json]
+Usage: python run_injection.py --config injection.yml [--json out.json]
 """
 from __future__ import annotations
 
@@ -28,11 +28,11 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import _sanctum  # noqa: E402
-import _color as C  # noqa: E402  (warna ANSI konsol lintas-modul di tests/)
+import _color as C  # noqa: E402  (shared console ANSI colors in tests/)
 
 ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 
-# Tanda error SQL dari berbagai DBMS (konservatif agar sedikit false positive).
+# SQL error markers from various DBMSs (conservative to limit false positives).
 SQL_ERROR_RE = re.compile(
     r"(?i)(SQL syntax|you have an error in your SQL|unclosed quotation mark|"
     r"quoted string not properly terminated|SQLSTATE|ORA-\d{4,5}|"
@@ -43,9 +43,9 @@ SQL_ERROR_RE = re.compile(
     r"System\.Data\.SqlClient|Warning:\s+(pg|mysqli?)_)")
 
 ERROR_PAYLOADS = ["'", "\"", "\\", "')"]
-# Pasangan (TRUE, FALSE) untuk boolean-based, string & numerik.
+# (TRUE, FALSE) pairs for boolean-based, string and numeric.
 BOOL_PAIRS = [("' OR '1'='1", "' AND '1'='2"), (" OR 1=1-- -", " AND 1=2-- -")]
-# Payload time-based per-DBMS (dipakai hanya bila options.time_based: true).
+# Per-DBMS time-based payloads (used only when options.time_based: true).
 TIME_PAYLOADS = ["' OR SLEEP({d})-- -", "'||pg_sleep({d})--", "' OR 1=1 WAITFOR DELAY '0:0:{d}'-- -"]
 
 
@@ -64,16 +64,16 @@ def sql_error(text):
 
 
 def similar(a, b, tol=0.10):
-    """True bila dua panjang response mirip (dalam toleransi relatif)."""
+    """True if two response lengths are similar (within a relative tolerance)."""
     la, lb = len(a or ""), len(b or "")
     hi = max(la, lb) or 1
     return abs(la - lb) / hi <= tol
 
 
 def probe(send, baseline, opts):
-    """Jalankan deteksi memakai callback send(value)->response. Kembalikan list temuan.
+    """Run detection using the callback send(value) -> response. Returns a list of findings.
 
-    `send(value)` mengirim nilai parameter dan mengembalikan objek dengan atribut
+    `send(value)` sends the parameter value and returns an object with
     .status_code, .text, .elapsed_seconds.
     """
     findings = []
@@ -91,7 +91,7 @@ def probe(send, baseline, opts):
     for ptrue, pfalse in BOOL_PAIRS:
         rt = send(baseline + ptrue)
         rf = send(baseline + pfalse)
-        # Indikasi: TRUE mirip baseline (query tetap jalan) tapi FALSE berbeda jelas.
+        # Indicator: TRUE resembles the baseline (query still runs) but FALSE clearly differs.
         true_ok = rt.status_code == base.status_code and similar(rt.text, base.text)
         false_diff = (rf.status_code != base.status_code) or (not similar(rf.text, base.text))
         if true_ok and false_diff and not similar(rt.text, rf.text):
@@ -100,7 +100,7 @@ def probe(send, baseline, opts):
                              f"len {len(rt.text)}/{len(rf.text)})", rt.status_code))
             break
 
-    # 3. Time-based (opsional).
+    # 3. Time-based (optional).
     if opts.get("time_based"):
         d = int(opts.get("time_threshold", 4))
         for tmpl in TIME_PAYLOADS:
@@ -113,7 +113,7 @@ def probe(send, baseline, opts):
 
 
 def make_sender(sess, target, base_url, headers_fn):
-    """Bangun callback send(value) untuk satu target (query/body/json)."""
+    """Build the send(value) callback for one target (query/body/json)."""
     method = target.get("method", "GET")
     url = base_url + target["path"]
     loc = target.get("location", "query")
@@ -131,7 +131,7 @@ def make_sender(sess, target, base_url, headers_fn):
         else:
             kw["data"] = data
         r = sess.request(method, url, **kw)
-        # Normalisasi atribut yang dipakai probe().
+        # Normalize the attribute probe() relies on.
         r.elapsed_seconds = r.elapsed.total_seconds()
         return r
 

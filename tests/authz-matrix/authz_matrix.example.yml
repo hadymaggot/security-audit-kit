@@ -1,30 +1,30 @@
-# Matriks kontrol akses — inti dari kit ini.
-# Salin ke authz_matrix.yml lalu sesuaikan. Jangan taruh kredensial di sini;
-# gunakan ${ENV_VAR} yang dibaca dari environment.
+# Access control matrix, the core of this kit.
+# Copy to authz_matrix.yml and adjust. Keep credentials out of this file;
+# use ${ENV_VAR} placeholders read from the environment.
 #
-# Ide: untuk tiap endpoint, nyatakan peran mana yang BOLEH (expect allow) dan mana
-# yang HARUS DITOLAK (expect deny). Runner login sebagai tiap peran lalu memastikan
-# kenyataan cocok dengan harapan. Celah kontrol akses = ketika yang "deny" malah lolos.
+# Idea: for each endpoint, state which roles MAY access it (expect allow) and which
+# MUST BE DENIED (expect deny). The runner logs in as each role and checks that
+# reality matches. An access control flaw is a "deny" that gets through.
 
 base_url: "${TARGET_BASE_URL}"
 
-# Cara login tiap peran dan cara mengambil token/sesi.
+# How each role logs in and how the token/session is obtained.
 auth:
-  # Mode: "session_cookie" (simpan cookie dari respons login) atau
-  #       "bearer" (ambil token dari JSON respons, kirim sebagai Authorization: Bearer).
+  # Mode: "session_cookie" (keep cookies from the login response) or
+  #       "bearer" (read the token from the JSON response, send as Authorization: Bearer).
   mode: bearer
 
   login:
     method: POST
     path: "/api/auth/login"
-    # Field body dikirim sebagai JSON.
+    # Body fields are sent as JSON.
     body:
       email: "{username}"
       password: "{password}"
-    # Untuk mode bearer: jsonpath sederhana (titik) ke token di respons.
+    # Bearer mode: simple dotted path to the token in the response.
     token_field: "data.token"
 
-  # Peran yang diuji. Kredensial dari env var.
+  # Roles under test. Credentials come from env vars.
   roles:
     admin:
       username: "${AUTHZ_ADMIN_USER}"
@@ -32,12 +32,12 @@ auth:
     regular_user:
       username: "${AUTHZ_USER_USER}"
       password: "${AUTHZ_USER_PASS}"
-    # Peran semu "anon" tak login — untuk menguji route yang harus menolak tanpa auth.
+    # Pseudo-role "anon" does not log in; tests routes that must reject unauthenticated requests.
     anon: { anonymous: true }
 
-# Perlakuan status:
-#   allow = diharapkan 2xx/3xx
-#   deny  = diharapkan 401 atau 403 (BUKAN 404/500 — itu ditandai sebagai perlu ditinjau)
+# Status handling:
+#   allow = expect 2xx/3xx
+#   deny  = expect 401 or 403 (NOT 404/500; those are flagged for review)
 endpoints:
   - name: "Daftar pengguna (admin only)"
     method: GET
@@ -56,14 +56,14 @@ endpoints:
       regular_user: deny
       anon: deny
 
-  # IDOR: regular_user mengakses objek dengan id milik akun lain harus ditolak.
+  # IDOR: regular_user accessing an object id owned by another account must be denied.
   - name: "IDOR — detail akun lain"
     method: GET
     path: "/api/accounts/999"
     expect:
       regular_user: deny
 
-  # Business-logic / lompat status: ditulis per-kasus sesuai alur aplikasi.
+  # Business logic / status jump: write per case to match the app flow.
   - name: "Lompat status tanpa peran berwenang"
     method: POST
     path: "/api/documents/1/status"
@@ -71,11 +71,11 @@ endpoints:
     expect:
       regular_user: deny
 
-# Uji opsional: klien menyuntik header otorisasi palsu, gateway harus menimpanya.
-# Berguna bila arsitektur mengandalkan reverse proxy menyetel X-Auth-* internal.
+# Optional: the client injects forged authorization headers; the gateway must overwrite them.
+# Useful when the architecture relies on a reverse proxy setting internal X-Auth-* headers.
 forged_headers:
   enabled: true
-  # Login sebagai peran rendah ini, lalu suntik header di bawah; endpoint harus tetap menolak.
+  # Log in as this low role, then inject the headers below; endpoints must still deny.
   as_role: regular_user
   inject:
     X-Auth-Roles: "admin"
@@ -83,10 +83,10 @@ forged_headers:
   endpoints:
     - { method: GET, path: "/api/users" }
 
-# Bukti screenshot (opsional, default off). Bila diaktifkan, setiap temuan broken-access
-# (role tak berwenang menerima HTTP 2xx pada GET) ditangkap sebagai PNG via Chromium
-# headless memakai header/cookie role tsb, lalu disematkan di laporan & slide.
-# Butuh: pip install playwright && python -m playwright install chromium (graceful bila absen).
+# Optional screenshot evidence (off by default). When enabled, each broken-access finding
+# (unauthorized role gets HTTP 2xx on GET) is captured as a PNG via headless Chromium using
+# that role's headers/cookies, and embedded in the report and slides.
+# Needs: pip install playwright && python -m playwright install chromium (no-op if missing).
 screenshot:
   enabled: false
   full_page: false
