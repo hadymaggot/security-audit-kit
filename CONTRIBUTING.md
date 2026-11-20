@@ -2,7 +2,7 @@
 
 # Berkontribusi
 
-Toolkit ini digunakan ulang lintas project. Check baru harus **generik** (dikonfigurasi lewat file, bukan hardcode target), **non-destruktif**, dan disertai **remediasi yang dapat dipertanggungjawabkan**.
+Toolkit ini digunakan ulang lintas project. Check baru harus **generik** (dikonfigurasi lewat *file*, bukan hardcode target), **non-destruktif**, dan disertai **remediasi yang dapat dipertanggungjawabkan**.
 
 ## Menyiapkan dalam 3 menit
 
@@ -23,10 +23,10 @@ Hasil yang diharapkan: semua test lulus dalam kurang lebih satu menit, tanpa tar
 |---|---|
 | `audit.py` | Entry point CLI; registri modul `PY_MODULES` |
 | `tests/<folder>/` | Satu check: runner `run_<x>.py` + config `<x>.example.yml` (contoh: `tests/cors/`) |
-| `tests/_*.py` | Helper bersama (warna, fixture, rollback, snapshot, login Sanctum, screenshot) |
+| `tests/_*.py` | Helper bersama (warna, fixture, *rollback*, snapshot, *login* Sanctum, screenshot) |
 | `tests/unit/` | Unit test; ini gerbang CI |
 | `config/targets.example.yml` | Contoh config target; salin ke `config/targets.yml` yang diabaikan git |
-| `scanners/` | Wrapper ZAP, testssl, header, trivy/semgrep/gitleaks |
+| `scanners/` | Wrapper ZAP, testssl, *header*, trivy/semgrep/gitleaks |
 | `remediation.py` | Knowledge base remediasi `KB` dan `classify()` |
 | `report.py` | `collect()` dan laporan HTML/Markdown/slide |
 | `glossary.py`, `glosarium.yml` | Pemuat glosarium dan data glosarium per bahasa |
@@ -41,19 +41,19 @@ Bentuk laporan akhir: [docs/contoh-laporan.md](docs/contoh-laporan.md).
 
 Aturan yang berlaku untuk setiap check:
 
-- **Berbasis config.** Target dan endpoint masuk ke `*.yml`; kredensial hanya lewat environment variable, tidak pernah di-commit.
+- **Berbasis config.** Target dan *endpoint* masuk ke `*.yml`; kredensial hanya lewat environment variable, tidak pernah di-commit.
 - **Read-only secara default.** Hanya `GET`/pembacaan. Aksi yang mengubah state dimatikan secara default, disertai peringatan jelas, dan penulisannya dicatat lewat `tests/_rollback.py`.
 - **Timeout = skip, bukan temuan.** Tandai `ok` dengan note `skip:`.
 - **Hanya target berizin.** Arahkan scan aktif ke dev/staging.
 
-Checklist (`<x>` = bagian nama file, `<folder>` = folder di `tests/`, `<kind>` = kunci KB):
+Checklist (`<x>` = bagian nama *file*, `<folder>` = folder di `tests/`, `<kind>` = kunci KB):
 
 1. **Runner.** Buat `tests/<folder>/run_<x>.py` dan `tests/<folder>/<x>.example.yml`. Runner menerima `--config` dan `--json <out>`, mencetak tabel, dan keluar dengan kode 1 bila ada temuan. Setiap hasil berbentuk `{"label", "status", "ok": bool, "note"}`; berkas JSON-nya `{"module", "failures", "results"}`.
 2. **audit.py.** Tambahkan satu entri ke `PY_MODULES`. Dengan itu `python audit.py <nama>`, `init`, dan `all` (menjalankan modul bila config-nya ada di project) berfungsi. Jika check menulis ke target, tambahkan juga `<nama>` ke `ROLLBACK_AFTER`.
 3. **report.py.** Tambahkan `("<x>.json", "<folder>")` ke tuple di `collect()`.
 4. **remediation.py, KB (wajib).** Tambahkan `KB["<kind>"]` dengan tepat kunci berikut.
 5. **remediation.py, classify.** Petakan hasil ke `<kind>` di `classify(module, title)`. Alternatif: isi `kind` pada tiap hasil dan daftarkan modul di cabang kind-hint pada `collect()`. Hasil yang tidak terpetakan jatuh ke `zap-generic`.
-6. **Test.** Tambahkan `tests/unit/test_<x>.py` untuk logika runner tanpa jaringan (session palsu, lihat `_Sess`/`_Resp` di `tests/unit/test_authz_matrix.py`), asersi `classify()`, dan kasus `collect()` di `tests/unit/test_report.py`. `test_all_kb_entries_wellformed` sudah memeriksa setiap entri KB.
+6. **Test.** Tambahkan `tests/unit/test_<x>.py` untuk logika runner tanpa jaringan (*session* palsu, lihat `_Sess`/`_Resp` di `tests/unit/test_authz_matrix.py`), asersi `classify()`, dan kasus `collect()` di `tests/unit/test_report.py`. `test_all_kb_entries_wellformed` sudah memeriksa setiap entri KB.
 7. **Docs.** Tambahkan baris pada tabel modul di `README.md`/`.en.md`/`.de.md`, di `docs/temuan-to-test-mapping*.md`, dan pada daftar tahapan `docs/metodologi*.md` (ketiga bahasa). Shortcut di `Makefile` atau `audit.ps1` bersifat opsional.
 
 ```python
@@ -71,7 +71,7 @@ Checklist (`<x>` = bagian nama file, `<folder>` = folder di `tests/`, `<kind>` =
 },
 ```
 
-Aturan KB: `severity` salah satu dari Critical, High, Medium, Low, Info; `severity_basis` menyebut Likelihood x Impact; `recommendation` berupa list tidak kosong yang boleh memuat contoh solusi; `references` berupa list tidak kosong (OWASP, BSSN).
+Aturan KB: `severity` salah satu dari Critical, High, Medium, Low, Info; `severity_basis` menyebut *Likelihood* x *Impact*; `recommendation` berupa list tidak kosong yang boleh memuat contoh solusi; `references` berupa list tidak kosong (OWASP, BSSN).
 
 ## Aturan bahasa dan glosarium
 

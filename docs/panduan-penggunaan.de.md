@@ -270,7 +270,7 @@ report:
   version: "1.0"
 ```
 
-- Nicht gesetzte Felder übernehmen die Standardwerte des Kits.
+- Nicht gesetzte Felder übernehmen die Standardwerte des Kits: Autor „Sapto Hadi", Firma „PT. Wahana Reka Tekindo", Kontakt „wahanarekatekindo@gmail.com" (der Kontakt gilt nur für die Standardfirma). Den Block oben ausfüllen, damit Berichte Ihre Identität tragen.
 - Die Env `SAK_REPORT_AUTHOR`, `SAK_REPORT_ORG` und `SAK_REPORT_CONTACT` überschreiben `targets.yml`.
 
 ### Farben in der Konsole

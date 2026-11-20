@@ -270,7 +270,7 @@ report:
   version: "1.0"
 ```
 
-- Fields left out fall back to the kit defaults.
+- Fields left out fall back to the kit defaults: author "Sapto Hadi", company "PT. Wahana Reka Tekindo", contact "wahanarekatekindo@gmail.com" (the contact only applies to the default company). Fill in the block above so reports carry your identity.
 - Env `SAK_REPORT_AUTHOR`, `SAK_REPORT_ORG`, and `SAK_REPORT_CONTACT` override `targets.yml`.
 
 ### Console colors

@@ -15,7 +15,7 @@ Semua perintah memakai satu entry point, `python audit.py <modul>`, identik di W
 | Python 3.10+ | Semua modul | `python --version` |
 | Docker | `deps`, `zap`, `tls` (modul lain tidak memerlukannya) | `docker --version` |
 | make (opsional) | Perintah pendek di Linux/macOS | `make --version` |
-| Playwright (opsional) | Verifikasi cache browser pada `clientleak` | `python -m playwright --version` |
+| Playwright (opsional) | Verifikasi *cache* browser pada `clientleak` | `python -m playwright --version` |
 
 Playwright dipasang dengan `pip install playwright` lalu `python -m playwright install chromium`.
 
@@ -53,7 +53,7 @@ Langkah ini memakai modul `headers` yang pasif, murni Python, dan tidak memerluk
    python audit.py --project my-app headers
    ```
 
-   Hasil: tiap header ditandai `ok`, `MISS` (hilang), atau `LEAK` (membocorkan informasi); hasil disimpan di `reports/headers.json`.
+   Hasil: tiap *header* ditandai `ok`, `MISS` (hilang), atau `LEAK` (membocorkan informasi); hasil disimpan di `reports/headers.json`.
 
 4. Susun laporan.
 
@@ -92,7 +92,7 @@ python audit.py --project my-app init authz,upload,cors
 ```
 
 - Tanpa `--project`, salin manual: `tests/<folder>/<nama>.example.yml` menjadi `tests/<folder>/<nama>.yml`.
-- Pada `all`, modul tanpa config dilewati. Menjalankan modul langsung tanpa config menghasilkan error "belum ada".
+- Pada `all`, modul tanpa config dilewati. Menjalankan modul langsung tanpa config menghasilkan *error* "belum ada".
 
 ### Kredensial: hanya lewat environment variable
 
@@ -110,18 +110,18 @@ $env:AUTHZ_ADMIN_PASS = "..."
 ```
 
 Baris pertama untuk Linux/macOS, baris kedua untuk Windows PowerShell.
-Untuk ZAP di balik login, set `ZAP_AUTH_HEADER` berisi `Authorization: Bearer <token>`.
+Untuk ZAP di balik *login*, set `ZAP_AUTH_HEADER` berisi `Authorization: Bearer <token>`.
 
 ### Autentikasi
 
 | Mode | Isi config |
 |---|---|
-| Bearer/JWT atau header kustom | `auth.header` dan `auth.value`, mis. `value: "${TOKEN}"` dengan `TOKEN="Bearer xxx"` |
-| Laravel Sanctum (session cookie + CSRF) | `auth.sanctum` (`enabled`, `csrf_path`, `origin`) dan `auth.login` |
+| Bearer/JWT atau *header* kustom | `auth.header` dan `auth.value`, mis. `value: "${TOKEN}"` dengan `TOKEN="Bearer xxx"` |
+| Laravel Sanctum (*session cookie* + CSRF) | `auth.sanctum` (`enabled`, `csrf_path`, `origin`) dan `auth.login` |
 
-- Pada mode Sanctum, runner mengambil cookie CSRF, login, lalu menyertakan `X-XSRF-TOKEN` dan `Origin` otomatis.
+- Pada mode Sanctum, runner mengambil *cookie* CSRF, *login*, lalu menyertakan `X-XSRF-TOKEN` dan `Origin` otomatis.
 - `origin` wajib cocok dengan `SANCTUM_STATEFUL_DOMAINS` di server.
-- Modul `authz` memakai `auth.mode` (`bearer` atau `session_cookie`) dengan daftar role; lihat contoh di `tests/authz-matrix/`.
+- Modul `authz` memakai `auth.mode` (`bearer` atau `session_cookie`) dengan daftar *role*; lihat contoh di `tests/authz-matrix/`.
 
 ## 5. Menjalankan scan
 
@@ -132,35 +132,35 @@ python audit.py all
 
 | Modul | Yang diperiksa | Memerlukan |
 |---|---|---|
-| `headers` | Security header yang kurang atau membocorkan informasi | Target hidup |
+| `headers` | Security *header* yang kurang atau membocorkan informasi | Target hidup |
 | `tls` | Protokol dan cipher TLS usang | Docker, target hidup |
-| `deps` | CVE dependency (Trivy), SAST (semgrep), secret ter-commit (gitleaks) | Docker |
+| `deps` | CVE *dependency* (Trivy), SAST (semgrep), *secret* ter-commit (gitleaks) | Docker |
 | `zap baseline` | OWASP ZAP passive scan | Docker, target hidup |
 | `zap api` | ZAP active scan dari OpenAPI; destruktif | Docker, target hidup, `openapi` |
 | `zap full` | ZAP active scan; destruktif, hanya environment sendiri | Docker, target hidup |
-| `authz` | Access control per role: privilege escalation, IDOR, forged header, bypass gateway | Target hidup, config |
+| `authz` | *Access control* per *role*: privilege escalation, IDOR, forged *header*, *bypass* gateway | Target hidup, config |
 | `mass-assignment` | Mass assignment (BOPLA); destruktif tetapi reversibel | Target hidup, config |
-| `upload` | Penolakan file upload berbahaya | Target hidup, config |
-| `auth-policy` | Kekuatan password dan regenerasi captcha | Target hidup, config |
-| `clientleak` | Cache response sensitif, secret di JS/HTML, source map, file terekspos | Target hidup, config |
-| `cors` | CORS misconfiguration | Target hidup, config |
-| `open-redirect` | Open redirect | Target hidup, config |
+| `upload` | Penolakan *file upload* berbahaya | Target hidup, config |
+| `auth-policy` | Kekuatan *password* dan regenerasi captcha | Target hidup, config |
+| `clientleak` | *Cache response* sensitif, *secret* di JS/HTML, *source map*, *file* terekspos | Target hidup, config |
+| `cors` | CORS *misconfiguration* | Target hidup, config |
+| `open-redirect` | Open *redirect* | Target hidup, config |
 | `webstack` | Versi web server dari banner dipetakan ke CVE; non-destruktif | Target hidup, config |
-| `injection` | SQL injection (error, boolean, time-based opsional); hanya probing baca | Target hidup, config |
-| `cookie-flags` | Atribut cookie (HttpOnly, Secure, SameSite); pasif | Target hidup, config |
-| `response-leak` | Data sensitif, secret, dan stack trace pada response API; pasif | Target hidup, config |
-| `openapi-coverage` | Operasi yang dideklarasikan terlindungi tetapi terbuka tanpa login | Target hidup, config |
-| `ratelimit` | Rate limit, lockout akun, enumerasi akun; memakai akun uji sekali pakai | Target hidup, config |
-| `session-mgmt` | Pencabutan session saat logout dan ganti password; akun uji sekali pakai | Target hidup, config |
-| `captcha` | Analisis statis tantangan captcha: apakah response membocorkan jawaban | Target hidup, config |
-| `jwt` | Kelemahan JWT: alg none, exp hilang, secret lemah, token palsu | Target hidup, config |
+| `injection` | SQL injection (*error*, boolean, time-based opsional); hanya probing baca | Target hidup, config |
+| `cookie-flags` | Atribut *cookie* (HttpOnly, Secure, SameSite); pasif | Target hidup, config |
+| `response-leak` | Data sensitif, *secret*, dan *stack trace* pada *response* API; pasif | Target hidup, config |
+| `openapi-coverage` | Operasi yang dideklarasikan terlindungi tetapi terbuka tanpa *login* | Target hidup, config |
+| `ratelimit` | *Rate limit*, *lockout* akun, enumerasi akun; memakai akun uji sekali pakai | Target hidup, config |
+| `session-mgmt` | Pencabutan *session* saat *logout* dan ganti *password*; akun uji sekali pakai | Target hidup, config |
+| `captcha` | Analisis statis tantangan captcha: apakah *response* membocorkan jawaban | Target hidup, config |
+| `jwt` | Kelemahan JWT: alg none, exp hilang, *secret* lemah, *token* palsu | Target hidup, config |
 | `ssrf` | SSRF lewat listener canary lokal | Target hidup, config |
-| `recon` | OSINT subdomain; fase aktif (port scan, nuclei) hanya bila diaktifkan | Tool recon terpasang, config opsional |
+| `recon` | OSINT *subdomain*; fase aktif (port scan, nuclei) hanya bila diaktifkan | Tool recon terpasang, config opsional |
 | `report` | Merangkai hasil di `reports/` menjadi laporan | Hasil scan |
-| `rollback` | Memulihkan aksi destruktif dari jurnal | Jurnal rollback |
+| `rollback` | Memulihkan aksi destruktif dari jurnal | Jurnal *rollback* |
 | `clean` | Menghapus berkas di `reports/` | - |
 
-- `all` menjalankan `headers`, `deps`, `zap baseline`, semua modul yang config-nya ada, dan `recon` bila `recon.yml` ada. Lalu `all` menyusun laporan dan menjalankan rollback.
+- `all` menjalankan `headers`, `deps`, `zap baseline`, semua modul yang config-nya ada, dan `recon` bila `recon.yml` ada. Lalu `all` menyusun laporan dan menjalankan *rollback*.
 - Setiap modul pengujian yang dijalankan sendiri juga menyusun laporan otomatis.
 - Sub-perintah: `zap baseline|api|full`, `deps gitleaks|semgrep|trivy` (satu tool per jalan, hemat memori).
 - `recon` menerima argumen bebas: `python audit.py recon example.com -d osint -m fast --active`.
@@ -188,7 +188,7 @@ Cara memakai temuan:
 
 Contoh keluaran: [contoh-laporan.md](contoh-laporan.md) dan [contoh-laporan.html](contoh-laporan.html).
 
-## 7. Rollback
+## 7. *Rollback*
 
 Modul destruktif (`mass-assignment`, `ratelimit`, `session-mgmt`, serta `zap api` dan `zap full` dengan `snapshot`) memulihkan target secara otomatis sebagai tahap terakhir, setelah laporan dibuat.
 
@@ -202,7 +202,7 @@ Jika pemulihan otomatis gagal (mis. koneksi putus), ulangi:
 python audit.py rollback
 ```
 
-Pada `zap api` dan `zap full`, backup yang gagal membatalkan scan. Tanpa blok `snapshot`, perubahan data tidak dapat dipulihkan.
+Pada `zap api` dan `zap full`, *backup* yang gagal membatalkan scan. Tanpa blok `snapshot`, perubahan data tidak dapat dipulihkan.
 
 ## 8. Opsi lanjutan
 
@@ -226,7 +226,7 @@ python audit.py --project client-b headers
 
 Saat berjalan bersamaan:
 
-- Trivy memakai cache DB bersama (`~/.cache/sak-trivy`); run paralel diantrekan oleh kunci berkas. Isi `trivy_cache_dir` untuk cache terpisah.
+- Trivy memakai *cache* DB bersama (`~/.cache/sak-trivy`); run paralel diantrekan oleh kunci berkas. Isi `trivy_cache_dir` untuk *cache* terpisah.
 - ZAP full, trivy, dan semgrep berat di RAM; jalankan bergiliran bila memori terbatas.
 - Jangan menjalankan dua modul destruktif ke target yang sama secara bersamaan.
 
@@ -270,7 +270,7 @@ report:
   version: "1.0"
 ```
 
-- Jika field tidak diisi, laporan memakai nilai bawaan kit.
+- Jika field tidak diisi, laporan memakai nilai bawaan kit: penyusun "Sapto Hadi", perusahaan "PT. Wahana Reka Tekindo", kontak "wahanarekatekindo@gmail.com" (kontak hanya untuk perusahaan bawaan). Isi blok di atas agar laporan memuat identitas Anda.
 - Env `SAK_REPORT_AUTHOR`, `SAK_REPORT_ORG`, dan `SAK_REPORT_CONTACT` menimpa `targets.yml`.
 
 ### Warna konsol
@@ -299,7 +299,7 @@ Istilah teknis tetap berbahasa Inggris dan dicetak miring pada laporan; daftarny
 
 - `deps` aman dijalankan pada setiap PR karena tidak memerlukan target hidup. Hasilnya informatif (exit code 0).
 - Pengujian dinamis memerlukan target hidup; jalankan terjadwal ke dev/staging, bukan production.
-- Kredensial lewat GitHub Secrets. Modul pengujian mengembalikan exit code 1 bila ada kegagalan.
+- Kredensial lewat GitHub *Secrets*. Modul pengujian mengembalikan exit code 1 bila ada kegagalan.
 
 Contoh pipeline: [security-audit.yml](../.github/workflows/security-audit.yml).
 
@@ -316,10 +316,10 @@ Untuk mengunci temuan dari laporan pentest, lihat [temuan-to-test-mapping.md](te
 | `<config> belum ada - salin dari contoh .example-nya` | Config modul belum ada. Jalankan `init <modul>` atau salin berkas `.example.yml`. |
 | `Docker tidak ditemukan di PATH` atau scanner gagal | Pasang Docker dan pastikan berjalan serta dapat mengunduh image. |
 | ZAP atau testssl `Connection refused` pada target `localhost` | Di dalam container, `localhost` menunjuk ke container itu. Isi `docker_network` di `targets.yml`. |
-| Login Sanctum gagal 500 "Session store not set" | `auth.sanctum.origin` tidak cocok dengan `SANCTUM_STATEFUL_DOMAINS` server. |
-| Login gagal padahal kredensial benar | Environment variable belum diset (nilai kosong). Set di terminal yang sama. |
-| Banyak request login tertolak 429 | Rate limit target. Beri jeda antar-request. |
-| Error sertifikat pada target dev dengan self-signed certificate | Set `SAK_INSECURE_TLS=1` (berlaku untuk `headers` dan runner Python; tidak untuk ZAP dan `tls`). |
+| *Login* Sanctum gagal 500 "*Session* store not set" | `auth.sanctum.origin` tidak cocok dengan `SANCTUM_STATEFUL_DOMAINS` server. |
+| *Login* gagal padahal kredensial benar | Environment variable belum diset (nilai kosong). Set di terminal yang sama. |
+| Banyak *request login* tertolak 429 | *Rate limit* target. Beri jeda antar-request. |
+| *Error* sertifikat pada target dev dengan self-signed certificate | Set `SAK_INSECURE_TLS=1` (berlaku untuk `headers` dan runner Python; tidak untuk ZAP dan `tls`). |
 | `clientleak` melewati cek browser | Playwright belum terpasang (opsional). |
 | `semgrep` melewati batas waktu | Persempit `semgrep_paths` atau naikkan `semgrep_timeout_minutes`. |
 | Teks aneh seperti `^[[32m`, atau tidak ada warna sama sekali | Terminal tidak mendukung ANSI: pakai `--no-color`. Warna tidak muncul karena keluaran dialihkan atau terminal tidak terdeteksi: pakai `--color always` dan pastikan `NO_COLOR` tidak diset. |

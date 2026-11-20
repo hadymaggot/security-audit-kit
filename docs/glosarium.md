@@ -4,9 +4,9 @@ Kit memiliki satu glosarium per bahasa, [`glosarium.yml`](../glosarium.yml), aga
 
 ## Aturan penulisan
 
-- Kalimat memakai bahasa dokumen (Indonesia baku); **istilah teknis tetap dalam bentuk aslinya** (Inggris), misalnya response, request, password, session, file, header, endpoint.
+- Kalimat memakai bahasa dokumen (Indonesia baku); **istilah teknis tetap dalam bentuk aslinya** (Inggris), misalnya *response*, *request*, *password*, *session*, *file*, *header*, *endpoint*.
 - Istilah teknis dicetak miring pada laporan HTML, Markdown, dan slide. Nama produk/alat (OWASP ZAP, Docker, Trivy) dan singkatan (CVE, XSS, RCE) tidak dimiringkan; isi kode, URL, dan nama header/path tetap polos.
-- Satu konsep, satu istilah. `respons`, `sandi`, `sesi`, `galat`, dan `berkas` selalu ditulis response, password, session, error, dan file; kelompok "bocor" dibakukan menjadi information disclosure, exposed, atau expose.
+- Satu konsep, satu istilah. `respons`, `sandi`, `sesi`, `galat`, dan `berkas` selalu ditulis *response*, *password*, *session*, *error*, dan *file*; kelompok "bocor" dibakukan menjadi *information disclosure*, *exposed*, atau *expose*.
 - Komentar dan docstring di kode ditulis dalam Bahasa Inggris, singkat dan jelas.
 
 ## Memilih bahasa
