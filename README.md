@@ -64,6 +64,11 @@ Setara: env `SAK_PROJECT_DIR`, `make all PROJECT=...`, atau `.\audit.ps1 all -Pr
 Penyusun dan perusahaan di laporan diatur per project lewat blok `report:` di `targets.yml`
 (lihat [panduan](docs/panduan-penggunaan.md#multi-project-paralel)).
 
+`python audit.py` hanya berjalan dari folder kit. Dari folder lain gunakan path lengkap
+(`python C:\GitHub\security-audit-kit\audit.py --project <folder> all`), `audit.ps1`, atau buat
+pintasan `sak` di profil PowerShell (`function sak { python C:\GitHub\security-audit-kit\audit.py @args }`);
+rinciannya di bagian [Menjalankan dari folder mana pun](docs/panduan-penggunaan.md#menjalankan-dari-folder-mana-pun).
+
 ## Struktur
 
 ```

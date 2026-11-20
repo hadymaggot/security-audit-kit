@@ -54,6 +54,25 @@ stehen bereits in der gitignore). Ein Entry Point für alle Betriebssysteme:
 `python audit.py <modul>`. Für kurze Befehle `make <modul>` unter Linux/macOS oder
 `.\audit.ps1 <modul>` unter Windows verwenden.
 
+**Mehrere Projekte (parallel).** Eine Kit-Installation kann viele Projekte gleichzeitig bedienen;
+jedes Projekt hat eigene `config/`, `tests/<modul>/*.yml` und `reports/`, sodass sie gleichzeitig
+aus getrennten Terminals geprüft werden können:
+
+```bash
+python audit.py --project apple-gatrik init authz,upload   # legt projects/apple-gatrik/ an
+python audit.py --project apple-gatrik all                  # Terminal 1
+python audit.py --project D:/audit/kumham all               # Terminal 2 (Ordner beliebig)
+```
+
+Gleichwertig: die Umgebungsvariable `SAK_PROJECT_DIR`, `make all PROJECT=...` oder
+`.\audit.ps1 all -Project ...`. Autor und Unternehmen im Bericht werden je Projekt über den Block
+`report:` in `targets.yml` festgelegt (siehe [Anleitung](docs/panduan-penggunaan.de.md#mehrere-projekte-parallel)).
+
+`python audit.py` funktioniert nur im Kit-Ordner. Von anderswo den vollständigen Pfad
+(`python C:\GitHub\security-audit-kit\audit.py --project <ordner> all`), `audit.ps1` oder eine
+`sak`-Abkürzung im PowerShell-Profil verwenden (`function sak { python C:\GitHub\security-audit-kit\audit.py @args }`);
+Details unter [Aus einem beliebigen Verzeichnis ausführen](docs/panduan-penggunaan.de.md#aus-einem-beliebigen-verzeichnis-ausführen).
+
 ## Struktur
 
 ```

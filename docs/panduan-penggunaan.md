@@ -152,6 +152,47 @@ python audit.py --project apple-gatrik all
 - Jalankan tiap project di terminal terpisah. Kredensial tetap lewat environment variable,
   sehingga tiap terminal dapat memakai nilai berbeda.
 
+#### Menjalankan dari folder mana pun
+
+`audit.py` berada di folder kit, sehingga `python audit.py` hanya berjalan bila direktori kerja
+adalah folder kit. Dari folder lain (mis. `C:\GitHub`) perintah gagal dengan
+`can't open file '...\audit.py'`. Gunakan path lengkap ke `audit.py`; folder project boleh di
+mana saja karena config dibaca dari folder project, bukan dari direktori kerja:
+
+```powershell
+# Windows PowerShell
+python C:\GitHub\security-audit-kit\audit.py --project C:\Users\sapto\sak-projects\apple-gatrik all
+
+# atau lewat pembungkus (otomatis berpindah ke folder kit; -Project relatif dihitung dari folder pemanggil)
+& C:\GitHub\security-audit-kit\audit.ps1 all -Project C:\Users\sapto\sak-projects\apple-gatrik
+```
+
+```bash
+# Linux/macOS
+python3 /opt/security-audit-kit/audit.py --project ~/sak-projects/apple-gatrik all
+make -C /opt/security-audit-kit all PROJECT=/home/sapto/sak-projects/apple-gatrik   # PROJECT absolut
+```
+
+Agar tidak mengetik path panjang, buat pintasan sekali saja:
+
+```powershell
+# Windows: tambahkan ke profil PowerShell (buka dengan: notepad $PROFILE)
+function sak { python C:\GitHub\security-audit-kit\audit.py @args }
+# lalu dari folder mana pun:
+sak --project C:\Users\sapto\sak-projects\apple-gatrik all
+sak --project C:\Users\sapto\sak-projects\kumham headers
+```
+
+```bash
+# Linux/macOS: tambahkan ke ~/.bashrc atau ~/.zshrc
+alias sak='python3 /opt/security-audit-kit/audit.py'
+```
+
+Catatan: path project relatif (`--project ./proj` atau `-Project .\proj`) dihitung dari direktori
+tempat perintah dijalankan. Untuk `make -C`, gunakan path absolut karena `make` berpindah ke
+folder kit terlebih dahulu. Folder project sebaiknya di luar folder kit (mis.
+`~/sak-projects/<nama>`) agar tidak ikut hilang saat folder kit atau worktree dihapus.
+
 Yang perlu diperhatikan saat berjalan bersamaan:
 
 - **Trivy** memakai cache DB bersama (`~/.cache/sak-trivy`); run dari beberapa project otomatis
@@ -231,6 +272,9 @@ beserta cara menambahkan kasus ujinya.
 
 | Gejala | Kemungkinan penyebab & solusi |
 |---|---|
+| `can't open file '...\audit.py'` | `audit.py` dijalankan dari luar folder kit. Pakai path lengkap (`python C:\GitHub\security-audit-kit\audit.py ...`), `audit.ps1`, atau pintasan `sak` (lihat "Menjalankan dari folder mana pun"). |
+| `unrecognized arguments: --project` | Folder kit belum diperbarui; jalankan `git pull` di folder kit. |
+| `<folder>\config\targets.yml belum ada (project: ...)` | Folder project belum disiapkan atau path salah: jalankan `python audit.py --project <nama\|folder> init`, atau salin config ke folder itu. |
 | `config/targets.yml belum ada` | Salin dari `config/targets.example.yml`. |
 | `<config> belum ada — salin dari contoh .example-nya` | Salin berkas `.example.yml` modul terkait. |
 | Login Sanctum gagal 500 "Session store not set" | `auth.sanctum.origin` belum cocok dengan `SANCTUM_STATEFUL_DOMAINS` server. |
