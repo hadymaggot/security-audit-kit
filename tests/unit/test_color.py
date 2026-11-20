@@ -193,13 +193,15 @@ def _headers(proj, *extra, env=None):
 
 def test_keluaran_polos_saat_dialihkan_ke_pipe(server_header):
     out = _headers(server_header)                       # stdout = pipe -> bukan terminal
-    assert "MISS strict-transport-security" in out and "\033" not in out
+    assert "MISS strict-transport-security: not set" in out and "\033" not in out
 
 
 def test_color_always_mewarnai_tetapi_json_tetap_polos(server_header):
     out = _headers(server_header, "--color", "always")
-    assert f"{RED}MISS{RST} strict-transport-security" in out
-    assert f"{GREEN}ok{RST}   x-frame-options" in out
+    assert f"{RED}MISS{RST} strict-transport-security: not set" in out
+    assert f"{GREEN}ok{RST}   x-frame-options: present" in out
+    assert f"{GREEN}ok{RST}   x-powered-by: not disclosed" in out
+    assert f"{RED}LEAK{RST} server: disclosed (BaseHTTP" in out          # http.server membocorkan Server
     saved = (server_header / "reports" / "headers.json").read_text(encoding="utf-8")
     assert "\033" not in saved and "\\u001b" not in saved       # data tersimpan tidak berisi kode warna
 

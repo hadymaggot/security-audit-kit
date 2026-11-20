@@ -293,7 +293,7 @@ def mod_headers(tgt):
         if hasattr(exc, "headers") and exc.headers:
             headers = {k.lower(): v for k, v in exc.headers.items()}
         else:
-            print(f"gagal ambil header: {exc}", file=sys.stderr)
+            print(f"failed to fetch response headers: {exc}", file=sys.stderr)
             return 2
     want = ["strict-transport-security", "content-security-policy",
             "x-content-type-options", "x-frame-options", "referrer-policy"]
@@ -303,21 +303,21 @@ def mod_headers(tgt):
     print(f"== Security header ({url}) ==")
     for h in want:
         if h in headers:
-            print(f"{C.good('ok')}   {h}")
+            print(f"{C.good('ok')}   {h}: present")
             results.append({"label": f"Header {h}", "status": None, "ok": True, "note": ""})
         else:
-            print(f"{C.bad('MISS')} {h}")
+            print(f"{C.bad('MISS')} {h}: not set")
             miss += 1
             results.append({"label": f"Header hilang: {h}", "status": None, "ok": False,
                             "note": f"header {h} tak diset pada respons"})
     for h in leak:
         if h in headers and headers[h]:
-            print(f"{C.bad('LEAK')} {h}: {headers[h]}")
+            print(f"{C.bad('LEAK')} {h}: disclosed ({headers[h]})")
             miss += 1
             results.append({"label": f"Header pembocor info: {h}", "status": None,
                             "ok": False, "note": f"{h}: {headers[h]}"})
         else:
-            print(f"{C.good('ok')}   {h} tidak dibocorkan")
+            print(f"{C.good('ok')}   {h}: not disclosed")
             results.append({"label": f"Header {h} tidak dibocorkan", "status": None,
                             "ok": True, "note": ""})
     import json
