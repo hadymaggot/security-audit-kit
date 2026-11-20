@@ -41,6 +41,15 @@ One check = one runner at `tests/<name>/run_<name>.py` + an entry in `remediatio
    must be covered by a test.
 6. **Docs.** Update the module table in `README.md` and `docs/temuan-to-test-mapping.md`.
 
+## Language and glossary
+
+- **Code comments and docstrings are in English**, short and clear (explain *why*, do not restate
+  the code). Variable, function, and schema key names are English too.
+- **Displayed text** (console, reports, recommendations) follows the [glossary](docs/glosarium.en.md):
+  sentences in the document language, technical terms stay English and are italicized in reports.
+- Adding a term takes one line in `glosarium.yml`; `tests/unit/test_glosarium.py` fails if any
+  displayed text still uses a word that has been standardized.
+
 ## Commits & PRs
 
 - **Conventional Commits:** `feat:`, `fix:`, `docs:`, `test:`, `ci:`, `refactor:`,

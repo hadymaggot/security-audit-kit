@@ -113,7 +113,7 @@ def evaluate(cookie, origin_url, cfg, where="", status=None, now=None):
         row("HttpOnly", True, "HttpOnly aktif")
     else:
         row("HttpOnly", False, "atribut HttpOnly tidak ada — cookie terbaca JavaScript "
-            "(dampak XSS: pencurian sesi)" + ("" if sensitive else " [cookie non-sesi]"))
+            "(dampak XSS: pencurian session)" + ("" if sensitive else " [cookie non-sesi]"))
 
     # Secure
     if "secure" in attrs:
@@ -142,12 +142,12 @@ def evaluate(cookie, origin_url, cfg, where="", status=None, now=None):
     if sensitive:
         days = _lifetime_days(attrs, now)
         if days is None:
-            row("masa berlaku", True, "cookie sesi (hilang saat browser ditutup)")
+            row("masa berlaku", True, "cookie session (hilang saat browser ditutup)")
         elif days <= max_days:
             row("masa berlaku", True, f"{days:.1f} hari (batas {max_days:g})")
         else:
             row("masa berlaku", False, f"{days:.0f} hari melebihi batas {max_days:g} hari "
-                "untuk cookie sesi/autentikasi")
+                "untuk cookie session/autentikasi")
     return rows
 
 
@@ -200,7 +200,7 @@ def collect(cfg, sess=None):
                               headers=_sanctum.auth_headers(s, origin), timeout=20)
                 grab(r, login["path"])
                 if r.status_code >= 400:
-                    notes.append({"check": "login untuk cookie sesi", "status": r.status_code,
+                    notes.append({"check": "login untuk cookie session", "status": r.status_code,
                                   "ok": True, "note": f"skip: login gagal HTTP {r.status_code}",
                                   "url": f"{login.get('method', 'POST')} {base}{login['path']}"})
         except Exception as exc:  # noqa: BLE001

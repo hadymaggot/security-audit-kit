@@ -127,7 +127,7 @@ class DisposableAccount:
             body = {}
         self.id = dig(body, c.get("id_path", "data.id"))
         if not self.id:
-            raise RuntimeError("akun uji dibuat tetapi id tidak ditemukan di respons "
+            raise RuntimeError("akun uji dibuat tetapi id tidak ditemukan di response "
                                f"(id_path={c.get('id_path', 'data.id')}) — bersihkan manual: "
                                f"{self.email}")
         # Catat rollback SEGERA setelah akun ada (crash-safe).
@@ -186,7 +186,7 @@ class DisposableAccount:
             ok = 200 <= r.status_code < 400 or r.status_code == 404
             note = "dihapus" if ok else f"HTTP {r.status_code}"
         except Exception as exc:  # noqa: BLE001
-            ok, note = False, f"galat: {exc}"
+            ok, note = False, f"error: {exc}"
         if ok and self._entry is not None and self.reports_dir:
             self._mark_done()
         self.id = None if ok else self.id

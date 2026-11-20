@@ -122,7 +122,7 @@ def check_target(sess, url, known, http2_probe=supports_http2):
     out.append({
         "check": f"Version disclosure {urlparse(url).netloc}",
         "status": r.status_code, "ok": not leak,
-        "note": "" if not leak else "banner membocorkan versi: " + "; ".join(leak),
+        "note": "" if not leak else "banner expose versi: " + "; ".join(leak),
         "url": f"GET {url}",
     })
 

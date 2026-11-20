@@ -85,7 +85,7 @@ AP_CFG = {
     "base_url": "http://t",
     "login": {"path": "/api/login", "body": {"email": "u", "password": "p"}},
     "password_checks": [{
-        "name": "ganti sandi", "path": "/api/auth/change-password", "authenticated": True,
+        "name": "ganti password", "path": "/api/auth/change-password", "authenticated": True,
         "template": {"current_password": "salah"},
         "password_field": "password", "confirm_field": "password_confirmation",
     }],
@@ -110,12 +110,12 @@ def _policy(method, url, kw):
 def test_auth_policy_flags_weak_accepted_and_skips_429(tmp_path, monkeypatch):
     rc, res = _main(AP, tmp_path, monkeypatch, AP_CFG, _policy)
     by = {r["check"]: r for r in res}
-    assert by["ganti sandi sandi lemah 12345678"]["ok"] is True
+    assert by["ganti password password lemah 12345678"]["ok"] is True
     # Lolos validasi sandi (hanya gagal di current_password) = sandi lemah diterima.
-    assert by["ganti sandi sandi lemah Password123!"]["ok"] is False
-    skip = by["ganti sandi sandi lemah aaaaaaaaaaaa"]
+    assert by["ganti password password lemah Password123!"]["ok"] is False
+    skip = by["ganti password password lemah aaaaaaaaaaaa"]
     assert skip["ok"] is True and skip["note"].startswith("skip")
-    assert by["ganti sandi kontrol sandi kuat"]["ok"] is True
+    assert by["ganti password kontrol password kuat"]["ok"] is True
     assert rc == 1
     # Konfirmasi sandi ikut dikirim & sesi login dipakai untuk endpoint ber-auth.
     sent = [c[2]["json"] for c in _Sess.calls if c[1].endswith("change-password")]

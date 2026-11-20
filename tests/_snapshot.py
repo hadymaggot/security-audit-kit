@@ -110,7 +110,7 @@ def backup(cfg, outdir, runner=default_runner):
         if rc != 0:
             raise SnapshotError(f"backup '{s['name']}' gagal (rc={rc}): {err.strip()[-200:]}")
         if out and (not Path(out).exists() or Path(out).stat().st_size == 0):
-            raise SnapshotError(f"backup '{s['name']}' menghasilkan berkas kosong: {out}")
+            raise SnapshotError(f"backup '{s['name']}' menghasilkan file kosong: {out}")
         manifest["steps"].append({"name": s["name"], "file": out,
                                   "bytes": Path(out).stat().st_size if out else None,
                                   "restore": _fmt(s["restore"], vars_)})
@@ -209,5 +209,5 @@ class Guard:
                 cleanup(self.manifest)
         else:
             self.echo("PERINGATAN: pemulihan data tidak lengkap — jalankan `python audit.py rollback` "
-                      "atau pulihkan manual dari berkas snapshot.")
+                      "atau pulihkan manual dari file snapshot.")
         return False

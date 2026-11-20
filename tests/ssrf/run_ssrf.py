@@ -151,7 +151,7 @@ def evaluate(target_name, variant, url_sent, token, hits, where):
                         f"{hits[0].get('from')}, User-Agent '{ua[:60]}') — SSRF terkonfirmasi; "
                         "alamat privat seharusnya diblokir.", "url": where, "kind": "ssrf"}
     return {"check": f"ssrf: {target_name} — {variant}", "status": None, "ok": True,
-            "note": "Tidak ada permintaan keluar ke canary — URL privat diblokir atau tidak dipakai.",
+            "note": "Tidak ada request keluar ke canary — URL privat diblokir atau tidak dipakai.",
             "url": where, "kind": "ssrf"}
 
 

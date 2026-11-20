@@ -240,6 +240,15 @@ Contoh: `python audit.py --project my-app --color always headers`. Opsi ini dapa
 di posisi mana pun dan diteruskan otomatis ke semua modul. Git Bash (mintty) sering tidak
 terdeteksi sebagai terminal oleh Python; gunakan `--color always` atau `SAK_COLOR=always`.
 
+### Bahasa dan istilah teknis
+
+Istilah teknis (*response*, *request*, *password*, *session*, *file*, dan lainnya) ditulis dalam
+bahasa Inggris dan dicetak miring pada laporan HTML, Markdown, dan slide; kalimatnya tetap
+Bahasa Indonesia. Daftarnya ada di `glosarium.yml` (id, en, de). Pilih bahasa dengan
+`--lang id|en|de`, env `SAK_LANG`, atau `report.language` di `targets.yml` (bawaan `en`). Saat ini
+katalog teks lengkap baru tersedia untuk `id`. Rinciannya, termasuk cara menambah istilah, ada di
+[Glosarium dan bahasa](glosarium.md).
+
 ## 5. Membaca laporan
 
 Setelah `report` atau `all`, hasil tersimpan di:

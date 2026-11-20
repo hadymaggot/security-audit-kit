@@ -24,6 +24,7 @@ import re
 import sys
 from pathlib import Path
 
+import glossary
 import remediation as R
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "tests"))
@@ -116,7 +117,7 @@ def collect(d: Path):
             role = r.get("role")
             ev = r.get("note") or ""
             if r.get("status") not in (None, ""):
-                ev = (f"Role '{role}', " if role else "") + f"respons HTTP {r.get('status')}. " + ev
+                ev = (f"Role '{role}', " if role else "") + f"response HTTP {r.get('status')}. " + ev
             hint = None
             if modul == "client-leak":
                 hint = CLIENT_LEAK_KIND.get(r.get("kind"))
@@ -261,21 +262,21 @@ DEFAULT_CONTACT = "wahanarekatekindo@gmail.com"
 
 # Nama alert yang terbaca manusia per 'kind' (gaya ZAP: satu alert, banyak instance).
 KIND_LABEL = {
-    "broken-access": "Kontrol akses rusak (role rendah membuka area terbatas)",
+    "broken-access": "Access control rusak (role rendah membuka area terbatas)",
     "forged-header": "Header identitas (X-Auth-*) dipercaya dari klien",
     "idor": "IDOR — akses objek milik entitas lain",
-    "info-exposure": "Berkas/informasi sensitif terekspos",
-    "client-cache": "Respons sensitif dapat di-cache",
-    "js-leak": "Kebocoran rahasia/endpoint di aset klien",
-    "upload-accepted": "Upload berkas berbahaya diterima",
+    "info-exposure": "File/informasi sensitif exposed",
+    "client-cache": "Response sensitif dapat di-cache",
+    "js-leak": "Exposure secret/endpoint di aset klien",
+    "upload-accepted": "Upload file berbahaya diterima",
     "mass-assignment": "Mass assignment / eskalasi properti objek (BOPLA)",
-    "weak-password": "Kebijakan sandi lemah",
+    "weak-password": "Kebijakan password lemah",
     "captcha-static": "Captcha tidak regenerasi",
     "missing-header": "Header keamanan tidak diset",
     "tls-weak": "Konfigurasi TLS lemah",
     "server-vuln": "Web server versi rentan (CVE diketahui)",
     "sql-injection": "SQL Injection (A03)",
-    "vuln-dependency": "Dependensi dengan kerentanan (CVE)",
+    "vuln-dependency": "Dependency dengan kerentanan (CVE)",
     "cors-misconfig": "CORS salah konfigurasi",
     "open-redirect": "Open redirect",
     "cookie-flags": "Atribut keamanan cookie tidak lengkap",
@@ -283,24 +284,24 @@ KIND_LABEL = {
     "jwt-forgery": "Server menerima JWT yang dipalsukan",
     "jwt-weak-secret": "Secret JWT lemah dapat ditebak",
     "jwt-weak-config": "Konfigurasi JWT tidak aman",
-    "captcha-answer-leak": "Captcha membocorkan jawabannya di respons",
-    "session-not-revoked": "Sesi lain tidak dicabut setelah ganti sandi",
-    "logout-no-invalidate": "Logout tidak mencabut sesi di server",
-    "old-password-accepted": "Sandi lama masih diterima setelah penggantian",
+    "captcha-answer-leak": "Captcha expose jawabannya di response",
+    "session-not-revoked": "Session lain tidak dicabut setelah ganti password",
+    "logout-no-invalidate": "Logout tidak mencabut session di server",
+    "old-password-accepted": "Password lama masih diterima setelah penggantian",
     "no-rate-limit": "Tidak ada pembatasan laju pada endpoint sensitif",
     "weak-lockout": "Penguncian akun tidak sesuai kebijakan",
-    "lockout-bypass": "Penguncian akun dapat dilewati dengan sandi benar",
-    "user-enumeration": "Akun terdaftar dapat dibedakan dari respons (enumerasi akun)",
+    "lockout-bypass": "Penguncian akun dapat dilewati dengan password benar",
+    "user-enumeration": "Akun terdaftar dapat dibedakan dari response (enumerasi akun)",
     "auth-coverage-gap": "Endpoint terlindungi menurut spesifikasi namun terbuka tanpa login",
     "unauthenticated-endpoint": "Endpoint terbuka tanpa autentikasi (perlu ditinjau)",
     "spec-mismatch": "Spesifikasi OpenAPI tidak akurat terhadap perilaku nyata",
-    "anon-server-error": "Galat server (5xx) pada request anonim",
-    "sensitive-data-exposure": "Data sensitif terekspos di respons API",
-    "verbose-error": "Respons verbose/debug membocorkan detail implementasi",
-    "internal-info-leak": "Alamat/hostname internal bocor di respons",
+    "anon-server-error": "Error server (5xx) pada request anonim",
+    "sensitive-data-exposure": "Data sensitif exposed di response API",
+    "verbose-error": "Response verbose/debug expose detail implementasi",
+    "internal-info-leak": "Alamat/hostname internal exposed di response",
     "recon-subdomain": "Aset/subdomain terpetakan (recon)",
-    "exposed-service": "Port/layanan terekspos ke publik",
-    "leaked-secret": "Kredensial/secret bocor di source/aset",
+    "exposed-service": "Port/layanan exposed ke publik",
+    "leaked-secret": "Kredensial/secret exposed di source/aset",
     "recon-finding": "Temuan recon aktif (nuclei)",
     "sast-finding": "Temuan analisis statis kode (SAST/semgrep)",
     "zap-generic": "Temuan pemindai pasif (ZAP)",
@@ -488,6 +489,7 @@ def exec_summary(alerts, counts):
 
 
 def write_md(path, findings, counts, when, cves):
+    I = glossary.italic_md  # technical terms in *italics*; see glosarium.yml
     gagal = [f for f in findings if not f["lulus"]]
     alerts = group_alerts(gagal)
     tgt_name, tgt_url = read_target()
@@ -502,7 +504,7 @@ def write_md(path, findings, counts, when, cves):
     ] + ([f"| Alat | {CREDIT} |"] if meta["custom"] else []) + [
         f"| Target | {tgt_name} ({tgt_url}) |",
         f"| Versi dokumen | {meta['version']} |", "",
-        "## 1. Ringkasan Eksekutif", "", exec_summary(alerts, counts), "",
+        "## 1. Ringkasan Eksekutif", "", I(exec_summary(alerts, counts)), "",
         "| Severity | Jumlah instance |", "|---|---|",
         f"| {SEV_EMOJI['critical']} Critical | {counts['critical']} |",
         f"| {SEV_EMOJI['high']} High | {counts['high']} |",
@@ -514,7 +516,7 @@ def write_md(path, findings, counts, when, cves):
         "## 2. Ruang Lingkup & Metodologi", "",
         f"- **Target:** {tgt_name} ({tgt_url}).",
         f"- **Modul/teknik yang dijalankan:** {', '.join(moduls) if moduls else '-'}.",
-        "- **Metodologi:** " + METODOLOGI, "",
+        "- **Metodologi:** " + I(METODOLOGI), "",
         "## 3. Ringkasan Risiko", "",
     ]
     # Daftar alert (ToC) dengan ID temuan, risiko, CVSS indikatif, keyakinan, instance.
@@ -522,7 +524,7 @@ def write_md(path, findings, counts, when, cves):
         L += ["| ID | Alert | Risiko | CVSS v3.1 | Keyakinan | Instance |",
               "|---|---|---|---|---|---|"]
         for i, a in enumerate(alerts, 1):
-            L.append(f"| {finding_id(i)} | {a['nama']} | {SEV_EMOJI.get(a['severity'], '')} "
+            L.append(f"| {finding_id(i)} | {I(a['nama'])} | {SEV_EMOJI.get(a['severity'], '')} "
                      f"{a['severity'].upper()} | {cvss_score(a['kind'], a['severity'])} | "
                      f"{a['keyakinan']} | {len(a['instances'])} |")
         L.append("")
@@ -533,18 +535,18 @@ def write_md(path, findings, counts, when, cves):
     for i, a in enumerate(alerts, 1):
         kb = a["kb"]
         L += [
-            f"### {finding_id(i)} — {SEV_EMOJI.get(a['severity'], '')} {a['nama']}", "",
+            f"### {finding_id(i)} — {SEV_EMOJI.get(a['severity'], '')} {I(a['nama'])}", "",
             f"- **Severity:** {a['severity'].upper()} &nbsp; **CVSS v3.1 (indikatif):** "
             f"{cvss_full(a['kind'], a['severity'])} &nbsp; **Keyakinan:** {a['keyakinan']} &nbsp; "
             f"**Status:** Terbuka",
             f"- **Sumber/plugin:** {', '.join(a['moduls'])} (`{a['kind']}`)",
-            f"- **Deskripsi:** {kb['deskripsi']}",
+            f"- **Deskripsi:** {I(kb['deskripsi'])}",
             f"- **Instance yang diuji ({len(a['instances'])}):**", "",
             "  | # | Endpoint diuji | Konteks | HTTP | Bukti |",
             "  |---|---|---|---|---|",
         ]
         for j, inst in enumerate(a["instances"], 1):
-            ctx = inst.get("judul", "")
+            ctx = I(inst.get("judul", ""))
             st = inst["status"] if inst["status"] not in (None, "") else "-"
             ev = (inst.get("evidence") or "").replace("|", "\\|").replace("\n", " ")[:160]
             if inst.get("screenshot"):
@@ -554,15 +556,15 @@ def write_md(path, findings, counts, when, cves):
         L += [
             "",
             (f"- **CVE/CWE:** {', '.join(a['cve'])}" if a["cve"] else "- **CVE/CWE:** -"),
-            f"- **Dampak:** {kb['dampak']}",
-            f"- **Justifikasi severity:** {kb['severity_dasar']}",
+            f"- **Dampak:** {I(kb['dampak'])}",
+            f"- **Justifikasi severity:** {I(kb['severity_dasar'])}",
             "- **Rekomendasi & contoh solusi:**",
         ]
         for rec in kb["rekomendasi"]:
             if "\n" in rec or "    " in rec:
                 L += ["", "  ```", *("  " + ln for ln in rec.splitlines()), "  ```", ""]
             else:
-                L.append(f"  - {rec}")
+                L.append(f"  - {I(rec)}")
         L.append(f"- **Referensi:** {'; '.join(kb['referensi'])}")
         L.append("")
 
@@ -575,7 +577,7 @@ def write_md(path, findings, counts, when, cves):
         for f in lulus:
             url = (f.get("url") or "-").replace("|", "\\|")
             st = f["status"] if f["status"] not in (None, "") else "-"
-            L.append(f"| {f['judul']} | {f['modul']} | `{url}` | {st} |")
+            L.append(f"| {I(f['judul'])} | {f['modul']} | `{url}` | {st} |")
         L.append("")
     if cves:
         L += ["## 5. Daftar CVE", "", "| CVE | Paket/Lokasi | Severity |", "|---|---|---|"]
@@ -588,7 +590,7 @@ def write_md(path, findings, counts, when, cves):
         "Security Top 10 2023, OWASP ASVS, OWASP Risk Rating Methodology.", "",
         "**Catatan CVSS.** Skor CVSS bersifat indikatif (pemetaan kualitatif dari OWASP Risk "
         "Rating + vektor v3.1 representatif per jenis temuan); skor+vektor final tetap perlu diverifikasi manual per konteks target.", "",
-        "**Batasan & pertanggungjawaban.** " + BATASAN, "",
+        "**Batasan & pertanggungjawaban.** " + I(BATASAN), "",
         "---", "", f"_{CREDIT}_", "",
     ]
     path.write_text("\n".join(L), encoding="utf-8")
@@ -597,6 +599,9 @@ def write_md(path, findings, counts, when, cves):
 def write_html(path, findings, counts, when, cves):
     def esc(x):
         return html.escape(str(x))
+
+    def rich(x):
+        return glossary.italic_html(esc(x))
 
     gagal = [f for f in findings if not f["lulus"]]
     alerts = group_alerts(gagal)
@@ -611,7 +616,7 @@ def write_html(path, findings, counts, when, cves):
 
     # Daftar alert (ToC): ID temuan, risiko, CVSS indikatif, keyakinan, instance.
     toc_rows = "".join(
-        f"<tr><td><a href='#alert-{i}'>{esc(finding_id(i))}</a></td><td>{esc(a['nama'])}</td>"
+        f"<tr><td><a href='#alert-{i}'>{esc(finding_id(i))}</a></td><td>{rich(a['nama'])}</td>"
         f"<td><span class='badge' style='background:{SEV_COLOR[a['severity']]}'>"
         f"{esc(a['severity'].upper())}</span></td><td>{esc(cvss_score(a['kind'], a['severity']))}</td>"
         f"<td>{esc(a['keyakinan'])}</td><td>{len(a['instances'])}</td></tr>"
@@ -624,7 +629,7 @@ def write_html(path, findings, counts, when, cves):
         recs = ""
         for rec in kb["rekomendasi"]:
             recs += (f"<pre>{esc(rec)}</pre>" if ("\n" in rec or "    " in rec)
-                     else f"<li>{esc(rec)}</li>")
+                     else f"<li>{rich(rec)}</li>")
         def _cell(inst):
             cell = esc(inst.get("evidence") or "")
             ss = inst.get("screenshot")
@@ -634,7 +639,7 @@ def write_html(path, findings, counts, when, cves):
             return cell
         inst_rows = "".join(
             f"<tr><td>{j}</td><td><code>{esc(inst.get('url') or '-')}</code></td>"
-            f"<td>{esc(inst.get('judul', ''))}</td>"
+            f"<td>{rich(inst.get('judul', ''))}</td>"
             f"<td>{esc(inst['status'] if inst['status'] not in (None, '') else '-')}</td>"
             f"<td>{_cell(inst)}</td></tr>"
             for j, inst in enumerate(a["instances"], 1))
@@ -643,20 +648,20 @@ def write_html(path, findings, counts, when, cves):
         blocks += f"""
         <div class="finding" id="alert-{i}">
           <h3><span class="badge" style="background:{col}">{esc(a['severity'].upper())}</span>
-              {esc(finding_id(i))} — {esc(a['nama'])}</h3>
+              {esc(finding_id(i))} — {rich(a['nama'])}</h3>
           <p><b>Severity:</b> {esc(a['severity'].upper())} &nbsp;·&nbsp;
              <b>CVSS v3.1 (indikatif):</b> {esc(cvss_full(a['kind'], a['severity']))} &nbsp;·&nbsp;
              <b>Keyakinan:</b> {esc(a['keyakinan'])} &nbsp;·&nbsp;
              <b>Status:</b> Terbuka</p>
           <p><b>Sumber/plugin:</b> {esc(', '.join(a['moduls']))} (<code>{esc(a['kind'])}</code>)
              &nbsp;·&nbsp; <b>CVE/CWE:</b> {esc(cve)}</p>
-          <p><b>Deskripsi.</b> {esc(kb['deskripsi'])}</p>
+          <p><b>Deskripsi.</b> {rich(kb['deskripsi'])}</p>
           <p><b>Instance yang diuji ({len(a['instances'])}):</b></p>
           <table class="inst"><thead><tr><th>#</th><th>Endpoint diuji (bukti)</th>
             <th>Konteks</th><th>HTTP</th><th>Catatan</th></tr></thead>
             <tbody>{inst_rows}</tbody></table>
-          <p><b>Dampak.</b> {esc(kb['dampak'])}</p>
-          <p><b>Justifikasi severity.</b> {esc(kb['severity_dasar'])}</p>
+          <p><b>Dampak.</b> {rich(kb['dampak'])}</p>
+          <p><b>Justifikasi severity.</b> {rich(kb['severity_dasar'])}</p>
           <p><b>Rekomendasi & contoh solusi.</b></p><ul>{recs}</ul>
           <p class="ref"><b>Referensi:</b> {esc('; '.join(kb['referensi']))}</p>
         </div>"""
@@ -665,7 +670,7 @@ def write_html(path, findings, counts, when, cves):
 
     lulus = [f for f in findings if f["lulus"]]
     lulus_rows = "".join(
-        f"<tr><td>{esc(f['judul'])}</td><td>{esc(f['modul'])}</td>"
+        f"<tr><td>{rich(f['judul'])}</td><td>{esc(f['modul'])}</td>"
         f"<td><code>{esc(f.get('url') or '-')}</code></td>"
         f"<td>{esc(f['status'] if f['status'] not in (None, '') else '-')}</td></tr>"
         for f in lulus)
@@ -729,13 +734,13 @@ def write_html(path, findings, counts, when, cves):
 <tr><td>Versi dokumen</td><td>{esc(meta['version'])}</td></tr>
 </tbody></table>
 <h2>1. Ringkasan Eksekutif</h2>
-<div class="exec">{esc(exec_summary(alerts, counts))}</div>
+<div class="exec">{rich(exec_summary(alerts, counts))}</div>
 <div class="cards">{cards}</div>
 <p>Total alert: <b>{len(alerts)}</b> · Total CVE: <b>{len(cves)}</b>.</p>
 <h2>2. Ruang Lingkup &amp; Metodologi</h2>
 <div class="note"><p><b>Target.</b> {esc(tgt_name)} (<code>{esc(tgt_url)}</code>)</p>
 <p><b>Modul/teknik.</b> {esc(', '.join(moduls) if moduls else '-')}</p>
-<p><b>Metodologi.</b> {html.escape(METODOLOGI)}</p></div>
+<p><b>Metodologi.</b> {glossary.italic_html(html.escape(METODOLOGI))}</p></div>
 <h2>3. Ringkasan Risiko</h2>
 <table><thead><tr><th>ID</th><th>Alert</th><th>Risiko</th><th>CVSS v3.1</th><th>Keyakinan</th><th>Instance</th></tr></thead>
 <tbody>{toc_rows}</tbody></table>
@@ -746,7 +751,7 @@ def write_html(path, findings, counts, when, cves):
 <h2>6. Lampiran</h2>
 <div class="note"><p><b>Tooling &amp; acuan.</b> {esc('; '.join(TOOLS))}. Acuan: OWASP Top 10 2021, OWASP API Security Top 10 2023, OWASP ASVS, OWASP Risk Rating Methodology.</p>
 <p><b>Catatan CVSS.</b> Skor CVSS bersifat indikatif (pemetaan kualitatif dari OWASP Risk Rating + vektor v3.1 representatif per jenis temuan); skor+vektor final tetap perlu diverifikasi manual per konteks target.</p>
-<p><b>Batasan &amp; pertanggungjawaban.</b> {html.escape(BATASAN)}</p></div>
+<p><b>Batasan &amp; pertanggungjawaban.</b> {glossary.italic_html(html.escape(BATASAN))}</p></div>
 </main>
 <footer>{credit_html}</footer>
 </html>"""
@@ -761,6 +766,9 @@ def write_slides(path, findings, counts, when, cves):
     """
     def esc(x):
         return html.escape(str(x))
+
+    def rich(x):
+        return glossary.italic_html(esc(x))
 
     alerts = group_alerts([f for f in findings if not f["lulus"]])
     tgt_name, tgt_url = read_target()
@@ -785,11 +793,11 @@ def write_slides(path, findings, counts, when, cves):
       <p class="big">{total} instance temuan · {len(alerts)} alert · {len(cves)} CVE · {counts['lulus']} kontrol lolos</p></section>""")
 
     slides.append(f"""<section class="slide"><h2>Ringkasan Eksekutif</h2>
-      <p class="exec">{esc(exec_summary(alerts, counts))}</p></section>""")
+      <p class="exec">{rich(exec_summary(alerts, counts))}</p></section>""")
 
     for i, a in enumerate(alerts, 1):
         kb = a["kb"]
-        rec1 = esc(kb["rekomendasi"][0]) if kb.get("rekomendasi") else ""
+        rec1 = rich(kb["rekomendasi"][0]) if kb.get("rekomendasi") else ""
         col = SEV_COLOR[a["severity"]]
         shot = next((inst["screenshot"] for inst in a["instances"]
                      if inst.get("screenshot")), "")
@@ -800,8 +808,8 @@ def write_slides(path, findings, counts, when, cves):
             <span class="badge" style="background:{col}">{esc(a['severity'].upper())}</span>
             &nbsp;·&nbsp; CVSS {esc(cvss_score(a['kind'], a['severity']))} &nbsp;·&nbsp;
             {len(a['instances'])} instance</div>
-          <h2>{esc(a['nama'])}</h2>
-          <p><b>Dampak.</b> {esc(kb['dampak'])}</p>
+          <h2>{rich(a['nama'])}</h2>
+          <p><b>Dampak.</b> {rich(kb['dampak'])}</p>
           <p><b>Rekomendasi utama.</b> {rec1}</p>{shot_html}</section>""")
 
     slides.append(f"""<section class="slide cover"><h2>Terima kasih</h2>

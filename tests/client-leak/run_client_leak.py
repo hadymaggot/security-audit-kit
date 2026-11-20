@@ -98,7 +98,7 @@ def check_cache(s, base, paths):
         cacheable_public = ("public" in cc) or (cc == "")
         ok = safe and not cacheable_public
         note = "" if ok else f"Cache-Control: '{r.headers.get('Cache-Control','(kosong)')}'"
-        out.append({"kind": "cache", "label": f"cache respons {p}", "status": r.status_code,
+        out.append({"kind": "cache", "label": f"cache response {p}", "status": r.status_code,
                     "ok": ok, "note": note, "url": f"GET {url}"})
     return out
 
@@ -259,7 +259,7 @@ def check_js(s, base, js_urls, internal_hints):
             body = r.text
         except Exception as exc:  # noqa: BLE001
             out.append({"kind": "js", "label": f"ambil {url}", "status": -1,
-                        "ok": False, "note": f"galat: {exc}", "url": f"GET {url}"})
+                        "ok": False, "note": f"error: {exc}", "url": f"GET {url}"})
             continue
         name = urlparse(url).path.rsplit("/", 1)[-1]
 
@@ -347,7 +347,7 @@ def check_files(s, base, files):
         exposed = (r.status_code == 200 and r.content
                    and "html" not in r.headers.get("Content-Type", "").lower())
         if exposed:
-            out.append({"kind": "file", "label": f"File terekspos: {rel}",
+            out.append({"kind": "file", "label": f"File exposed: {rel}",
                         "status": r.status_code, "ok": False, "url": f"GET {url}",
                         "note": f"{len(r.content)} byte dapat diunduh publik"})
         else:

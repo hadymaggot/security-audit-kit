@@ -102,7 +102,7 @@ def test_galat_5xx_pada_request_anonim_jadi_temuan():
     rows, _ = _run(SPEC, {"/laporan": 500})
     f = [r for r in rows if not r["ok"]]
     assert len(f) == 1 and f[0]["kind"] == "anon-server-error" and f[0]["status"] == 500
-    assert "galat server" in f[0]["check"]
+    assert "error server" in f[0]["check"]
 
 
 def test_terbuka_tanpa_deklarasi_dan_di_luar_allowlist():

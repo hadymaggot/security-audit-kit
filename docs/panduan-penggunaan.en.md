@@ -244,6 +244,14 @@ Example: `python audit.py --project my-app --color always headers`. The option c
 anywhere and is passed on to every module automatically. Git Bash (mintty) is often not detected as
 a terminal by Python; use `--color always` or `SAK_COLOR=always`.
 
+### Language and technical terms
+
+Technical terms (response, request, password, session, file, and others) stay in English and are
+italicized in HTML, Markdown, and slide reports when the text language is not English. They are
+listed in `glosarium.yml` (id, en, de). Pick the language with `--lang id|en|de`, the `SAK_LANG`
+variable, or `report.language` in `targets.yml` (default `en`). For now only the `id` text catalog
+is complete. Details, including how to add terms, are in [Glossary and language](glosarium.en.md).
+
 ## 5. Reading the report
 
 After `report` or `all`, the results are stored in:

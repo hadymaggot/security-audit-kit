@@ -41,6 +41,15 @@ Satu check = satu runner di `tests/<nama>/run_<nama>.py` + entri di `remediation
    wajib tercakup test.
 6. **Docs.** Perbarui tabel modul di `README.md` dan `docs/temuan-to-test-mapping.md`.
 
+## Bahasa dan glosarium
+
+- **Komentar dan docstring di kode: Bahasa Inggris**, singkat, padat, dan jelas (jelaskan
+  *mengapa*, bukan mengulang kode). Nama variabel, fungsi, dan kunci skema juga Bahasa Inggris.
+- **Teks yang tampil** (konsol, laporan, rekomendasi) mengikuti [glosarium](docs/glosarium.md):
+  kalimat dalam bahasa dokumen, istilah teknis tetap Inggris dan dicetak miring di laporan.
+- Menambah istilah cukup satu baris di `glosarium.yml`; `tests/unit/test_glosarium.py` gagal bila
+  ada teks tampil yang masih memakai kata yang sudah dibakukan.
+
 ## Commit & PR
 
 - **Conventional Commits:** `feat:`, `fix:`, `docs:`, `test:`, `ci:`, `refactor:`,

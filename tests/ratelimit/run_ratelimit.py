@@ -53,7 +53,7 @@ def evaluate_burst(name, url, statuses, retry_after, cfg=None):
     ok_codes = [s for s in statuses if s is not None]
     if not ok_codes:
         return {"check": f"laju: {name}", "status": None, "ok": True,
-                "note": "skip: tidak ada respons (galat jaringan)", "url": url,
+                "note": "skip: tidak ada response (error jaringan)", "url": url,
                 "kind": "no-rate-limit"}
     first = next((i + 1 for i, s in enumerate(statuses) if s in limit_statuses), None)
     resume = ", ".join(f"{c}x{statuses.count(c)}" for c in sorted(set(ok_codes)))
@@ -89,23 +89,23 @@ def evaluate_lockout(attempts, correct, cfg, url):
     rate_limited = any(s == 429 and not lock_signal(s, t, cfg) for s, t in attempts)
 
     if first_lock is None and rate_limited:
-        rows.append({"check": "lockout: penguncian setelah sandi salah", "status": 429,
+        rows.append({"check": "lockout: penguncian setelah password salah", "status": 429,
                      "ok": True, "note": "skip: uji terhalang rate limit (429) sebelum penguncian "
                      "akun teramati — naikkan `delay_seconds` agar lockout aplikasi dapat diuji.",
                      "url": url, "kind": "weak-lockout"})
         return rows
     if first_lock is None:
         resume = ", ".join(f"{s}" for s, _ in attempts)
-        rows.append({"check": "lockout: penguncian setelah sandi salah",
+        rows.append({"check": "lockout: penguncian setelah password salah",
                      "status": attempts[-1][0] if attempts else None, "ok": False,
-                     "note": f"Akun TIDAK terkunci setelah {len(attempts)} sandi salah berturut "
+                     "note": f"Akun TIDAK terkunci setelah {len(attempts)} password salah berturut "
                              f"(status: {resume}); ambang yang diharapkan {max_attempts}.",
                      "url": url, "kind": "weak-lockout"})
         return rows
 
     tol = int(cfg.get("tolerance", 1))
     ok_at = first_lock <= max_attempts + tol
-    rows.append({"check": "lockout: penguncian setelah sandi salah",
+    rows.append({"check": "lockout: penguncian setelah password salah",
                  "status": attempts[first_lock - 1][0], "ok": ok_at,
                  "note": (f"Akun terkunci pada percobaan ke-{first_lock} (ambang {max_attempts})."
                           if ok_at else
@@ -115,20 +115,20 @@ def evaluate_lockout(attempts, correct, cfg, url):
     if correct is not None:
         cs, ct = correct
         if 200 <= (cs or 0) < 300:
-            rows.append({"check": "lockout: sandi benar saat akun terkunci", "status": cs,
-                         "ok": False, "note": "Login dengan sandi BENAR berhasil padahal akun "
+            rows.append({"check": "lockout: password benar saat akun terkunci", "status": cs,
+                         "ok": False, "note": "Login dengan password BENAR berhasil padahal akun "
                          "terkunci — lockout dapat dilewati.", "url": url,
                          "kind": "lockout-bypass"})
         else:
-            rows.append({"check": "lockout: sandi benar saat akun terkunci", "status": cs,
-                         "ok": True, "note": f"Sandi benar tetap ditolak saat terkunci (HTTP {cs}).",
+            rows.append({"check": "lockout: password benar saat akun terkunci", "status": cs,
+                         "ok": True, "note": f"Password benar tetap ditolak saat terkunci (HTTP {cs}).",
                          "url": url, "kind": "lockout-bypass"})
     texts = [t for s, t in attempts if lock_signal(s, t, cfg)] + ([correct[1]] if correct else [])
     minutes = next((m for m in (parse_lock_minutes(t) for t in texts) if m is not None), None)
     cap = int(cfg.get("max_lock_minutes", 60))
     if minutes is None:
         rows.append({"check": "lockout: durasi kunci", "status": None, "ok": True,
-                     "note": "skip: durasi kunci tidak diumumkan di respons.", "url": url,
+                     "note": "skip: durasi kunci tidak diumumkan di response.", "url": url,
                      "kind": "weak-lockout"})
     elif 1 <= minutes <= cap:
         rows.append({"check": "lockout: durasi kunci", "status": None, "ok": True,
@@ -150,20 +150,20 @@ def evaluate_enumeration(real_first, fake_first, real_last, fake_last, url):
         return (s, re.sub(r"\d+", "N", (t or "").strip())[:200])
 
     same_first = sig(real_first) == sig(fake_first)
-    rows.append({"check": "enumerasi akun: respons gagal pertama", "status": real_first[0],
+    rows.append({"check": "enumerasi akun: response gagal pertama", "status": real_first[0],
                  "ok": same_first,
-                 "note": ("Respons akun terdaftar dan fiktif identik pada percobaan pertama."
+                 "note": ("Response akun terdaftar dan fiktif identik pada percobaan pertama."
                           if same_first else
-                          f"Respons berbeda: akun terdaftar HTTP {real_first[0]} vs fiktif "
+                          f"Response berbeda: akun terdaftar HTTP {real_first[0]} vs fiktif "
                           f"HTTP {fake_first[0]} — akun terdaftar dapat dibedakan."),
                  "url": url, "kind": "user-enumeration"})
     same_last = real_last[0] == fake_last[0]
-    rows.append({"check": "enumerasi akun: respons setelah ambang percobaan", "status": real_last[0],
+    rows.append({"check": "enumerasi akun: response setelah ambang percobaan", "status": real_last[0],
                  "ok": same_last,
                  "note": ("Status identik untuk akun terdaftar dan fiktif setelah ambang."
                           if same_last else
                           f"Setelah ambang, akun terdaftar dijawab HTTP {real_last[0]} sedangkan "
-                          f"akun fiktif HTTP {fake_last[0]} — penguncian membocorkan keberadaan "
+                          f"akun fiktif HTTP {fake_last[0]} — penguncian expose keberadaan "
                           "akun (enumerasi)."), "url": url, "kind": "user-enumeration"})
     return rows
 

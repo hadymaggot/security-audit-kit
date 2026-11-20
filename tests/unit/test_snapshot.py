@@ -64,7 +64,7 @@ def test_backup_membuat_berkas_dan_manifest(tmp_path):
 def test_backup_gagal_atau_kosong_melempar(tmp_path):
     with pytest.raises(SN.SnapshotError, match="gagal"):
         SN.backup(PG, tmp_path / "a", FakeRunner(fail_backup="orders"))
-    with pytest.raises(SN.SnapshotError, match="berkas kosong"):
+    with pytest.raises(SN.SnapshotError, match="file kosong"):
         SN.backup(PG, tmp_path / "b", FakeRunner(empty=True))
     with pytest.raises(SN.SnapshotError, match="tidak ada langkah"):
         SN.backup({"preset": "postgres-docker", "container": "c", "user": "u"}, tmp_path / "c",

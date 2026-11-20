@@ -120,12 +120,12 @@ def classify(expected, status):
     allow_ok = 200 <= status < 400
     deny_ok = status in (401, 403)
     if expected == "allow":
-        return allow_ok, "" if allow_ok else "diharapkan lolos tapi ditolak/galat"
+        return allow_ok, "" if allow_ok else "diharapkan lolos tapi ditolak/error"
     if expected == "deny":
         if deny_ok:
             return True, ""
         if status == 404:
-            return False, "404 — mungkin disembunyikan, konfirmasi bukan bocor info"
+            return False, "404 — mungkin disembunyikan, konfirmasi bukan information disclosure"
         if allow_ok:
             return False, "DITOLAK GAGAL — endpoint sensitif bisa diakses role ini"
         return False, f"status tak terduga {status}"
@@ -189,7 +189,7 @@ def main():
                 status = resp.status_code
             except Exception as exc:  # noqa: BLE001
                 status = -1
-                note = f"request galat: {exc}"
+                note = f"request error: {exc}"
                 ok = False
             else:
                 ok, note = classify(expected, status)

@@ -298,7 +298,7 @@ def phase_ports(cfg, run_tool, whicher=shutil.which):
         if svc:
             results.append({"check": f"port {port}/tcp terbuka ({svc})", "ok": False,
                            "severity": "medium", "kind": "exposed-service",
-                           "note": f"Layanan {svc} terekspos ke publik pada {obj.get('host', target)}.",
+                           "note": f"Layanan {svc} exposed ke publik pada {obj.get('host', target)}.",
                            "url": f"{obj.get('host', target)}:{port}"})
         else:
             results.append({"check": f"port {port}/tcp terbuka", "ok": False,

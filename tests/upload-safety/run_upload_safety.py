@@ -103,7 +103,7 @@ def cleanup_accepted(sess, base, cleanup, resp, headers):
     except ValueError:
         file_id = None
     if not file_id:
-        return "cleanup: id tak ditemukan di respons — hapus manual"
+        return "cleanup: id tak ditemukan di response — hapus manual"
     path = cleanup["path"].replace("{id}", str(file_id))
     try:
         r = sess.request(cleanup.get("method", "DELETE"), base + path,
@@ -164,7 +164,7 @@ def main():
             r = sess.post(url, files=files, data=form, headers=req_headers(), timeout=20)
             status = r.status_code
         except Exception as exc:  # noqa: BLE001
-            print(f"{name:<34} {'-':>5}  galat: {exc}")
+            print(f"{name:<34} {'-':>5}  error: {exc}")
             failures += 1
             results.append({"case": name, "status": -1, "ok": False,
                             "note": str(exc), "url": evidence_url})
@@ -177,7 +177,7 @@ def main():
             failures += 1
         verdict = "ok" if ok else ("XX DITERIMA padahal harus ditolak" if should_reject
                                    else "XX ditolak padahal file sah")
-        note = "diterima, nama berkas disanitasi" if clean else ("" if ok else verdict)
+        note = "diterima, nama file disanitasi" if clean else ("" if ok else verdict)
         if accepted and cleanup:
             done = cleanup_accepted(sess, base, cleanup, r, req_headers())
             note = f"{note}; {done}" if note else done
