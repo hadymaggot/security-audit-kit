@@ -83,10 +83,10 @@ def test_y_matches_field_even_without_other_layer():
 # --- randomness ---
 def test_position_randomness():
     assert CP.evaluate_randomness([95]) is None
-    tetap = CP.evaluate_randomness([95, 95, 95])
-    assert tetap["ok"] is False and "tidak acak" in tetap["note"]
-    acak = CP.evaluate_randomness([95, 164])
-    assert acak["ok"] is True and "bervariasi" in acak["note"]
+    constant = CP.evaluate_randomness([95, 95, 95])
+    assert constant["ok"] is False and "tidak acak" in constant["note"]
+    varied = CP.evaluate_randomness([95, 164])
+    assert varied["ok"] is True and "bervariasi" in varied["note"]
 
 
 # --- run with a fake session ---

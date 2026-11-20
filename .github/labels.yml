@@ -1,5 +1,5 @@
 # Standard labels for this repo. Source of truth for GitHub labels; sync with:
-#   scripts/sync-labels.sh   (needs gh CLI + jq)
+#   scripts/sync-labels.ps1  (needs gh CLI + jq)
 # Colors without '#'.
 
 # --- Type ---

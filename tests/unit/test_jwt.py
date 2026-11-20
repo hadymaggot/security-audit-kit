@@ -139,8 +139,8 @@ def test_forged_variants_contain_the_right_changes():
     v = dict(JW.forged_variants(h, p, parts))
     assert JW.parse(v["alg=none tanpa tanda tangan"])[0]["alg"] == "none"
     assert v["tanda tangan dibuang"].endswith(".") and v["tanda tangan dibuang"].count(".") == 2
-    tam = JW.parse(v["payload diubah, tanda tangan lama"])
-    assert tam[1]["admin"] is True and tam[1]["sub"] == "0" and tam[2][2] == parts[2]
+    sig_check = JW.parse(v["payload diubah, tanda tangan lama"])
+    assert sig_check[1]["admin"] is True and sig_check[1]["sub"] == "0" and sig_check[2][2] == parts[2]
 
 
 # --- token + sender + run ---

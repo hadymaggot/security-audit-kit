@@ -29,7 +29,7 @@ class FakeTTY:
 
 
 @pytest.fixture(autouse=True)
-def _bersih(monkeypatch):
+def _clean_env(monkeypatch):
     for k in ("SAK_COLOR", "NO_COLOR", "FORCE_COLOR", "CLICOLOR_FORCE", "TERM"):
         monkeypatch.delenv(k, raising=False)
     monkeypatch.setattr(C, "_vt_ok", True)          # skip real Windows console activation
