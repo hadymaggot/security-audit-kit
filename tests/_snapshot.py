@@ -36,6 +36,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import _rollback  # noqa: E402
+import _color as C  # noqa: E402  (warna ANSI konsol lintas-modul di tests/)
 
 
 class SnapshotError(RuntimeError):
@@ -196,7 +197,7 @@ class Guard:
         self.echo(f"== Memulihkan data setelah {self.label} ==")
         self.results = restore(self.manifest, self.runner)
         for n, ok, note in self.results:
-            self.echo(f"  {'ok ' if ok else 'XX '}{n}  {note}")
+            self.echo(f"  {C.good('ok') if ok else C.bad('XX')} {n}  {note}")
         self.ok = all(r[1] for r in self.results)
         if self.ok:
             data = _rollback.load(self.reports)

@@ -46,6 +46,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import _sanctum  # noqa: E402  (helper auth Sanctum lintas-modul di tests/)
+import _color as C  # noqa: E402  (warna ANSI konsol lintas-modul di tests/)
 
 ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 
@@ -173,7 +174,7 @@ def main():
             mark = "ok" if rejected else "XX DITERIMA (sandi lemah lolos)"
             if not rejected:
                 failures += 1
-            print(f"  sandi {pw!r:<16} HTTP {r.status_code}  {mark}")
+            print(f"  sandi {pw!r:<16} HTTP {r.status_code}  {C.status(mark)}")
             results.append({"check": f"{label} sandi lemah {pw}", "status": r.status_code,
                             "ok": rejected, "note": "" if rejected else "sandi lemah lolos",
                             "url": ep_url})
@@ -193,7 +194,7 @@ def main():
             if not ok:
                 failures += 1
             status = r.status_code if r is not None else -1
-            print(f"  kontrol sandi kuat     HTTP {status}  {'ok' if ok else 'XX ' + note}")
+            print(f"  kontrol sandi kuat     HTTP {status}  {C.status('ok' if ok else 'XX ' + note)}")
             results.append({"check": f"{label} kontrol sandi kuat", "status": status,
                             "ok": ok, "note": note, "url": ep_url})
 
@@ -212,7 +213,7 @@ def main():
             if not ok:
                 failures += 1
             status = r.status_code if r is not None else -1
-            print(f"  kontrol sandi kuat     HTTP {status}  {'ok' if ok else 'XX ' + note}")
+            print(f"  kontrol sandi kuat     HTTP {status}  {C.status('ok' if ok else 'XX ' + note)}")
             results.append({"check": f"{label} kontrol sandi kuat", "status": status,
                             "ok": ok, "note": note})
 
@@ -234,7 +235,7 @@ def main():
         if not ok:
             failures += 1
         print(f"  token terbit: {tokens}")
-        print(f"  {'ok unik' if ok else 'XX token captcha berulang'}")
+        print(f"  {C.status('ok unik' if ok else 'XX token captcha berulang')}")
         results.append({"check": "captcha-regenerasi", "status": None, "ok": ok,
                         "note": "" if ok else "token captcha berulang",
                         "url": f"GET {base + cap['issue_path']}"})

@@ -26,6 +26,7 @@ import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import _sanctum  # noqa: E402  (helper auth Sanctum lintas-modul di tests/)
 import _screenshot  # noqa: E402  (helper screenshot bukti lintas-modul di tests/)
+import _color as C  # noqa: E402  (warna ANSI konsol lintas-modul di tests/)
 
 ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 
@@ -240,7 +241,7 @@ def main():
     print(f"\n{'ENDPOINT':<{width}}  {'ROLE':<12} {'EXP':<6} {'HTTP':>5}  RESULT")
     print("-" * (width + 40))
     for r in results:
-        mark = "ok " if r["ok"] else "XX "
+        mark = f"{C.good('ok')} " if r["ok"] else f"{C.bad('XX')} "
         line = (f"{r['endpoint']:<{width}}  {r['role']:<12} {r['expected']:<6} "
                 f"{r['status']:>5}  {mark}{r['note']}")
         print(line)

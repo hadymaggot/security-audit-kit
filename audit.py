@@ -45,6 +45,8 @@ except ImportError:  # pragma: no cover
 
 ROOT = Path(__file__).resolve().parent      # kode kit (runner, report.py, contoh config)
 PROJECT = ROOT                              # data project: config/, tests/<modul>/*.yml, reports/
+sys.path.insert(0, str(ROOT / "tests"))
+import _color as C  # noqa: E402  (warna ANSI konsol: otomatis mati di pipe/CI, hormati NO_COLOR)
 ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 
 
@@ -101,6 +103,35 @@ def pop_project_arg(argv: list[str]) -> tuple[str | None, list[str]]:
     return val, out
 
 
+COLOR_MODES = ("auto", "always", "never")
+
+
+def pop_color_arg(argv: list[str]) -> tuple[str | None, list[str]]:
+    """Ambil `--color [auto|always|never]` / `--color=...` / `--no-color` dari argv (posisi mana
+    pun). Nilai tak valid -> keluar dengan kode 2. `--color` tanpa nilai berarti `always`."""
+    out, val, i = [], None, 0
+    while i < len(argv):
+        a = argv[i]
+        if a == "--no-color":
+            val, i = "never", i + 1
+            continue
+        if a == "--color" or a.startswith("--color="):
+            if "=" in a:
+                v, i = a.split("=", 1)[1], i + 1
+            elif i + 1 < len(argv) and argv[i + 1] in COLOR_MODES:
+                v, i = argv[i + 1], i + 2
+            else:
+                v, i = "always", i + 1
+            if v not in COLOR_MODES:
+                print(f"--color: pilihan tidak valid '{v}' (auto|always|never)", file=sys.stderr)
+                sys.exit(2)
+            val = v
+            continue
+        out.append(a)
+        i += 1
+    return val, out
+
+
 def project_cfg(*parts: str) -> Path:
     """Path config milik project aktif, mis. project_cfg("tests", "authz-matrix", "authz_matrix.yml")."""
     return PROJECT.joinpath(*parts)
@@ -149,7 +180,7 @@ def dockervol(host_path: Path) -> str:
 
 
 def run(cmd: list[str]) -> int:
-    print("+ " + " ".join(cmd))
+    print(C.dim("+ " + " ".join(cmd)))
     # shell=False → aman & identik di semua OS; tanpa ekspansi shell.
     return subprocess.call(cmd)
 
@@ -272,21 +303,21 @@ def mod_headers(tgt):
     print(f"== Security header ({url}) ==")
     for h in want:
         if h in headers:
-            print(f"ok   {h}")
+            print(f"{C.good('ok')}   {h}")
             results.append({"label": f"Header {h}", "status": None, "ok": True, "note": ""})
         else:
-            print(f"MISS {h}")
+            print(f"{C.bad('MISS')} {h}")
             miss += 1
             results.append({"label": f"Header hilang: {h}", "status": None, "ok": False,
                             "note": f"header {h} tak diset pada respons"})
     for h in leak:
         if h in headers and headers[h]:
-            print(f"LEAK {h}: {headers[h]}")
+            print(f"{C.bad('LEAK')} {h}: {headers[h]}")
             miss += 1
             results.append({"label": f"Header pembocor info: {h}", "status": None,
                             "ok": False, "note": f"{h}: {headers[h]}"})
         else:
-            print(f"ok   {h} tidak dibocorkan")
+            print(f"{C.good('ok')}   {h} tidak dibocorkan")
             results.append({"label": f"Header {h} tidak dibocorkan", "status": None,
                             "ok": True, "note": ""})
     import json
@@ -327,7 +358,7 @@ def run_semgrep(tgt, repo, out, runner=None):
     name = f"sak-semgrep-{os.getpid()}"
     cmd = semgrep_cmd(tgt, repo, out, name)
     minutes = float(tgt.get("semgrep_timeout_minutes", 25))
-    print("+ " + " ".join(cmd))
+    print(C.dim("+ " + " ".join(cmd)))
     try:
         return (runner or subprocess.run)(cmd, timeout=minutes * 60).returncode
     except subprocess.TimeoutExpired:
@@ -516,7 +547,7 @@ def mod_rollback():
     res = _rollback.replay(reports, do_restore)
     gagal = sum(1 for r in res if not r["ok"])
     for r in res:
-        print(f"  {'ok ' if r['ok'] else 'XX '}{r['label']}  {r['note']}")
+        print(f"  {C.good('ok') if r['ok'] else C.bad('XX')} {r['label']}  {r['note']}")
     print(f"{len(res) - gagal}/{len(res)} dipulihkan.")
     return 1 if gagal else 0
 
@@ -607,9 +638,12 @@ def mod_clean():
 
 def main(argv=None):
     project, argv = pop_project_arg(list(sys.argv[1:] if argv is None else argv))
+    color, argv = pop_color_arg(argv)
+    if color:
+        os.environ["SAK_COLOR"] = color        # diwariskan ke semua runner & report.py
     set_project(resolve_project(project or os.environ.get("SAK_PROJECT_DIR")))
     if PROJECT != ROOT:
-        print(f"[project] {PROJECT}")
+        print(C.dim(f"[project] {PROJECT}"))
     # 'recon' meneruskan argumen bebas (target, -d, -m, --active) ke runner-nya,
     # jadi di-intercept sebelum argparse yang ketat.
     if argv and argv[0] == "recon":
@@ -617,7 +651,9 @@ def main(argv=None):
     ap = argparse.ArgumentParser(
         description="Security Audit Kit — lintas-platform",
         epilog="Opsi global: --project <nama|folder> (atau env SAK_PROJECT_DIR) untuk memakai "
-               "config & reports milik project tsb; nama saja = <kit>/projects/<nama>.")
+               "config & reports milik project tsb; nama saja = <kit>/projects/<nama>. "
+               "--color auto|always|never (atau --no-color; env SAK_COLOR / NO_COLOR) mengatur "
+               "warna keluaran; bawaan auto = hanya di terminal interaktif.")
     ap.add_argument("module", choices=["all", "init", "zap", "tls", "headers", "deps", *PY_MODULES,
                                        "recon", "rollback", "report", "clean"])
     ap.add_argument("sub", nargs="?", default="baseline",

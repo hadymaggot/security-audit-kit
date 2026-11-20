@@ -217,6 +217,29 @@ report:
 
 Env `SAK_REPORT_AUTHOR`, `SAK_REPORT_ORG`, dan `SAK_REPORT_CONTACT` menimpa nilai tersebut.
 
+### Warna keluaran konsol
+
+Status di terminal diberi warna agar mudah dipindai: `ok`/`PASS` hijau, `MISS`/`XX`/`FAIL`/`LEAK`
+merah, `skip` dan perintah yang dijalankan (`+ docker run ...`) redup, serta ringkasan severity di
+akhir (Critical/High merah, Medium kuning, Low sian; yang bernilai 0 diredupkan). Warna memakai
+kode ANSI standar sehingga bekerja di Windows Terminal, PowerShell 7, Terminal macOS/iTerm2, dan
+terminal Linux. Warna **tidak pernah** masuk ke berkas JSON atau laporan HTML/Markdown/slide.
+
+Secara bawaan (`auto`) warna hanya menyala bila keluaran adalah terminal interaktif, sehingga
+otomatis mati saat dialihkan ke berkas atau pipe dan di CI. Untuk mengubahnya:
+
+| Cara | Efek |
+|---|---|
+| `--color always` (atau `--color` saja) | Paksa menyala, juga ke pipe (mis. `\| less -R`) |
+| `--no-color` atau `--color never` | Matikan |
+| env `NO_COLOR=1` | Matikan (standar [no-color.org](https://no-color.org)) |
+| env `SAK_COLOR=always\|never\|auto` | Setara `--color`; menimpa `NO_COLOR` dan `FORCE_COLOR` |
+| env `FORCE_COLOR=1` / `CLICOLOR_FORCE=1` | Paksa menyala |
+
+Contoh: `python audit.py --project apple-gatrik --color always headers`. Opsi ini dapat diletakkan
+di posisi mana pun dan diteruskan otomatis ke semua modul. Git Bash (mintty) sering tidak
+terdeteksi sebagai terminal oleh Python; gunakan `--color always` atau `SAK_COLOR=always`.
+
 ## 5. Membaca laporan
 
 Setelah `report` atau `all`, hasil tersimpan di:
@@ -272,6 +295,8 @@ beserta cara menambahkan kasus ujinya.
 
 | Gejala | Kemungkinan penyebab & solusi |
 |---|---|
+| Muncul teks aneh seperti `←[32mok←[0m` atau `^[[32m` | Terminal tidak memahami kode warna ANSI (konsol lama) atau keluaran dilihat lewat pembaca teks. Jalankan dengan `--no-color` (atau env `NO_COLOR=1`); di Windows 10+ gunakan Windows Terminal atau PowerShell 7. |
+| Tidak ada warna sama sekali | Keluaran dialihkan ke pipe/berkas, atau terminal tidak terdeteksi (mis. Git Bash). Pakai `--color always` atau env `SAK_COLOR=always`; periksa `NO_COLOR` tidak diset. |
 | `can't open file '...\audit.py'` | `audit.py` dijalankan dari luar folder kit. Pakai path lengkap (`python C:\GitHub\security-audit-kit\audit.py ...`), `audit.ps1`, atau pintasan `sak` (lihat "Menjalankan dari folder mana pun"). |
 | `unrecognized arguments: --project` | Folder kit belum diperbarui; jalankan `git pull` di folder kit. |
 | `<folder>\config\targets.yml belum ada (project: ...)` | Folder project belum disiapkan atau path salah: jalankan `python audit.py --project <nama\|folder> init`, atau salin config ke folder itu. |
