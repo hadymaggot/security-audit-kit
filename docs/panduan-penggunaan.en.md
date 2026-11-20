@@ -1,319 +1,325 @@
 [<img src="https://flagcdn.com/id.svg" width="18" alt="ID"> Indonesia](panduan-penggunaan.md) · **<img src="https://flagcdn.com/gb.svg" width="18" alt="EN"> English** · [<img src="https://flagcdn.com/de.svg" width="18" alt="DE"> Deutsch](panduan-penggunaan.de.md)
 
-# Usage Guide — Step by Step
+# Usage Guide
 
-This guide explains how to run the Security Audit Kit against a target, from installation
-to reading the report. All commands run through a single entry point
-`python audit.py <module>`, identical on Windows and Linux.
+Step-by-step guide to running the Security Audit Kit, from installation to reading the report.
+All commands use one entry point, `python audit.py <module>`, identical on Windows and Linux.
 
-> Only for systems you own or systems you have written permission to test. Testing
-> without permission is against the law.
+> Only for systems you own or have written permission to test.
+> Testing without permission is against the law.
 
 ## 1. Prerequisites
 
-- **Python 3.10+**.
-- **Docker** — used by the scanner modules (ZAP, Trivy, semgrep, gitleaks, testssl.sh)
-  via official Docker images. The internal testing modules (authz, upload, etc.) do not require Docker.
-- Optional: **Playwright** for browser-based cache verification in the `clientleak` module
-  (`pip install playwright && python -m playwright install chromium`).
+| Requirement | Used for | Check |
+|---|---|---|
+| Python 3.10+ | All modules | `python --version` |
+| Docker | `deps`, `zap`, `tls` (other modules do not need it) | `docker --version` |
+| make (optional) | Short commands on Linux/macOS | `make --version` |
+| Playwright (optional) | Browser cache verification in `clientleak` | `python -m playwright --version` |
 
-Install the Python dependencies:
+Install Playwright with `pip install playwright`, then `python -m playwright install chromium`.
+
+## 2. Install
 
 ```
+git clone https://github.com/hadymaggot/security-audit-kit.git
+cd security-audit-kit
 pip install -r requirements.txt
 ```
 
-## 2. Target configuration
+## 3. Quick start: first scan in 5 minutes
 
-Copy the example file then fill it in for your target. The real `*.yml` files are already
-in `.gitignore` so credentials are not committed.
+These steps use the `headers` module: passive, pure Python, no Docker needed.
 
-```
-cp config/targets.example.yml config/targets.yml
-```
+1. Create a project.
 
-Minimum to fill in `config/targets.yml`:
+   ```
+   python audit.py --project my-app init
+   ```
+
+   Expected: folder `projects/my-app/` with `config/targets.yml` and `reports/`.
+
+2. Set `base_url` in `projects/my-app/config/targets.yml`.
+
+   ```yaml
+   base_url: "http://localhost:8080"
+   ```
+
+   Expected: the target points to your application (use dev/staging, not production).
+
+3. Run the `headers` module.
+
+   ```
+   python audit.py --project my-app headers
+   ```
+
+   Expected: each header is marked `ok`, `MISS` (missing), or `LEAK` (discloses information); results are saved to `reports/headers.json`.
+
+4. Build the report.
+
+   ```
+   python audit.py --project my-app report
+   ```
+
+   Expected: `projects/my-app/reports/laporan.html`. Open it in a browser.
+
+## 4. Configuration
+
+The real `*.yml` files are already in `.gitignore`, so credentials are not committed.
+
+### targets.yml
+
+Main fields (full list in [config/targets.example.yml](../config/targets.example.yml)):
 
 | Field | Description |
 |---|---|
 | `base_url` | Target base URL, e.g. `http://localhost:8080` |
-| `tls_host` | Host for the TLS check (`tls` module) |
-| `header_probe_path` | Path for the security-header check (`headers` module) |
-| `code_path` | Repo path for the dependency/secret scan (`deps` module) |
+| `openapi` | URL or path of the OpenAPI specification (for `zap api`) |
+| `tls_host` | Host without scheme for the `tls` module |
+| `header_probe_path` | Path for the `headers` module (default `/`) |
+| `code_path` | Repository folder for the `deps` module |
+| `docker_network` | Docker network for ZAP and testssl; required for `localhost` targets |
+| `snapshot` | Data dump and restore around `zap api` and `zap full` |
+| `report` | Author, company, report language (see section 8) |
 
-## 3. Per-module test configuration
+### Per-module configuration
 
-The internal testing modules (`authz`, `upload`, `auth-policy`, `clientleak`, `cors`,
-`open-redirect`, `mass-assignment`) each have their own configuration file. Copy from the
-available `.example` file, then adjust:
-
-```
-cp tests/authz-matrix/authz_matrix.example.yml tests/authz-matrix/authz_matrix.yml
-cp tests/upload-safety/upload_safety.example.yml tests/upload-safety/upload_safety.yml
-# ...and so on for the modules you will use
-```
-
-Modules whose configuration file does not exist yet are skipped when running `all`.
-
-### Credentials via environment variables
-
-The configuration references credentials via `${VARIABLE_NAME}`, not by writing them in
-the file. Set the environment variable before running a scan.
-
-Linux/macOS:
+Each test module has its own config file, `tests/<folder>/<name>.yml`.
+Copy it from the example with `init`, which never overwrites existing files:
 
 ```
-export AUTHZ_ADMIN_USER="admin@contoh.test"
-export AUTHZ_PASS="..."
+python audit.py --project my-app init authz,upload,cors
 ```
 
-Windows (PowerShell):
+- Without `--project`, copy manually: `tests/<folder>/<name>.example.yml` to `tests/<folder>/<name>.yml`.
+- `all` skips modules without a config. Running such a module directly fails with a "not found" error.
+
+### Credentials: environment variables only
+
+Config files reference credentials as `${VARIABLE_NAME}`. The variable names are listed in each `.example.yml`.
+A variable that is not set is silently replaced by an empty string.
 
 ```
-$env:AUTHZ_ADMIN_USER = "admin@contoh.test"
-$env:AUTHZ_PASS = "..."
+export AUTHZ_ADMIN_USER="admin@example.com"
+export AUTHZ_ADMIN_PASS="..."
 ```
 
-The variable names follow those listed in each `.example.yml` file.
-
-### Authentication (Bearer or Laravel Sanctum)
-
-Two modes are supported:
-
-- **Static token (Bearer/JWT or custom header)** — fill in the `auth.header` and
-  `auth.value` blocks, e.g. `value: "${TOKEN}"` with `TOKEN="Bearer xxx"`. How to obtain
-  the token: log in once to the login endpoint, take the token from the response.
-- **Laravel Sanctum (SPA, session cookie + CSRF)** — enable the `auth.sanctum` block
-  (`enabled: true`, `csrf_path`, `origin`) and `auth.login`. The runner will fetch the
-  CSRF cookie, log in, then include the `X-XSRF-TOKEN` and `Origin` headers automatically.
-  `origin` must match `SANCTUM_STATEFUL_DOMAINS` on the server.
-
-## 4. Running a scan
-
-### Running a single module
-
 ```
-python audit.py <module>
+$env:AUTHZ_ADMIN_USER = "admin@example.com"
+$env:AUTHZ_ADMIN_PASS = "..."
 ```
 
-Available modules:
+The first block is for Linux/macOS, the second for Windows PowerShell.
+For ZAP behind a login, set `ZAP_AUTH_HEADER` to `Authorization: Bearer <token>`.
 
-| Module | Function | Requires |
-|---|---|---|
-| `deps` | Dependency CVEs (Trivy) + SAST (semgrep) + committed secrets (gitleaks) | Docker |
-| `zap baseline` | OWASP ZAP passive scan | Docker, live target |
-| `zap api` | OWASP ZAP scan from OpenAPI | Docker, live target, OpenAPI |
-| `zap full` | OWASP ZAP active scan (destructive, use only on your own environment) | Docker, live target |
-| `authz` | Access control per role: privilege escalation, IDOR, forged header, gateway bypass | Live target, config |
-| `mass-assignment` | Mass assignment / BOPLA — destructive but reversible (see the Rollback section) | Live target, config |
-| `upload` | Rejecting dangerous file uploads | Live target, config |
-| `auth-policy` | Password strength and captcha regeneration | Live target, config |
-| `clientleak` | Sensitive response caching, secrets/endpoints in JS/HTML, source maps, exposed files | Live target, config |
-| `cors` | CORS misconfiguration | Live target, config |
-| `open-redirect` | Open redirect | Live target, config |
-| `webstack` | Detect web server version from the banner → known CVEs (Apache mod_http2, NGINX HTTP/2); non-destructive | Live target, config |
-| `injection` | SQL injection (error/boolean-based, optional time-based); non-destructive, read probing | Live target, config |
-| `tls` / `headers` | Outdated TLS protocols/ciphers, missing security headers | Live target |
-| `report` | Assemble all results into a report | Scan results in `reports/` |
-| `rollback` | Re-run restoration of destructive actions from the rollback journal | — |
+### Authentication
 
-### Running the whole scan
+| Mode | Config |
+|---|---|
+| Bearer/JWT or custom header | `auth.header` and `auth.value`, e.g. `value: "${TOKEN}"` with `TOKEN="Bearer xxx"` |
+| Laravel Sanctum (session cookie + CSRF) | `auth.sanctum` (`enabled`, `csrf_path`, `origin`) and `auth.login` |
+
+- In Sanctum mode, the runner fetches the CSRF cookie, logs in, and sends `X-XSRF-TOKEN` and `Origin` automatically.
+- `origin` must match `SANCTUM_STATEFUL_DOMAINS` on the server.
+- The `authz` module uses `auth.mode` (`bearer` or `session_cookie`) with a list of roles; see the examples in `tests/authz-matrix/`.
+
+## 5. Running scans
 
 ```
+python audit.py authz
 python audit.py all
 ```
 
-This command runs `headers`, `deps`, `zap baseline`, then every testing module whose
-configuration is available, then assembles the report automatically, and finally runs
-rollback if there are any recorded destructive actions.
+| Module | What it checks | Needs |
+|---|---|---|
+| `headers` | Missing or information-disclosing security headers | Live target |
+| `tls` | Outdated TLS protocols and ciphers | Docker, live target |
+| `deps` | Dependency CVEs (Trivy), SAST (semgrep), committed secrets (gitleaks) | Docker |
+| `zap baseline` | OWASP ZAP passive scan | Docker, live target |
+| `zap api` | ZAP active scan from OpenAPI; destructive | Docker, live target, `openapi` |
+| `zap full` | ZAP active scan; destructive, only on your own environment | Docker, live target |
+| `authz` | Per-role access control: privilege escalation, IDOR, forged headers, gateway bypass | Live target, config |
+| `mass-assignment` | Mass assignment (BOPLA); destructive but reversible | Live target, config |
+| `upload` | Rejection of malicious file uploads | Live target, config |
+| `auth-policy` | Password strength and captcha regeneration | Live target, config |
+| `clientleak` | Sensitive response caching, secrets in JS/HTML, source maps, exposed files | Live target, config |
+| `cors` | CORS misconfiguration | Live target, config |
+| `open-redirect` | Open redirect | Live target, config |
+| `webstack` | Web server version from banner mapped to CVEs; non-destructive | Live target, config |
+| `injection` | SQL injection (error, boolean, optional time-based); read-only probing | Live target, config |
+| `cookie-flags` | Cookie attributes (HttpOnly, Secure, SameSite); passive | Live target, config |
+| `response-leak` | Sensitive data, secrets, and stack traces in API responses; passive | Live target, config |
+| `openapi-coverage` | Operations declared as protected but open without login | Live target, config |
+| `ratelimit` | Rate limit, account lockout, account enumeration; uses a disposable test account | Live target, config |
+| `session-mgmt` | Session revocation on logout and password change; disposable test account | Live target, config |
+| `captcha` | Static analysis of the captcha challenge: does the response leak the answer | Live target, config |
+| `jwt` | JWT weaknesses: alg none, missing exp, weak secret, forged tokens | Live target, config |
+| `ssrf` | SSRF via a local canary listener | Live target, config |
+| `recon` | Subdomain OSINT; active phases (port scan, nuclei) only when enabled | Recon tools installed, optional config |
+| `report` | Builds the report from the results in `reports/` | Scan results |
+| `rollback` | Restores destructive actions from the journal | Rollback journal |
+| `clean` | Deletes files in `reports/` | - |
 
-### Alternatives
+- `all` runs `headers`, `deps`, `zap baseline`, every module whose config exists, and `recon` if `recon.yml` exists. It then builds the report and runs rollback.
+- Each test module run on its own also builds the report automatically.
+- Sub-commands: `zap baseline|api|full`, `deps gitleaks|semgrep|trivy` (one tool per run, saves memory).
+- `recon` accepts free arguments: `python audit.py recon example.com -d osint -m fast --active`.
+- Alternatives: `.\audit.ps1 <module>` on Windows (all modules), `make <target>` on Linux/macOS (only some modules; see `make help`).
 
-- `make <module>` (Linux/macOS, if `make` is available).
-- `./audit.ps1 <module>` (Windows PowerShell).
+## 6. Reading the report
 
-### Multiple projects (in parallel)
+After `report` or `all`, the results are in `reports/`:
 
-By default the kit uses `config/`, `tests/<module>/*.yml` and `reports/` inside the kit folder
-itself (a single project). To audit several projects at once, give each project its own folder
-with `--project`:
-
-```
-python audit.py --project my-app init authz,upload,cookie-flags
-python audit.py --project my-app all
-```
-
-- **A bare name** (e.g. `my-app`) → `projects/<name>/` inside the kit (already
-  gitignored). **A path** (absolute, or relative to the working directory) → that folder.
-- `init` copies `config/targets.example.yml` and the example configs of the listed modules into the
-  project folder and creates `reports/`. Existing files are never overwritten.
-- Equivalent to `--project`: the `SAK_PROJECT_DIR` environment variable, `make <target>
-  PROJECT=<name|folder>`, and `.\audit.ps1 <module> -Project <name|folder>`.
-- Run each project in its own terminal. Credentials still come from environment variables, so each
-  terminal can use different values.
-
-#### Running from any directory
-
-`audit.py` lives in the kit folder, so `python audit.py` only works when the working directory is
-the kit folder. From elsewhere (e.g. `C:\GitHub`) it fails with `can't open file '...\audit.py'`.
-Use the full path to `audit.py`; the project folder can be anywhere because the config is read from
-the project folder, not from the working directory:
-
-```powershell
-# Windows PowerShell
-python C:\GitHub\security-audit-kit\audit.py --project C:\Users\you\sak-projects\my-app all
-
-# or via the wrapper (switches to the kit folder itself; a relative -Project is resolved from the caller's folder)
-& C:\GitHub\security-audit-kit\audit.ps1 all -Project C:\Users\you\sak-projects\my-app
-```
-
-```bash
-# Linux/macOS
-python3 /opt/security-audit-kit/audit.py --project ~/sak-projects/my-app all
-make -C /opt/security-audit-kit all PROJECT=/home/you/sak-projects/my-app   # absolute PROJECT
-```
-
-To avoid typing the long path, define a shortcut once:
-
-```powershell
-# Windows: add to your PowerShell profile (open it with: notepad $PROFILE)
-function sak { python C:\GitHub\security-audit-kit\audit.py @args }
-# then, from any folder:
-sak --project C:\Users\you\sak-projects\my-app all
-sak --project C:\Users\you\sak-projects\client-b headers
-```
-
-```bash
-# Linux/macOS: add to ~/.bashrc or ~/.zshrc
-alias sak='python3 /opt/security-audit-kit/audit.py'
-```
-
-Note: a relative project path (`--project ./proj` or `-Project .\proj`) is resolved from the
-directory the command is run in. With `make -C`, use an absolute path because `make` changes to the
-kit folder first. Keep project folders outside the kit folder (e.g. `~/sak-projects/<name>`) so
-they are not lost when the kit folder or a worktree is deleted.
-
-Things to keep in mind when running projects at the same time:
-
-- **Trivy** uses a shared DB cache (`~/.cache/sak-trivy`); runs from several projects are queued
-  automatically by a file lock (message "waiting for another project's trivy"). Set
-  `trivy_cache_dir` in `targets.yml` for a separate cache.
-- **RAM**: ZAP full, trivy and semgrep are fairly heavy; run them one after another when host
-  memory is limited.
-- **Same target**: do not run two destructive modules (mass-assignment, active ZAP with snapshot)
-  against the same target at the same time.
-
-### Report author and company
-
-The "Disusun oleh" (prepared by) row of the HTML, Markdown and slide reports comes from the
-`report:` block in the project's `targets.yml`; the Security Audit Kit credit stays on the "Alat"
-(tool) row.
-
-```yaml
-report:
-  prepared_by: "Sapto Hadi"                  # default: Sapto Hadi
-  organization: "PT. Wahana Reka Tekindo"    # default; use "" to hide it
-  contact: "wahanarekatekindo@gmail.com"     # default only when the organization is the default one; "" hides it
-  version: "1.0"                             # document version
-```
-
-The `SAK_REPORT_AUTHOR`, `SAK_REPORT_ORG` and `SAK_REPORT_CONTACT` environment variables override
-these values.
-
-### Console colors
-
-Statuses in the terminal are colored so they are easy to scan: `ok`/`PASS` green,
-`MISS`/`XX`/`FAIL`/`LEAK` red, `skip` and the executed commands (`+ docker run ...`) dimmed, and the
-severity summary at the end (Critical/High red, Medium yellow, Low cyan; zero counts are dimmed).
-Colors use standard ANSI codes, so they work in Windows Terminal, PowerShell 7, macOS Terminal /
-iTerm2 and Linux terminals. Colors **never** end up in the JSON files or the HTML/Markdown/slide
-reports.
-
-By default (`auto`) colors are only used when the output is an interactive terminal, so they are
-switched off automatically when redirected to a file or pipe, and in CI. To change this:
-
-| How | Effect |
+| File | Content |
 |---|---|
-| `--color always` (or just `--color`) | Force on, also into pipes (e.g. `\| less -R`) |
-| `--no-color` or `--color never` | Turn off |
-| env `NO_COLOR=1` | Turn off (the [no-color.org](https://no-color.org) standard) |
-| env `SAK_COLOR=always\|never\|auto` | Same as `--color`; overrides `NO_COLOR` and `FORCE_COLOR` |
-| env `FORCE_COLOR=1` / `CLICOLOR_FORCE=1` | Force on |
+| `laporan.html` | Full report: risk summary, alert list, instances as evidence, confidence, impact, severity justification, recommendation, references |
+| `laporan.md` | The same content in Markdown |
+| `laporan-slides.html` | Standalone slide deck for stakeholder briefings; navigate with the left/right arrows |
+| `evidence/` | Evidence screenshots (e.g. from `clientleak`); include it when sharing the report |
 
-Example: `python audit.py --project my-app --color always headers`. The option can be placed
-anywhere and is passed on to every module automatically. Git Bash (mintty) is often not detected as
-a terminal by Python; use `--color always` or `SAK_COLOR=always`.
+Severity: Critical, High, Medium, Low, Info. The "Kontrol yang Lolos (PASS)" section (passed controls) lists checks that behave correctly, as proof of coverage, not findings.
 
-### Language and technical terms
+How to use the findings:
 
-Technical terms (response, request, password, session, file, and others) stay in English and are
-italicized in HTML, Markdown, and slide reports when the text language is not English. They are
-listed in `glosarium.yml` (id, en, de). Pick the language with `--lang id|en|de`, the `SAK_LANG`
-variable, or `report.language` in `targets.yml` (default `en`). For now only the `id` text catalog
-is complete. Details, including how to add terms, are in [Glossary and language](glosarium.en.md).
+1. Start with Critical and High in the risk summary.
+2. Verify each finding manually; automated results do not replace a pentest.
+3. Apply the recommendation, then rerun the same module.
+4. Lock the finding so it does not return (section 10).
 
-## 5. Reading the report
+Example output: [contoh-laporan.md](contoh-laporan.md) and [contoh-laporan.html](contoh-laporan.html).
 
-After `report` or `all`, the results are stored in:
+## 7. Rollback
 
-- `reports/laporan.html` — a full ZAP-style report: risk summary, alert list, details of
-  each finding along with instances (the endpoints tested as evidence), confidence level,
-  impact, severity rationale, recommendations, and references.
-- `reports/laporan.md` — the same content in Markdown format.
-- `reports/laporan-slides.html` — a standalone presentation (slide deck) variant for a
-  concise briefing to stakeholders; navigate with the left/right arrows.
-- `reports/evidence/` — evidence screenshots (e.g. from the browser-based `clientleak`
-  module), embedded in the report & slides. This folder must accompany the report files when shared.
+Destructive modules (`mass-assignment`, `ratelimit`, `session-mgmt`, and `zap api` and `zap full` with `snapshot`) restore the target automatically as the final phase, after the report is built.
 
-See example output at [contoh-laporan.md](contoh-laporan.md) /
-[contoh-laporan.html](contoh-laporan.html).
+1. The runner records how to restore to `reports/rollback_journal.json` immediately after each write (crash-safe).
+2. After the report is built, `audit.py` restores all changes.
+3. The restore log is in `reports/rollback.json`.
 
-The **Controls That Passed (PASS)** section details the checks that were tested and
-behaved correctly — evidence of test coverage, not a finding.
-
-## 6. Rollback (destructive modules)
-
-Destructive modules like `mass-assignment` write to the target, then restore the original
-state automatically as the final stage after the report is generated. The process:
-
-1. Snapshot the object's original values.
-2. Inject the forbidden field (write to the target).
-3. Record how to restore to `reports/rollback_journal.json` immediately (crash-safe).
-4. Verify whether the forbidden field was accepted (a finding if yes).
-5. After the report is generated, `audit.py` restores all changes to their original values.
-
-If the automatic restoration stage fails (e.g. the connection drops), re-run it:
+If the automatic restore fails (e.g. the connection drops), repeat it:
 
 ```
 python audit.py rollback
 ```
 
-The restoration log is stored in `reports/rollback.json`.
+For `zap api` and `zap full`, a failed backup cancels the scan. Without a `snapshot` block, data changes cannot be restored.
 
-## 7. CI integration
+## 8. Advanced options
 
-- The static scan (`deps`) is safe to run on every PR because it needs no live target.
-- The dynamic tests (DAST, access control, upload, etc.) need a live target; run them on a
-  schedule against dev/staging, not production. Credentials via GitHub Secrets.
+The global options `--project`, `--color`, and `--lang` can be placed anywhere and apply to all modules.
 
-## 8. Translating findings into tests
+### Multiple projects (in parallel)
 
-To "lock in" a finding from a pentest report so it does not reappear, see
-[temuan-to-test-mapping.en.md](temuan-to-test-mapping.en.md): mapping finding classes to
-modules along with how to add their test cases.
+Without `--project`, the kit uses `config/`, `tests/<module>/*.yml`, and `reports/` in the kit folder (one project).
+Give each project its own folder so several projects can be audited at once from separate terminals:
 
-## 9. Troubleshooting
+```
+python audit.py --project my-app init authz,upload
+python audit.py --project my-app all
+python audit.py --project client-b headers
+```
 
-| Symptom | Possible cause & solution |
+- A bare name (e.g. `my-app`) means `projects/<name>/` inside the kit (already gitignored). An absolute or relative path means that folder.
+- `init` copies `targets.example.yml` and the config of the named modules, and creates `reports/`.
+- Equivalents: env `SAK_PROJECT_DIR`, `make <target> PROJECT=<name|folder>`, `.\audit.ps1 <module> -Project <name|folder>`.
+- Credentials stay in environment variables, so each terminal can use different values.
+
+When running concurrently:
+
+- Trivy uses a shared DB cache (`~/.cache/sak-trivy`); parallel runs are queued by a file lock. Set `trivy_cache_dir` for a separate cache.
+- ZAP full, Trivy, and semgrep are heavy on RAM; run them in turn if memory is limited.
+- Never run two destructive modules against the same target at the same time.
+
+### Running from any directory
+
+`python audit.py` only works from the kit folder. From another folder, use the full path to `audit.py`.
+The project folder can be anywhere because config is read from the project folder.
+
+```
+python C:\tools\security-audit-kit\audit.py --project C:\Users\you\sak-projects\my-app all
+& C:\tools\security-audit-kit\audit.ps1 all -Project C:\Users\you\sak-projects\my-app
+python3 /opt/security-audit-kit/audit.py --project ~/sak-projects/my-app all
+make -C /opt/security-audit-kit all PROJECT=/home/you/sak-projects/my-app
+```
+
+Lines 1-2 are for Windows PowerShell, lines 3-4 for Linux/macOS. With `make -C`, use an absolute path because `make` changes into the kit folder.
+
+The `sak` shortcut saves typing the long path. Install it once:
+
+```
+function sak { python C:\tools\security-audit-kit\audit.py @args }
+alias sak='python3 /opt/security-audit-kit/audit.py'
+sak --project C:\Users\you\sak-projects\my-app all
+sak --project C:\Users\you\sak-projects\client-b headers
+```
+
+Add line 1 to your PowerShell profile (`notepad $PROFILE`), line 2 to `~/.bashrc` or `~/.zshrc`. Lines 3-4: usage from any folder.
+
+A relative project path is resolved from the folder where you run the command. Keep project folders outside the kit folder so they are not lost when the kit folder is deleted.
+
+### Report author and company
+
+The "Disusun oleh" (prepared by) line in the HTML, Markdown, and slide reports comes from the `report:` block in `targets.yml`.
+The Security Audit Kit credit always stays on the "Alat" (tool) line.
+
+```yaml
+report:
+  prepared_by: "Jane Doe"
+  organization: "Example Corp"      # "" hides the company
+  contact: "audit@example.com"      # "" hides the contact
+  version: "1.0"
+```
+
+- Fields left out fall back to the kit defaults: author "Sapto Hadi", company "PT. Wahana Reka Tekindo", contact "wahanarekatekindo@gmail.com" (the contact only applies to the default company). Fill in the block above so reports carry your identity.
+- Env `SAK_REPORT_AUTHOR`, `SAK_REPORT_ORG`, and `SAK_REPORT_CONTACT` override `targets.yml`.
+
+### Console colors
+
+Colors appear only in an interactive terminal (`auto`) and never reach JSON files or reports.
+
+| Method | Effect |
 |---|---|
-| Odd text such as `←[32mok←[0m` or `^[[32m` appears | The terminal does not understand ANSI color codes (legacy console) or the output is viewed through a plain-text reader. Run with `--no-color` (or env `NO_COLOR=1`); on Windows 10+ use Windows Terminal or PowerShell 7. |
-| No colors at all | The output is redirected to a pipe/file, or the terminal is not detected (e.g. Git Bash). Use `--color always` or env `SAK_COLOR=always`; check that `NO_COLOR` is not set. |
-| `can't open file '...\audit.py'` | `audit.py` was run from outside the kit folder. Use the full path (`python C:\GitHub\security-audit-kit\audit.py ...`), `audit.ps1`, or the `sak` shortcut (see "Running from any directory"). |
-| `unrecognized arguments: --project` | The kit folder is out of date; run `git pull` in the kit folder. |
-| `<folder>\config\targets.yml belum ada (project: ...)` | The project folder has not been set up or the path is wrong: run `python audit.py --project <name\|folder> init`, or copy the config into that folder. |
-| `config/targets.yml belum ada` | Copy from `config/targets.example.yml`. |
-| `<config> belum ada — salin dari contoh .example-nya` | Copy the relevant module's `.example.yml` file. |
-| Sanctum login fails 500 "Session store not set" | `auth.sanctum.origin` does not yet match the server's `SANCTUM_STATEFUL_DOMAINS`. |
-| Scanner fails | Make sure Docker is running and the image can be pulled. |
-| `clientleak` module skips the browser check | Playwright is not installed (optional). |
-| Many login requests rejected with 429 | The target's login rate limit; add a delay between requests. |
+| `--color always` (or just `--color`) | Force on, also into a pipe |
+| `--no-color` or `--color never` | Turn off |
+| env `NO_COLOR=1` | Turn off |
+| env `SAK_COLOR=always\|never\|auto` | Same as `--color`; overrides `NO_COLOR` and `FORCE_COLOR` |
+| env `FORCE_COLOR=1` or `CLICOLOR_FORCE=1` | Force on |
+
+Git Bash is often not detected as a terminal; use `--color always`.
+
+### Language and technical terms
+
+Technical terms stay in English and are set in italics in reports; the list is in `glosarium.yml` (id, en, de).
+
+- Choose the language with `--lang id|en|de`, env `SAK_LANG`, or `report.language` in `targets.yml` (default `en`).
+- The complete text catalog currently exists only for `id`; other languages use the `id` text with the chosen language's glossary.
+- Details and how to add terms: [Glossary and language](glosarium.en.md).
+
+## 9. CI integration
+
+- `deps` is safe to run on every PR because it needs no live target. Its result is informational (exit code 0).
+- Dynamic tests need a live target; run them on a schedule against dev/staging, not production.
+- Credentials go through GitHub Secrets. Test modules return exit code 1 when there are failures.
+
+Example pipeline: [security-audit.yml](../.github/workflows/security-audit.yml).
+
+## 10. Turning findings into tests
+
+To lock in a finding from a pentest report, see [temuan-to-test-mapping.en.md](temuan-to-test-mapping.en.md): it maps finding classes to modules and shows how to add the test case.
+
+## 11. Troubleshooting
+
+| Symptom | Cause and fix |
+|---|---|
+| `can't open file '...\audit.py'` | Run from outside the kit folder. Use the full path, `audit.ps1`, or the `sak` shortcut (section 8). |
+| `config/targets.yml belum ada` or `<folder>\config\targets.yml belum ada (project: ...)` | Config not created or wrong project path. Run `python audit.py --project <name> init`. |
+| `<config> belum ada - salin dari contoh .example-nya` | Module config missing. Run `init <module>` or copy the `.example.yml` file. |
+| `Docker tidak ditemukan di PATH` or scanner fails | Install Docker and make sure it is running and can pull images. |
+| ZAP or testssl `Connection refused` on a `localhost` target | Inside the container, `localhost` points to the container itself. Set `docker_network` in `targets.yml`. |
+| Sanctum login fails with 500 "Session store not set" | `auth.sanctum.origin` does not match the server's `SANCTUM_STATEFUL_DOMAINS`. |
+| Login fails although credentials are correct | Environment variable not set (empty value). Set it in the same terminal. |
+| Many login requests rejected with 429 | Target rate limit. Add a delay between requests. |
+| Certificate error on a dev target with a self-signed certificate | Set `SAK_INSECURE_TLS=1` (applies to `headers` and the Python runners; not to ZAP and `tls`). |
+| `clientleak` skips the browser check | Playwright is not installed (optional). |
+| `semgrep` exceeds its time limit | Narrow `semgrep_paths` or raise `semgrep_timeout_minutes`. |
+| Odd text such as `^[[32m`, or no color at all | Terminal does not support ANSI: use `--no-color`. No color because output is redirected or the terminal is not detected: use `--color always` and make sure `NO_COLOR` is not set. |

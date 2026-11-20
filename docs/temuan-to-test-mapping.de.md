@@ -2,13 +2,13 @@
 
 # Einen Pentest-Bericht in Tests übersetzen
 
-Wie man dieses Kit nutzt, um einen Befund aus einem Pentest-Bericht (etwa von BSSN/Gov-CSIRT) zu
-„fixieren", damit er nicht wiederkehrt. Pro Befund das passende Modul bestimmen und dann den
-Fall hinzufügen.
+Einen Befund aus einem Pentest-Bericht (etwa von BSSN/Gov-CSIRT) fixieren, damit er nicht wiederkehrt: pro Befund das passende Modul bestimmen und dann den Fall hinzufügen.
+
+## Befundklasse zu Modul
 
 | Befundklasse | Modul | Fall hinzufügen |
 |---|---|---|
-| Broken Access Control / Privilege Escalation | `authz` | Sensiblen Endpoint ergänzen, `expect: { role_rendah: deny }` |
+| Broken Access Control / Privilege Escalation | `authz` | Sensiblen Endpoint ergänzen, `expect: { regular_user: deny }` |
 | Lack of authorization status / Ablaufsprung | `authz` | Endpoint zur Statusänderung + Status-Body, `deny` für die nicht berechtigte Rolle |
 | IDOR | `authz` | Endpoint, der die id eines fremden Accounts verwendet, `deny` |
 | Authz-Header vom Client vertraut | `authz` | Block `forged_headers` ausfüllen |
@@ -34,15 +34,9 @@ Fall hinzufügen.
 
 ## Der Ablauf
 
-Den Bericht lesen, jeden Befund samt Ort auflisten (Endpoint/Parameter), auf ein Modul aus der
-obigen Tabelle abbilden und dann den Fall in der `*.yml` des betreffenden Moduls ergänzen — dort
-keine Zugangsdaten ablegen, Umgebungsvariablen verwenden.
+1. Den Bericht lesen und jeden Befund samt Ort auflisten (Endpoint/Parameter).
+2. Auf ein Modul in der obigen Tabelle abbilden und den Fall in der `*.yml` dieses Moduls ergänzen. Dort keine Zugangsdaten ablegen; Umgebungsvariablen verwenden.
+3. `python audit.py all` ausführen. Der alte Befund muss jetzt fehlschlagen (rot): Der Test fängt die Lücke tatsächlich ab.
+4. Die App korrigieren, erneut ausführen, bis es besteht (grün), und dann in der CI einrichten, damit Regressionen automatisch erkannt werden.
 
-`python audit.py all` ausführen und sicherstellen, dass der alte Befund jetzt fehlschlägt (rot)
-— das bedeutet, der Test fängt die Lücke tatsächlich ab. Danach die App korrigieren, erneut
-ausführen, bis es besteht (grün), und dann in der CI einrichten, damit Regressionen automatisch
-erkannt werden.
-
-`reports/laporan.html` enthält je Befund: Beschreibung, Nachweis, Auswirkung,
-Severity-Begründung, Empfehlung samt Lösungsbeispiel und Standardverweis — bereit, als Nachweis
-der Nachverfolgung beigelegt zu werden.
+`reports/laporan.html` enthält je Befund: Beschreibung, Nachweis, Auswirkung, Severity-Begründung, Empfehlung samt Lösungsbeispiel und Standardverweis. Bereit, als Nachweis der Nachverfolgung beigelegt zu werden.
