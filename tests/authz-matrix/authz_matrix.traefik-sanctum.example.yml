@@ -14,7 +14,7 @@
 #   export AUTHZ_LOW_USER=...   AUTHZ_LOW_PASS=...
 #   export SERVICE_DIRECT_URL=http://localhost:<port>   # port service yg terpublish
 
-base_url: "${TARGET_BASE_URL}"        # mis. http://localhost:18880 (lewat gateway)
+base_url: "${TARGET_BASE_URL}"        # mis. http://localhost:8080 (lewat gateway)
 
 auth:
   mode: session_cookie                # simpan cookie sesi dari respons login
@@ -70,13 +70,13 @@ endpoints:
 
   - name: "IDOR — detail laporan milik unit lain"
     method: GET
-    path: "/api/emission-reports/1"
+    path: "/api/reports/1"
     expect: { user_rendah: deny }
 
   # Business-logic — ubah status/approve tanpa peran berwenang harus ditolak.
   - name: "Approve laporan tanpa wewenang"
     method: POST
-    path: "/api/emission-reports/1/approve"
+    path: "/api/reports/1/approve"
     body: { note: "probe" }
     expect: { user_rendah: deny }
 

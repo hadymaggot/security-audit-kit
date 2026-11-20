@@ -59,9 +59,9 @@ jedes Projekt hat eigene `config/`, `tests/<modul>/*.yml` und `reports/`, sodass
 aus getrennten Terminals geprüft werden können:
 
 ```bash
-python audit.py --project apple-gatrik init authz,upload   # legt projects/apple-gatrik/ an
-python audit.py --project apple-gatrik all                  # Terminal 1
-python audit.py --project D:/audit/kumham all               # Terminal 2 (Ordner beliebig)
+python audit.py --project my-app init authz,upload   # legt projects/my-app/ an
+python audit.py --project my-app all                  # Terminal 1
+python audit.py --project D:/audit/client-b all               # Terminal 2 (Ordner beliebig)
 ```
 
 Gleichwertig: die Umgebungsvariable `SAK_PROJECT_DIR`, `make all PROJECT=...` oder

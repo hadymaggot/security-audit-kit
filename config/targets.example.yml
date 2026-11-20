@@ -2,8 +2,8 @@
 # config/targets.yml di-gitignore — jangan commit base URL internal / kredensial.
 #
 # Multi-project (paralel): jangan salin manual, buat folder project sendiri per target:
-#   python audit.py --project apple-gatrik init authz,upload   # -> projects/apple-gatrik/config/targets.yml
-#   python audit.py --project apple-gatrik all                 # config & reports milik project itu
+#   python audit.py --project my-app init authz,upload   # -> projects/my-app/config/targets.yml
+#   python audit.py --project my-app all                 # config & reports milik project itu
 # Nama saja -> <kit>/projects/<nama> (di-gitignore); boleh juga path folder di mana saja.
 
 # Nama bebas untuk laporan.
@@ -50,7 +50,7 @@ code_path: "."
 #   "<nama-jaringan>"      bergabung ke jaringan Docker tertentu (mis. jaringan compose)
 #   "container:<nama>"     berbagi network namespace container lain (mis. gateway/proxy
 #                          yang melayani base_url) -> `localhost` = container tsb.
-# Contoh (target di balik Traefik pada localhost:18880):
+# Contoh (target di balik Traefik pada localhost:8080):
 # docker_network: "container:app-traefik-1"
 
 # ── Scan AKTIF (ZAP full / api) ───────────────────────────────────────────────────────────
@@ -66,7 +66,7 @@ code_path: "."
 #   preset: postgres-docker
 #   container: "app-postgres-1"
 #   user: "app-user"
-#   databases: ["iam", "emission"]   # database yang mungkin berubah oleh scan
+#   databases: ["auth", "orders"]   # database yang mungkin berubah oleh scan
 #   keep: false                      # hapus berkas snapshot setelah berhasil dipulihkan
 #   timeout_seconds: 1800
 #

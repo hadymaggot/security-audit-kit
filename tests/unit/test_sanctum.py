@@ -55,9 +55,9 @@ class FakeSession:
 # --- helper murni ---
 
 def test_stateful_headers():
-    h = S.stateful_headers("http://localhost:18880")
-    assert h == {"Origin": "http://localhost:18880",
-                 "Referer": "http://localhost:18880/"}
+    h = S.stateful_headers("http://localhost:8080")
+    assert h == {"Origin": "http://localhost:8080",
+                 "Referer": "http://localhost:8080/"}
     assert S.stateful_headers("") == {}
 
 

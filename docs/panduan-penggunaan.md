@@ -139,11 +139,11 @@ itu sendiri (satu project). Untuk mengaudit beberapa project sekaligus, beri tia
 sendiri dengan `--project`:
 
 ```
-python audit.py --project apple-gatrik init authz,upload,cookie-flags
-python audit.py --project apple-gatrik all
+python audit.py --project my-app init authz,upload,cookie-flags
+python audit.py --project my-app all
 ```
 
-- **Nama saja** (mis. `apple-gatrik`) → folder `projects/<nama>/` di dalam kit (sudah
+- **Nama saja** (mis. `my-app`) → folder `projects/<nama>/` di dalam kit (sudah
   di-gitignore). **Path** (absolut atau relatif terhadap direktori kerja) → folder tersebut.
 - `init` menyalin `config/targets.example.yml` dan contoh config modul yang disebutkan ke folder
   project, serta membuat `reports/`. Berkas yang sudah ada tidak ditimpa.
@@ -161,16 +161,16 @@ mana saja karena config dibaca dari folder project, bukan dari direktori kerja:
 
 ```powershell
 # Windows PowerShell
-python C:\GitHub\security-audit-kit\audit.py --project C:\Users\sapto\sak-projects\apple-gatrik all
+python C:\GitHub\security-audit-kit\audit.py --project C:\Users\you\sak-projects\my-app all
 
 # atau lewat pembungkus (otomatis berpindah ke folder kit; -Project relatif dihitung dari folder pemanggil)
-& C:\GitHub\security-audit-kit\audit.ps1 all -Project C:\Users\sapto\sak-projects\apple-gatrik
+& C:\GitHub\security-audit-kit\audit.ps1 all -Project C:\Users\you\sak-projects\my-app
 ```
 
 ```bash
 # Linux/macOS
-python3 /opt/security-audit-kit/audit.py --project ~/sak-projects/apple-gatrik all
-make -C /opt/security-audit-kit all PROJECT=/home/sapto/sak-projects/apple-gatrik   # PROJECT absolut
+python3 /opt/security-audit-kit/audit.py --project ~/sak-projects/my-app all
+make -C /opt/security-audit-kit all PROJECT=/home/you/sak-projects/my-app   # PROJECT absolut
 ```
 
 Agar tidak mengetik path panjang, buat pintasan sekali saja:
@@ -179,8 +179,8 @@ Agar tidak mengetik path panjang, buat pintasan sekali saja:
 # Windows: tambahkan ke profil PowerShell (buka dengan: notepad $PROFILE)
 function sak { python C:\GitHub\security-audit-kit\audit.py @args }
 # lalu dari folder mana pun:
-sak --project C:\Users\sapto\sak-projects\apple-gatrik all
-sak --project C:\Users\sapto\sak-projects\kumham headers
+sak --project C:\Users\you\sak-projects\my-app all
+sak --project C:\Users\you\sak-projects\client-b headers
 ```
 
 ```bash
@@ -236,7 +236,7 @@ otomatis mati saat dialihkan ke berkas atau pipe dan di CI. Untuk mengubahnya:
 | env `SAK_COLOR=always\|never\|auto` | Setara `--color`; menimpa `NO_COLOR` dan `FORCE_COLOR` |
 | env `FORCE_COLOR=1` / `CLICOLOR_FORCE=1` | Paksa menyala |
 
-Contoh: `python audit.py --project apple-gatrik --color always headers`. Opsi ini dapat diletakkan
+Contoh: `python audit.py --project my-app --color always headers`. Opsi ini dapat diletakkan
 di posisi mana pun dan diteruskan otomatis ke semua modul. Git Bash (mintty) sering tidak
 terdeteksi sebagai terminal oleh Python; gunakan `--color always` atau `SAK_COLOR=always`.
 

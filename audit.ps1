@@ -7,9 +7,9 @@
 #   .\audit.ps1 clientleak
 #   .\audit.ps1 report
 # Multi-project (paralel, satu terminal per project):
-#   .\audit.ps1 init authz,upload -Project apple-gatrik   # buat projects\apple-gatrik\
-#   .\audit.ps1 all -Project apple-gatrik
-#   .\audit.ps1 headers -Project D:\audit\kumham           # folder di mana saja
+#   .\audit.ps1 init authz,upload -Project my-app   # buat projects\my-app\
+#   .\audit.ps1 all -Project my-app
+#   .\audit.ps1 headers -Project D:\audit\client-b           # folder di mana saja
 
 param(
     [Parameter(Position = 0)]

@@ -56,9 +56,9 @@ project has its own `config/`, `tests/<module>/*.yml` and `reports/`, so they ca
 simultaneously from separate terminals:
 
 ```bash
-python audit.py --project apple-gatrik init authz,upload   # creates projects/apple-gatrik/
-python audit.py --project apple-gatrik all                  # terminal 1
-python audit.py --project D:/audit/kumham all               # terminal 2 (folder anywhere)
+python audit.py --project my-app init authz,upload   # creates projects/my-app/
+python audit.py --project my-app all                  # terminal 1
+python audit.py --project D:/audit/client-b all               # terminal 2 (folder anywhere)
 ```
 
 Equivalent: the `SAK_PROJECT_DIR` environment variable, `make all PROJECT=...`, or

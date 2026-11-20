@@ -55,9 +55,9 @@ project memiliki `config/`, `tests/<modul>/*.yml`, dan `reports/` sendiri sehing
 bersamaan dari terminal berbeda:
 
 ```bash
-python audit.py --project apple-gatrik init authz,upload   # buat projects/apple-gatrik/
-python audit.py --project apple-gatrik all                  # terminal 1
-python audit.py --project D:/audit/kumham all               # terminal 2 (folder di mana saja)
+python audit.py --project my-app init authz,upload   # buat projects/my-app/
+python audit.py --project my-app all                  # terminal 1
+python audit.py --project D:/audit/client-b all               # terminal 2 (folder di mana saja)
 ```
 
 Setara: env `SAK_PROJECT_DIR`, `make all PROJECT=...`, atau `.\audit.ps1 all -Project ...`.

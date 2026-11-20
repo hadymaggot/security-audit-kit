@@ -10,14 +10,14 @@ Konfigurasi (blok `snapshot:` pada config/targets.yml):
     keep: false                       # hapus berkas snapshot setelah berhasil dipulihkan
     timeout_seconds: 1800
     steps:                            # setiap langkah = satu pasang backup/restore (argv, tanpa shell)
-      - name: "postgres iam"
-        backup:  { cmd: ["docker","exec","pg","pg_dump","-U","u","-Fc","iam"], stdout_to: "{dir}/iam.dump" }
-        restore: { cmd: ["docker","exec","-i","pg","pg_restore","-U","u","-d","iam","--clean",
-                         "--if-exists","--no-owner","--single-transaction"], stdin_from: "{dir}/iam.dump" }
+      - name: "postgres auth"
+        backup:  { cmd: ["docker","exec","pg","pg_dump","-U","u","-Fc","auth"], stdout_to: "{dir}/auth.dump" }
+        restore: { cmd: ["docker","exec","-i","pg","pg_restore","-U","u","-d","auth","--clean",
+                         "--if-exists","--no-owner","--single-transaction"], stdin_from: "{dir}/auth.dump" }
 
   Atau preset ringkas untuk PostgreSQL di Docker:
     snapshot: { preset: postgres-docker, container: app-postgres-1, user: app-user,
-                databases: [iam, emission] }
+                databases: [auth, orders] }
 
 Placeholder {dir} = direktori snapshot. Perintah dijalankan tanpa shell (argv). Backup yang gagal atau
 berkas kosong MEMBATALKAN scan (tidak ada scan tanpa jaring pengaman). Entri jurnal rollback dicatat

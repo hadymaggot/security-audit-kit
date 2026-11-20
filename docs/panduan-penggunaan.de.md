@@ -142,11 +142,11 @@ selbst (ein einzelnes Projekt). Um mehrere Projekte gleichzeitig zu prüfen, erh
 mit `--project` einen eigenen Ordner:
 
 ```
-python audit.py --project apple-gatrik init authz,upload,cookie-flags
-python audit.py --project apple-gatrik all
+python audit.py --project my-app init authz,upload,cookie-flags
+python audit.py --project my-app all
 ```
 
-- **Nur ein Name** (z. B. `apple-gatrik`) → `projects/<name>/` im Kit (bereits in
+- **Nur ein Name** (z. B. `my-app`) → `projects/<name>/` im Kit (bereits in
   `.gitignore`). **Ein Pfad** (absolut oder relativ zum Arbeitsverzeichnis) → dieser Ordner.
 - `init` kopiert `config/targets.example.yml` und die Beispielkonfigurationen der genannten Module
   in den Projektordner und legt `reports/` an. Vorhandene Dateien werden nie überschrieben.
@@ -165,16 +165,16 @@ Arbeitsverzeichnis:
 
 ```powershell
 # Windows PowerShell
-python C:\GitHub\security-audit-kit\audit.py --project C:\Users\sapto\sak-projects\apple-gatrik all
+python C:\GitHub\security-audit-kit\audit.py --project C:\Users\you\sak-projects\my-app all
 
 # oder über den Wrapper (wechselt selbst in den Kit-Ordner; ein relatives -Project wird vom Aufrufordner aus aufgelöst)
-& C:\GitHub\security-audit-kit\audit.ps1 all -Project C:\Users\sapto\sak-projects\apple-gatrik
+& C:\GitHub\security-audit-kit\audit.ps1 all -Project C:\Users\you\sak-projects\my-app
 ```
 
 ```bash
 # Linux/macOS
-python3 /opt/security-audit-kit/audit.py --project ~/sak-projects/apple-gatrik all
-make -C /opt/security-audit-kit all PROJECT=/home/sapto/sak-projects/apple-gatrik   # PROJECT absolut
+python3 /opt/security-audit-kit/audit.py --project ~/sak-projects/my-app all
+make -C /opt/security-audit-kit all PROJECT=/home/you/sak-projects/my-app   # PROJECT absolut
 ```
 
 Um den langen Pfad nicht jedes Mal zu tippen, einmalig eine Abkürzung anlegen:
@@ -183,8 +183,8 @@ Um den langen Pfad nicht jedes Mal zu tippen, einmalig eine Abkürzung anlegen:
 # Windows: in das PowerShell-Profil eintragen (öffnen mit: notepad $PROFILE)
 function sak { python C:\GitHub\security-audit-kit\audit.py @args }
 # danach aus jedem Ordner:
-sak --project C:\Users\sapto\sak-projects\apple-gatrik all
-sak --project C:\Users\sapto\sak-projects\kumham headers
+sak --project C:\Users\you\sak-projects\my-app all
+sak --project C:\Users\you\sak-projects\client-b headers
 ```
 
 ```bash
@@ -245,7 +245,7 @@ bei Umleitung in eine Datei oder Pipe sowie in CI sind sie daher automatisch aus
 | Umgebungsvariable `SAK_COLOR=always\|never\|auto` | Wie `--color`; überschreibt `NO_COLOR` und `FORCE_COLOR` |
 | Umgebungsvariable `FORCE_COLOR=1` / `CLICOLOR_FORCE=1` | Erzwingen |
 
-Beispiel: `python audit.py --project apple-gatrik --color always headers`. Die Option kann an
+Beispiel: `python audit.py --project my-app --color always headers`. Die Option kann an
 beliebiger Stelle stehen und wird automatisch an alle Module weitergegeben. Git Bash (mintty) wird
 von Python oft nicht als Terminal erkannt; dann `--color always` oder `SAK_COLOR=always` verwenden.
 

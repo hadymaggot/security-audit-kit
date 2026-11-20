@@ -21,9 +21,9 @@ Kredensial & token diambil dari environment variable, bukan dari file.
 Multi-project (paralel): satu instalasi kit, banyak folder project. Tiap project punya
 config/targets.yml, tests/<modul>/<modul>.yml, dan reports/ sendiri, sehingga beberapa
 project bisa diaudit bersamaan dari terminal berbeda tanpa saling menimpa:
-    python audit.py --project apple-gatrik init authz,upload   # buat projects/apple-gatrik/
-    python audit.py --project apple-gatrik all
-    python audit.py --project D:/audit/kumham headers          # folder di mana saja
+    python audit.py --project my-app init authz,upload   # buat projects/my-app/
+    python audit.py --project my-app all
+    python audit.py --project D:/audit/client-b headers          # folder di mana saja
     SAK_PROJECT_DIR=... python audit.py all                    # setara --project
 Tanpa --project / SAK_PROJECT_DIR, folder kit itu sendiri dipakai (perilaku lama).
 """
@@ -64,7 +64,7 @@ def resolve_project(value: str | None) -> Path:
     """Folder project dari --project / SAK_PROJECT_DIR.
 
     - kosong            -> folder kit (perilaku lama, satu project)
-    - nama saja (tanpa pemisah path, mis. "apple-gatrik") -> <kit>/projects/<nama>
+    - nama saja (tanpa pemisah path, mis. "my-app") -> <kit>/projects/<nama>
     - path (absolut/relatif) -> path tsb; relatif terhadap SAK_CALLER_CWD bila diset oleh
       wrapper (audit.ps1 berpindah ke folder kit), selain itu terhadap direktori kerja."""
     if not value or not str(value).strip():
@@ -595,7 +595,7 @@ def mod_init(modules_csv: str):
     yang diminta (mis. "authz,upload"). Berkas yang sudah ada tidak ditimpa."""
     if PROJECT == ROOT and not os.environ.get("SAK_ALLOW_INIT_ROOT"):
         print("Pakai `--project <nama|folder>` untuk init (mis. `python audit.py --project "
-              "apple-gatrik init authz,upload`).", file=sys.stderr)
+              "my-app init authz,upload`).", file=sys.stderr)
         return 2
     wanted = [m.strip() for m in (modules_csv or "").split(",") if m.strip() and m != "baseline"]
     unknown = [m for m in wanted if m not in PY_MODULES and m != "recon"]
