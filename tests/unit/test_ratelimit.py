@@ -1,4 +1,4 @@
-"""Unit test modul ratelimit — evaluator murni dan alur lockout dengan fixture palsu."""
+"""Unit tests for the ratelimit module: pure evaluators and the lockout flow with a fake fixture."""
 import importlib.util
 import json
 import sys
@@ -20,27 +20,27 @@ RP = _load("report_rl2_t", "report.py")
 URL = "POST http://t/api/login"
 
 
-# ── burst ───────────────────────────────────────────────────────────────────
-def test_burst_dengan_429_lolos():
+# burst
+def test_burst_with_429_passes():
     r = RL.evaluate_burst("login", URL, [401, 401, 401, 429, 429], False)
     assert r["ok"] is True and "request ke-4" in r["note"] and r["status"] == 429
 
 
-def test_burst_tanpa_pembatasan_gagal():
+def test_burst_without_limiting_fails():
     r = RL.evaluate_burst("login", URL, [401] * 20, False)
     assert r["ok"] is False and r["kind"] == "no-rate-limit" and "401x20" in r["note"]
 
 
-def test_burst_retry_after_dianggap_pembatasan():
+def test_burst_retry_after_counts_as_limiting():
     assert RL.evaluate_burst("x", URL, [200, 200], True)["ok"] is True
 
 
-def test_burst_galat_jaringan_di_skip():
+def test_burst_network_error_is_skipped():
     r = RL.evaluate_burst("x", URL, [None, None], False)
     assert r["ok"] is True and "skip" in r["note"]
 
 
-# ── lockout ─────────────────────────────────────────────────────────────────
+# lockout
 CFG = {"max_attempts": 5, "lock_statuses": [423], "max_lock_minutes": 60}
 LOCKMSG = "Akun dikunci sementara. Coba lagi dalam 15 menit."
 
@@ -52,7 +52,7 @@ def _seq(n_401, lock=True):
     return a
 
 
-def test_lockout_normal_semua_lolos():
+def test_lockout_normal_all_pass():
     rows = RL.evaluate_lockout(_seq(4), (423, LOCKMSG), CFG, URL)
     assert all(r["ok"] for r in rows) and len(rows) == 3
     by = {r["check"]: r for r in rows}
@@ -60,24 +60,24 @@ def test_lockout_normal_semua_lolos():
     assert "15 menit" in by["lockout: durasi kunci"]["note"]
 
 
-def test_tidak_pernah_terkunci_gagal():
+def test_never_locked_fails():
     rows = RL.evaluate_lockout([(401, "x")] * 7, None, CFG, URL)
     assert rows[0]["ok"] is False and rows[0]["kind"] == "weak-lockout"
     assert "TIDAK terkunci" in rows[0]["note"]
 
 
-def test_terkunci_terlalu_lambat_gagal():
+def test_locked_too_late_fails():
     rows = RL.evaluate_lockout(_seq(9), None, {**CFG, "tolerance": 1}, URL)
     assert rows[0]["ok"] is False and "melebihi ambang" in rows[0]["note"]
 
 
-def test_sandi_benar_berhasil_saat_terkunci_adalah_bypass():
+def test_correct_password_succeeding_while_locked_is_bypass():
     rows = RL.evaluate_lockout(_seq(4), (200, "ok"), CFG, URL)
     bypass = [r for r in rows if r["check"] == "lockout: password benar saat akun terkunci"][0]
     assert bypass["ok"] is False and bypass["kind"] == "lockout-bypass"
 
 
-def test_durasi_tak_wajar_dan_tak_diumumkan():
+def test_unreasonable_and_unannounced_duration():
     long = RL.evaluate_lockout([(401, "x")] * 4 + [(423, "terkunci 9999 menit")], None, CFG, URL)
     assert [r for r in long if r["check"].endswith("durasi kunci")][0]["ok"] is False
     none = RL.evaluate_lockout([(401, "x")] * 4 + [(423, "terkunci")], None, CFG, URL)
@@ -85,20 +85,20 @@ def test_durasi_tak_wajar_dan_tak_diumumkan():
     assert d["ok"] is True and "tidak diumumkan" in d["note"]
 
 
-def test_terhalang_rate_limit_gateway_di_skip():
+def test_blocked_by_gateway_rate_limit_is_skipped():
     rows = RL.evaluate_lockout([(401, "x"), (401, "x"), (429, "Too Many")], None, CFG, URL)
     assert len(rows) == 1 and rows[0]["ok"] is True and "terhalang rate limit" in rows[0]["note"]
 
 
-def test_lock_signal_lewat_pesan():
+def test_lock_signal_via_message():
     assert RL.lock_signal(401, "Akun terkunci", {}) is True
     assert RL.lock_signal(401, "password salah", {}) is False
     assert RL.parse_lock_minutes("coba lagi dalam 15 menit") == 15
     assert RL.parse_lock_minutes("tanpa angka") is None
 
 
-# ── enumerasi ───────────────────────────────────────────────────────────────
-def test_enumerasi_terdeteksi_423_vs_401():
+# enumeration
+def test_enumeration_detected_423_vs_401():
     rows = RL.evaluate_enumeration((401, "Email salah"), (401, "Email salah"),
                                    (423, LOCKMSG), (401, "Email salah"), URL)
     by = {r["check"]: r for r in rows}
@@ -107,12 +107,12 @@ def test_enumerasi_terdeteksi_423_vs_401():
     assert last["ok"] is False and last["kind"] == "user-enumeration" and "423" in last["note"]
 
 
-def test_enumerasi_tak_ada_bila_identik():
+def test_no_enumeration_when_identical():
     rows = RL.evaluate_enumeration((401, "x 1"), (401, "x 2"), (401, "x"), (401, "x"), URL)
-    assert all(r["ok"] for r in rows)          # angka dinormalisasi
+    assert all(r["ok"] for r in rows)          # numbers are normalized
 
 
-# ── alur run_lockout dengan fixture palsu ───────────────────────────────────
+# run_lockout flow with a fake fixture
 class _Acc:
     def __init__(self, lock_after):
         self.lock_after, self.n, self.email, self.password = lock_after, 0, "e@x", "BENAR"
@@ -142,7 +142,7 @@ class _Acc:
         return R()
 
 
-def test_run_lockout_alur_lengkap(monkeypatch):
+def test_run_lockout_full_flow(monkeypatch):
     acc = _Acc(5)
     monkeypatch.setattr(RL._fixture, "DisposableAccount", lambda *a, **k: acc)
     cfg = {"fixture": {"login": {"path": "/api/login"}},
@@ -152,15 +152,15 @@ def test_run_lockout_alur_lengkap(monkeypatch):
     assert by["lockout: penguncian setelah password salah"]["ok"] is True
     assert by["lockout: password benar saat akun terkunci"]["ok"] is True
     assert by["enumerasi akun: response setelah ambang percobaan"]["ok"] is False   # 423 vs 401
-    assert acc.fake_calls == 5                       # identitas fiktif dicoba sebanyak percobaan nyata
+    assert acc.fake_calls == 5                       # the fake identity is tried as often as the real one
 
 
-def test_run_lockout_dilewati_tanpa_fixture():
+def test_run_lockout_skipped_without_fixture():
     assert RL.run_lockout({"lockout": {"enabled": True}}, "http://t") == []
     assert RL.run_lockout({"fixture": {}, "lockout": {"enabled": False}}, "http://t") == []
 
 
-# ── run_burst dengan session palsu ──────────────────────────────────────────
+# run_burst with a fake session
 class _S:
     def __init__(self, seq):
         self.seq, self.cookies, self.headers = list(seq), {}, {}
@@ -180,8 +180,8 @@ def test_run_burst():
     assert rows[0]["ok"] is True and "request ke-3" in rows[0]["note"]
 
 
-# ── integrasi report ────────────────────────────────────────────────────────
-def test_report_memuat_ratelimit(tmp_path):
+# report integration
+def test_report_includes_ratelimit(tmp_path):
     rows = RL.evaluate_enumeration((401, "a"), (401, "a"), (423, LOCKMSG), (401, "a"), URL)
     rows += [RL.evaluate_burst("login", URL, [401] * 5, False)]
     (tmp_path / "ratelimit.json").write_text(json.dumps(

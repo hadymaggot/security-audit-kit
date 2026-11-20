@@ -1,18 +1,18 @@
-"""Warna ANSI untuk keluaran konsol — lintas Windows/macOS/Linux, aman untuk CI dan pipe.
+"""ANSI colors for console output: cross-platform (Windows/macOS/Linux), safe for CI and pipes.
 
-Warna hanya dipakai saat dicetak ke layar; nilai yang disimpan ke JSON/laporan tidak pernah
-berisi kode warna. Hanya 8 warna dasar ANSI (paling kompatibel: Windows Terminal, PowerShell 7,
-Terminal macOS, iTerm2, GNOME Terminal, tmux, VS Code).
+Colors are applied only when printing to the screen; values saved to JSON/reports never contain
+color codes. Only the 8 basic ANSI colors are used (most compatible: Windows Terminal,
+PowerShell 7, macOS Terminal, iTerm2, GNOME Terminal, tmux, VS Code).
 
-Aturan aktif/mati (urutan prioritas):
-  1. SAK_COLOR=never|0|false|off  -> mati;   SAK_COLOR=always|1|true|on -> menyala (juga ke pipe)
-     (`audit.py --color always|never|auto` / `--no-color` mengisi variabel ini untuk semua runner)
-  2. NO_COLOR (apa pun yang tidak kosong, https://no-color.org) -> mati
-  3. FORCE_COLOR / CLICOLOR_FORCE (selain kosong/"0") -> menyala
-  4. TERM=dumb -> mati
-  5. Otomatis: menyala hanya bila keluaran adalah terminal interaktif (bukan berkas/pipe/CI).
-     Di Windows, mode Virtual Terminal konsol diaktifkan lebih dulu (konsol lama membutuhkannya);
-     bila gagal, warna dimatikan alih-alih mencetak kode mentah.
+On/off rules (priority order):
+  1. SAK_COLOR=never|0|false|off  -> off;   SAK_COLOR=always|1|true|on -> on (even to a pipe)
+     (`audit.py --color always|never|auto` / `--no-color` sets this variable for every runner)
+  2. NO_COLOR (any non-empty value, https://no-color.org) -> off
+  3. FORCE_COLOR / CLICOLOR_FORCE (anything but empty/"0") -> on
+  4. TERM=dumb -> off
+  5. Auto: on only when the output is an interactive terminal (not a file/pipe/CI).
+     On Windows the console's Virtual Terminal mode is enabled first (legacy consoles need it);
+     if that fails, color is turned off rather than printing raw escape codes.
 """
 from __future__ import annotations
 
@@ -21,22 +21,22 @@ import sys
 
 RESET = "\033[0m"
 CODES = {
-    "good": "32",        # hijau
-    "bad": "31",         # merah
-    "badbold": "1;31",   # merah tebal
-    "warn": "33",        # kuning
-    "info": "36",        # sian
-    "dim": "2",          # redup
+    "good": "32",        # green
+    "bad": "31",         # red
+    "badbold": "1;31",   # bold red
+    "warn": "33",        # yellow
+    "info": "36",        # cyan
+    "dim": "2",          # dim
     "bold": "1",
 }
 
 _OFF = {"never", "0", "false", "off", "no"}
 _ON = {"always", "1", "true", "on", "yes"}
-_vt_ok = None            # cache hasil aktivasi VT Windows
+_vt_ok = None            # cached result of enabling Windows VT mode
 
 
 def _enable_windows_vt() -> bool:
-    """Aktifkan ENABLE_VIRTUAL_TERMINAL_PROCESSING pada konsol Windows (no-op di OS lain)."""
+    """Enable ENABLE_VIRTUAL_TERMINAL_PROCESSING on the Windows console (no-op on other OSes)."""
     global _vt_ok
     if _vt_ok is not None:
         return _vt_ok
@@ -58,16 +58,16 @@ def _enable_windows_vt() -> bool:
                 if mode.value & 0x0004 or k32.SetConsoleMode(handle, mode.value | 0x0004):
                     ok = ok or std == -11
         _vt_ok = bool(ok)
-    except Exception:  # noqa: BLE001 — tanpa ctypes/konsol: matikan warna
+    except Exception:  # noqa: BLE001 — no ctypes/console: turn color off
         _vt_ok = False
     if not _vt_ok and (os.environ.get("WT_SESSION") or os.environ.get("ConEmuANSI") == "ON"
                        or os.environ.get("ANSICON")):
-        _vt_ok = True        # Windows Terminal / ConEmu / ANSICON memahami ANSI tanpa mode konsol
+        _vt_ok = True        # Windows Terminal / ConEmu / ANSICON understand ANSI without console mode
     return _vt_ok
 
 
 def enabled(stream=None) -> bool:
-    """Apakah warna dipakai untuk `stream` (default stdout) menurut aturan di docstring modul."""
+    """Whether color is used for `stream` (default stdout), per the rules in the module docstring."""
     mode = os.environ.get("SAK_COLOR", "").strip().lower()
     if mode in _OFF:
         return False
@@ -92,7 +92,7 @@ def enabled(stream=None) -> bool:
 
 
 def paint(text, kind: str, stream=None) -> str:
-    """Bungkus `text` dengan warna `kind` bila warna aktif; kalau tidak, kembalikan apa adanya."""
+    """Wrap `text` in the `kind` color when color is on; otherwise return it unchanged."""
     text = str(text)
     if not text or kind not in CODES or not enabled(stream):
         return text
@@ -129,8 +129,8 @@ _DIM = {"skip"}
 
 
 def status(text):
-    """Warnai teks status menurut kata pertamanya: ok/PASS -> kata itu hijau; XX/MISS/FAIL/LEAK ->
-    seluruh teks merah (sertakan alasannya); skip -> redup. Teks lain tidak diubah."""
+    """Color status text by its first word: ok/PASS -> that word green; XX/MISS/FAIL/LEAK ->
+    whole text red (reason included); skip -> dim. Other text is unchanged."""
     s = str(text)
     parts = s.split(None, 1)
     if not parts:
@@ -151,14 +151,14 @@ _TAGS = {"PASS": "good", "OK": "good", "FAIL": "badbold", "CRITICAL": "badbold",
 
 
 def tag(label):
-    """Warnai label bertanda kurung: PASS hijau, FAIL/CRITICAL merah tebal, HIGH merah, MEDIUM
-    kuning, LOW sian, INFO redup."""
+    """Color a bracketed label: PASS green, FAIL/CRITICAL bold red, HIGH red, MEDIUM
+    yellow, LOW cyan, INFO dim."""
     return paint(label, _TAGS.get(str(label).strip().upper(), ""))
 
 
 def severity(name, text=None):
-    """Warnai `text` (default: nama severity) sesuai tingkat: critical/high merah, medium kuning,
-    low sian, info redup."""
+    """Color `text` (default: the severity name) by level: critical/high red, medium yellow,
+    low cyan, info dim."""
     key = str(name).strip().upper()
     kind = {"CRITICAL": "badbold", "HIGH": "bad", "MEDIUM": "warn", "LOW": "info", "INFO": "dim"}.get(key, "")
     return paint(name if text is None else text, kind)

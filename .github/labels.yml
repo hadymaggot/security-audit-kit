@@ -1,8 +1,8 @@
-# Label standar repo ini. Sumber kebenaran buat label GitHub — sinkronkan dengan:
-#   scripts/sync-labels.sh   (butuh gh CLI + jq)
-# Warna tanpa '#'.
+# Standard labels for this repo. Source of truth for GitHub labels; sync with:
+#   scripts/sync-labels.ps1  (needs gh CLI + jq)
+# Colors without '#'.
 
-# --- Tipe ---
+# --- Type ---
 - name: "bug"
   color: "d73a4a"
   description: "Ada yang nggak jalan sesuai harapan"
@@ -28,7 +28,7 @@
   color: "d876e3"
   description: "Butuh klarifikasi"
 
-# --- Khas toolkit ---
+# --- Toolkit-specific ---
 - name: "false-positive"
   color: "c5def5"
   description: "Temuan yang sebenarnya bukan masalah"
@@ -39,7 +39,7 @@
   color: "0366d6"
   description: "Update dependency"
 
-# --- Per modul ---
+# --- Per module ---
 - name: "module:authz"
   color: "bfd4f2"
   description: "Access control per role"
@@ -62,7 +62,7 @@
   color: "bfd4f2"
   description: "Report & remediasi"
 
-# --- Triase ---
+# --- Triage ---
 - name: "priority:high"
   color: "e11d21"
   description: "Garap duluan"

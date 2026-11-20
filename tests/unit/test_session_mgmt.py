@@ -1,4 +1,4 @@
-"""Unit test modul session-mgmt — akun dan session palsu, tanpa jaringan."""
+"""Unit tests for the session-mgmt module: fake account and session, no network."""
 import importlib.util
 import json
 import sys
@@ -20,14 +20,14 @@ RP = _load("report_sm_t", "report.py")
 URL = "GET http://t/api/me"
 
 
-# ── evaluator murni ─────────────────────────────────────────────────────────
+# pure evaluators
 def test_row_logout():
     assert SM.row_logout(401, URL)["ok"] is True
     bad = SM.row_logout(200, URL)
     assert bad["ok"] is False and bad["kind"] == "logout-no-invalidate" and "MASIH berlaku" in bad["note"]
 
 
-def test_row_other_sessions_dan_old_password():
+def test_row_other_sessions_and_old_password():
     assert SM.row_other_sessions(401, URL)["ok"] is True
     r = SM.row_other_sessions(200, URL)
     assert r["ok"] is False and r["kind"] == "session-not-revoked"
@@ -36,7 +36,7 @@ def test_row_other_sessions_dan_old_password():
     assert o["ok"] is False and o["kind"] == "old-password-accepted"
 
 
-def test_is_valid_dan_cookie_snapshot():
+def test_is_valid_and_cookie_snapshot():
     assert SM.is_valid(200) and SM.is_valid(204) and not SM.is_valid(401) and not SM.is_valid(None)
 
     class C:
@@ -46,9 +46,9 @@ def test_is_valid_dan_cookie_snapshot():
     assert SM.cookie_snapshot({"x": "y"}) == {"x": "y"}
 
 
-# ── alur dengan akun/session palsu ──────────────────────────────────────────
+# flow with a fake account/session
 class World:
-    """Model server sederhana: sesi hidup disimpan di set; opsi perilaku bisa diatur."""
+    """Simple server model: live sessions are kept in a set; behavior is configurable."""
 
     def __init__(self, revoke_on_logout=True, revoke_others=True, old_pw_valid=False):
         self.live, self.n = set(), 0
@@ -85,7 +85,7 @@ class Sess:
 
 
 class Replay(Sess):
-    """Sesi baru tempat cookie disalin (via .cookies.update)."""
+    """Fresh session that receives the copied cookies (via .cookies.update)."""
 
 
 class Acc:
@@ -125,7 +125,7 @@ def _run(world):
                                  sleep=lambda s: None)
 
 
-def test_server_sehat_semua_lolos():
+def test_healthy_server_all_pass():
     rows = _run(World())
     by = {r["check"]: r for r in rows}
     assert by["logout: session dicabut di server"]["ok"] is True
@@ -135,33 +135,33 @@ def test_server_sehat_semua_lolos():
     assert not [r for r in rows if not r["ok"]]
 
 
-def test_sesi_lain_tak_dicabut_setelah_ganti_sandi():
+def test_other_sessions_not_revoked_after_password_change():
     rows = _run(World(revoke_others=False))
     bad = [r for r in rows if not r["ok"]]
     assert len(bad) == 1 and bad[0]["kind"] == "session-not-revoked"
     assert bad[0]["check"] == "ganti password: session lain dicabut"
 
 
-def test_logout_tak_mencabut_sesi_server():
+def test_logout_does_not_revoke_server_session():
     rows = _run(World(revoke_on_logout=False))
     bad = [r for r in rows if not r["ok"]]
     assert len(bad) == 1 and bad[0]["kind"] == "logout-no-invalidate"
 
 
-def test_sandi_lama_masih_diterima():
+def test_old_password_still_accepted():
     rows = _run(World(old_pw_valid=True))
     bad = [r for r in rows if not r["ok"]]
     assert len(bad) == 1 and bad[0]["kind"] == "old-password-accepted"
 
 
-def test_tanpa_konfigurasi_logout_dan_ganti_sandi_di_skip():
+def test_missing_logout_and_password_change_config_is_skipped():
     cfg = {"fixture": CFG["fixture"], "session": {"me_path": "/api/me"}}
     rows = SM.run_session_checks(Acc(World()), cfg, "http://t", http=lambda: Replay(World()),
                                  sleep=lambda s: None)
     assert len(rows) == 2 and all(r["ok"] and "skip" in r["note"] for r in rows)
 
 
-def test_login_akun_uji_gagal_di_skip():
+def test_test_account_login_failure_is_skipped():
     class BadAcc(Acc):
         def new_session(self):
             class R:
@@ -172,8 +172,8 @@ def test_login_akun_uji_gagal_di_skip():
     assert len(rows) == 1 and rows[0]["ok"] is True and "login akun uji gagal" in rows[0]["note"]
 
 
-# ── integrasi report ────────────────────────────────────────────────────────
-def test_report_memuat_session_mgmt(tmp_path):
+# report integration
+def test_report_includes_session_mgmt(tmp_path):
     rows = _run(World(revoke_others=False, revoke_on_logout=False))
     (tmp_path / "session_mgmt.json").write_text(json.dumps(
         {"module": "session-mgmt", "failures": 2, "results": rows}), encoding="utf-8")

@@ -1,20 +1,20 @@
-# Salin ke mass_assignment.yml. Kredensial dari env var.
+# Copy to mass_assignment.yml. Credentials come from env vars.
 #
-# DESTRUKTIF tapi REVERSIBEL: tiap penulisan dicatat ke jurnal rollback dan
-# dipulihkan OTOMATIS sebagai fase terakhir setelah laporan dibuat. Untuk memulihkan
-# ulang secara manual: `python audit.py rollback`.
+# DESTRUCTIVE but REVERSIBLE: every write is recorded in the rollback journal and
+# restored AUTOMATICALLY as the last phase after the report is built. To restore
+# again manually: `python audit.py rollback`.
 #
-# Gunakan akun peran RENDAH dan objek MILIKNYA sendiri yang memang boleh ia ubah.
+# Use a LOW-privilege account and an object it OWNS and is allowed to modify.
 #   export MA_USER=... MA_PASS=...
 base_url: "${TARGET_BASE_URL}"
 auth:
-  # Laravel Sanctum (SPA, session cookie). Untuk token statis, gunakan:
+  # Laravel Sanctum (SPA, session cookie). For a static token, use:
   #   header: "Authorization"
-  #   value: "${MA_TOKEN}"   # mis. "Bearer xxx"
+  #   value: "${MA_TOKEN}"   # e.g. "Bearer xxx"
   sanctum:
     enabled: true
     csrf_path: "/sanctum/csrf-cookie"
-    origin: "${TARGET_BASE_URL}"   # wajib cocok SANCTUM_STATEFUL_DOMAINS
+    origin: "${TARGET_BASE_URL}"   # must match SANCTUM_STATEFUL_DOMAINS
   login:
     method: POST
     path: "/api/login"
@@ -22,13 +22,13 @@ auth:
 
 targets:
   - name: "Eskalasi role via update profil sendiri"
-    get:    { path: "/api/me" }          # dibaca untuk snapshot nilai asli
-    data_path: "data"                     # lokasi objek di respons JSON (opsional)
+    get:    { path: "/api/me" }          # read to snapshot the original values
+    data_path: "data"                     # where the object sits in the JSON response (optional)
     update: { method: PATCH, path: "/api/me" }
-    inject: { role: "admin", is_admin: true }   # field terlarang yang dicoba
-    fields: ["role", "is_admin"]          # field yang disnapshot & dipulihkan
-  # - name: "Pindah tenant via update objek milik sendiri"
-  #   get:    { path: "/api/reports/<id-milik-sendiri>" }
-  #   update: { method: PUT, path: "/api/reports/<id-milik-sendiri>" }
-  #   inject: { company_id: "<company-lain>" }
+    inject: { role: "admin", is_admin: true }   # forbidden fields to try
+    fields: ["role", "is_admin"]          # fields to snapshot and restore
+  # - name: "Tenant switch via update of own object"
+  #   get:    { path: "/api/reports/<own-id>" }
+  #   update: { method: PUT, path: "/api/reports/<own-id>" }
+  #   inject: { company_id: "<other-company>" }
   #   fields: ["company_id"]

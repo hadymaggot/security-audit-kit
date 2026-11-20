@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""Uji kebijakan rate limit dan lockout akun (regresi defensif).
+"""Rate limit and account lockout policy tests (defensive regression).
 
-Memeriksa apakah kontrol anti brute-force benar-benar ditegakkan:
-  1. RATE LIMIT  : sejumlah request cepat ke endpoint sensitif (mis. login dengan identitas
-                   fiktif) harus memunculkan pembatasan (HTTP 429 / header Retry-After).
-  2. LOCKOUT     : pada AKUN UJI sekali pakai (dibuat lalu dihapus lewat fixture admin),
-                   sandi salah berulang harus mengunci akun; sandi BENAR tidak boleh
-                   berhasil selama terkunci; durasi kunci harus sementara dan wajar.
-  3. ENUMERASI   : respons untuk akun terdaftar vs tidak terdaftar tidak boleh dapat
-                   dibedakan (mis. akun terdaftar -> 423, akun fiktif -> 401).
-Akun nyata TIDAK pernah dikunci: lockout hanya diuji pada akun uji sekali pakai.
+Checks that anti brute-force controls are actually enforced:
+  1. RATE LIMIT  : a burst of requests to a sensitive endpoint (e.g. login with a fake
+                   identity) must trigger throttling (HTTP 429 / Retry-After header).
+  2. LOCKOUT     : on a DISPOSABLE test account (created and deleted via the admin fixture),
+                   repeated wrong passwords must lock the account; the CORRECT password must
+                   not succeed while locked; the lock must be temporary and reasonable.
+  3. ENUMERATION : responses for registered vs unregistered accounts must be indistinguishable
+                   (e.g. registered -> 423, fake -> 401 is a leak).
+Real accounts are NEVER locked: lockout is only tested on the disposable account.
 
-Konfigurasi di ratelimit.yml. Pakai:
+Config in ratelimit.yml. Usage:
     python run_ratelimit.py --config ratelimit.yml [--json out.json]
 """
 from __future__ import annotations
@@ -30,7 +30,7 @@ import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import _fixture  # noqa: E402
 import _sanctum  # noqa: E402
-import _color as C  # noqa: E402  (warna ANSI konsol lintas-modul di tests/)
+import _color as C  # noqa: E402  (shared ANSI console colors)
 
 ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 MINUTES_RE = re.compile(r"(\d+)\s*(?:menit|minutes?|min)\b", re.I)
@@ -46,9 +46,9 @@ def expand(v):
     return v
 
 
-# ── evaluator murni ─────────────────────────────────────────────────────────
+# ── pure evaluators ─────────────────────────────────────────────────────────
 def evaluate_burst(name, url, statuses, retry_after, cfg=None):
-    """Satu baris hasil untuk uji rate limit. statuses: daftar status (None = galat jaringan)."""
+    """Return one result row for the rate limit test; statuses is a list (None = network error)."""
     limit_statuses = set((cfg or {}).get("limit_statuses", [429]))
     ok_codes = [s for s in statuses if s is not None]
     if not ok_codes:
@@ -81,8 +81,8 @@ def parse_lock_minutes(text):
 
 
 def evaluate_lockout(attempts, correct, cfg, url):
-    """attempts: [(status, text)] sandi salah berurutan; correct: (status, text) sandi benar
-    setelah percobaan tersebut (atau None). Mengembalikan daftar baris hasil."""
+    """Return result rows; attempts is [(status, text)] of consecutive wrong passwords,
+    correct is (status, text) of the correct password afterwards (or None)."""
     rows = []
     max_attempts = int(cfg.get("max_attempts", 5))
     first_lock = next((i + 1 for i, (s, t) in enumerate(attempts) if lock_signal(s, t, cfg)), None)
@@ -142,7 +142,7 @@ def evaluate_lockout(attempts, correct, cfg, url):
 
 
 def evaluate_enumeration(real_first, fake_first, real_last, fake_last, url):
-    """Bandingkan respons akun terdaftar vs fiktif: percobaan pertama dan setelah ambang."""
+    """Compare registered vs fake account responses: first attempt and after the threshold."""
     rows = []
 
     def sig(x):
@@ -168,7 +168,7 @@ def evaluate_enumeration(real_first, fake_first, real_last, fake_last, url):
     return rows
 
 
-# ── bagian jaringan ─────────────────────────────────────────────────────────
+# ── network ─────────────────────────────────────────────────────────────────
 def _session(cfg):
     s = requests.Session()
     if os.environ.get("SAK_INSECURE_TLS") == "1":
@@ -262,7 +262,7 @@ def main(argv=None):
         results.extend(run_burst(cfg, base))
         pause = float(cfg.get("pause_after_burst_seconds", 0))
         if pause and cfg.get("burst"):
-            time.sleep(pause)        # biarkan kuota rate limit gateway pulih sebelum fixture login
+            time.sleep(pause)        # let the gateway rate limit quota recover before the fixture login
         results.extend(run_lockout(cfg, base, reports, Path(args.config).resolve()))
     except Exception as exc:  # noqa: BLE001
         print(f"[SETUP] {exc}", file=sys.stderr)

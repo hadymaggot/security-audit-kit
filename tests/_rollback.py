@@ -1,16 +1,15 @@
-"""Jurnal rollback lintas-modul — nilai plus kit ini: uji destruktif yang
-'rasa non-destruktif'.
+"""Cross-module rollback journal: lets destructive tests leave the target as they found it.
 
-Prinsip: setiap aksi yang MENGUBAH state target dicatat ke jurnal SEGERA setelah
-dieksekusi (crash-safe). Di akhir scan — setelah laporan dibuat — `replay()` membalikkan
-tiap entri yang belum dipulihkan, sehingga target kembali ke keadaan semula.
+Principle: every action that CHANGES target state is written to the journal IMMEDIATELY after it
+runs (crash-safe). At the end of a scan, after the report is built, `replay()` reverses each
+entry not yet restored, so the target returns to its original state.
 
-Modul ini sengaja tanpa jaringan: ia hanya mengelola berkas jurnal dan memanggil
-callback `do_restore(entry)` yang disediakan pemanggil untuk mengirim request pemulihan.
-Dengan begitu logikanya mudah diuji unit.
+This module deliberately has no network: it only manages the journal file and calls the
+caller-supplied `do_restore(entry)` callback to send the restore request, which keeps the
+logic easy to unit test.
 
-Jurnal: reports/rollback_journal.json  (daftar entri)
-Log pemulihan: reports/rollback.json
+Journal: reports/rollback_journal.json  (list of entries)
+Restore log: reports/rollback.json
 """
 from __future__ import annotations
 
@@ -43,12 +42,13 @@ def _write(reports_dir, data):
 
 
 def record(reports_dir, entry):
-    """Catat satu aksi destruktif + cara membalikkannya. Dipanggil runner SEGERA
-    setelah menulis ke target (sebelum verifikasi), supaya crash pun meninggalkan
-    jurnal yang bisa di-replay.
+    """Record one destructive action and how to reverse it.
 
-    entry minimal: {label, module, action}. 'action' adalah instruksi pemulihan yang
-    dimengerti do_restore (mis. {method, path, json} atau {method: DELETE, path}).
+    Runners call this IMMEDIATELY after writing to the target (before verification) so even a
+    crash leaves a journal that can be replayed.
+
+    Minimal entry: {label, module, action}. 'action' is the restore instruction understood by
+    do_restore (e.g. {method, path, json} or {method: DELETE, path}).
     """
     data = load(reports_dir)
     e = dict(entry)
@@ -63,9 +63,10 @@ def pending(reports_dir):
 
 
 def replay(reports_dir, do_restore):
-    """Pulihkan tiap entri yang belum 'done'. `do_restore(entry)` -> (ok, catatan)
-    mengirim request pemulihan. Entri yang berhasil ditandai done; ringkasan ditulis
-    ke reports/rollback.json. Idempoten: entri done dilewati.
+    """Restore every entry not yet 'done'.
+
+    `do_restore(entry)` -> (ok, note) sends the restore request. Successful entries are marked
+    done; a summary is written to reports/rollback.json. Idempotent: done entries are skipped.
     """
     journal = load(reports_dir)
     results = []
@@ -88,7 +89,7 @@ def replay(reports_dir, do_restore):
 
 
 def clear(reports_dir):
-    """Hapus jurnal (mis. setelah semua dipulihkan & dikonfirmasi)."""
+    """Delete the journal (e.g. after everything is restored and confirmed)."""
     p = _p(reports_dir, JOURNAL)
     if p.exists():
         p.unlink()

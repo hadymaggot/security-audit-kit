@@ -1,4 +1,4 @@
-"""Unit test modul jwt — server model (aman vs rentan), tanpa jaringan."""
+"""Unit tests for the jwt module against model servers (secure vs vulnerable); no network."""
 import importlib.util
 import json
 import time
@@ -29,15 +29,15 @@ def _token(secret=STRONG, alg="HS256", payload=None, header=None):
     return f"{si}.{JW.sign(alg, secret, si)}"
 
 
-# ── utilitas ────────────────────────────────────────────────────────────────
-def test_parse_dan_build_roundtrip():
+# --- utilities ---
+def test_parse_and_build_roundtrip():
     h, p, parts = JW.parse(_token())
     assert h["alg"] == "HS256" and p["sub"] == "42" and len(parts) == 3
     assert JW.parse("bukan.jwt") is None and JW.parse("") is None
     assert JW.parse(JW.build({"alg": "none"}, {"a": 1}, "")) is not None
 
 
-def test_crack_hs_menemukan_secret_lemah():
+def test_crack_hs_finds_weak_secret():
     assert JW.crack_hs(_token("secret"), JW.BUILTIN_WEAK) == "secret"
     assert JW.crack_hs(_token(STRONG), JW.BUILTIN_WEAK) is None
     assert JW.crack_hs(_token("nama-perusahaan"), JW.BUILTIN_WEAK + ["nama-perusahaan"]) \
@@ -45,24 +45,24 @@ def test_crack_hs_menemukan_secret_lemah():
     assert JW.mask("supersecret") == "s***t (panjang 11)"
 
 
-# ── analisis statis ─────────────────────────────────────────────────────────
+# --- static analysis ---
 def _static(token, cfg=None, now=None):
     h, p, _ = JW.parse(token)
     return {r["check"]: r for r in JW.static_rows(h, p, token, cfg or {}, URL, now)}
 
 
-def test_token_sehat_lolos_semua():
+def test_healthy_token_passes_all():
     rows = _static(_token())
     assert all(r["ok"] for r in rows.values())
     assert "simetris" in rows["jwt: algoritma"]["note"]
 
 
-def test_alg_none_gagal():
+def test_alg_none_fails():
     t = JW.build({"alg": "none", "typ": "JWT"}, {"sub": "1", "exp": int(time.time()) + 60}, "")
     assert _static(t)["jwt: algoritma"]["ok"] is False
 
 
-def test_exp_hilang_dan_terlalu_panjang():
+def test_exp_missing_and_too_long():
     assert _static(_token(payload={"sub": "1"}))["jwt: masa berlaku (exp)"]["ok"] is False
     now = time.time()
     long = _token(payload={"sub": "1", "iat": now, "exp": now + 90 * 86400})
@@ -71,7 +71,7 @@ def test_exp_hilang_dan_terlalu_panjang():
     assert _static(long, {"max_lifetime_hours": 24 * 100}, now=now)["jwt: masa berlaku (exp)"]["ok"]
 
 
-def test_klaim_sensitif_dan_header_berisiko():
+def test_sensitive_claims_and_risky_header():
     t = _token(payload={"sub": "1", "exp": int(time.time()) + 60, "password": "x"},
                header={"kid": "../../dev/null"})
     rows = _static(t)
@@ -79,21 +79,21 @@ def test_klaim_sensitif_dan_header_berisiko():
     assert "kid" in rows["jwt: header berisiko"]["note"]
 
 
-def test_secret_lemah_terdeteksi_tanpa_mencetak_utuh():
+def test_weak_secret_detected_without_printing_it_in_full():
     r = _static(_token("changeme"))["jwt: secret tanda tangan"]
     assert r["ok"] is False and r["kind"] == "jwt-weak-secret"
     assert "changeme" not in r["note"] and "c***e" in r["note"]
     assert _static(_token(STRONG))["jwt: secret tanda tangan"]["ok"] is True
 
 
-def test_algoritma_asimetris_tidak_dikrak():
+def test_asymmetric_algorithm_not_cracked():
     t = JW.build({"alg": "RS256"}, {"sub": "1", "exp": int(time.time()) + 60}, "abc")
     assert "jwt: secret tanda tangan" not in _static(t)
 
 
-# ── probe pemalsuan: server model ───────────────────────────────────────────
+# --- forgery probes: model server ---
 def _server(mode, secret=STRONG):
-    """Kembalikan send(token)->status untuk server model (memverifikasi dengan `secret`)."""
+    """Return send(token)->status for a model server (verifies with `secret`)."""
     def send(token):
         p = JW.parse(token)
         if not p:
@@ -101,9 +101,9 @@ def _server(mode, secret=STRONG):
         header, payload, parts = p
         alg = str(header.get("alg", ""))
         si = f"{parts[0]}.{parts[1]}"
-        if mode == "no-verify":                            # tidak memeriksa tanda tangan sama sekali
+        if mode == "no-verify":                            # does not check the signature at all
             return 200
-        if alg.lower() == "none":                          # menerima alg=none
+        if alg.lower() == "none":                          # accepts alg=none
             return 200 if mode == "accepts-none" else 401
         if alg.upper() in JW.HS:
             ok = JW.sign(alg.upper(), secret, si) == parts[2]
@@ -112,38 +112,38 @@ def _server(mode, secret=STRONG):
     return send
 
 
-def test_server_aman_menolak_semua_pemalsuan():
+def test_secure_server_rejects_all_forgeries():
     rows = JW.probe_rows(_token(), _server("secure"), {}, URL)
     assert len(rows) == 5 and all(r["ok"] for r in rows)
 
 
-def test_server_menerima_alg_none():
+def test_server_accepts_alg_none():
     rows = JW.probe_rows(_token(), _server("accepts-none"), {}, URL)
     bad = [r for r in rows if not r["ok"]]
     assert len(bad) == 3 and all("alg=" in r["check"] for r in bad)
     assert bad[0]["kind"] == "jwt-forgery" and "DITERIMA" in bad[0]["note"]
 
 
-def test_server_tanpa_verifikasi_menerima_semua():
+def test_server_without_verification_accepts_all():
     rows = JW.probe_rows(_token(), _server("no-verify"), {}, URL)
     assert len([r for r in rows if not r["ok"]]) == 5
 
 
-def test_baseline_ditolak_di_skip():
+def test_rejected_baseline_is_skipped():
     rows = JW.probe_rows(_token(), lambda t: 401, {}, URL)
     assert len(rows) == 1 and rows[0]["ok"] is True and "skip" in rows[0]["note"]
 
 
-def test_varian_forge_berisi_perubahan_yang_benar():
+def test_forged_variants_contain_the_right_changes():
     h, p, parts = JW.parse(_token())
     v = dict(JW.forged_variants(h, p, parts))
     assert JW.parse(v["alg=none tanpa tanda tangan"])[0]["alg"] == "none"
     assert v["tanda tangan dibuang"].endswith(".") and v["tanda tangan dibuang"].count(".") == 2
-    tam = JW.parse(v["payload diubah, tanda tangan lama"])
-    assert tam[1]["admin"] is True and tam[1]["sub"] == "0" and tam[2][2] == parts[2]
+    sig_check = JW.parse(v["payload diubah, tanda tangan lama"])
+    assert sig_check[1]["admin"] is True and sig_check[1]["sub"] == "0" and sig_check[2][2] == parts[2]
 
 
-# ── token + sender + run ────────────────────────────────────────────────────
+# --- token + sender + run ---
 class _Resp:
     def __init__(self, status=200, body=None, headers=None):
         self.status_code, self._b, self.headers = status, body or {}, headers or {}
@@ -170,18 +170,18 @@ CFG = {"base_url": "http://t", "login": {"path": "/api/login", "token_path": "da
        "protected": {"path": "/api/me"}}
 
 
-def test_run_lengkap_server_aman():
+def test_full_run_secure_server():
     rows = JW.run(CFG, http=_Http(_token()))
     assert all(r["ok"] for r in rows) and len(rows) >= 9
 
 
-def test_run_menangkap_server_rentan_dan_secret_lemah():
+def test_run_catches_vulnerable_server_and_weak_secret():
     rows = JW.run(CFG, http=_Http(_token("secret"), mode="accepts-none", secret="secret"))
     kinds = {r["kind"] for r in rows if not r["ok"]}
     assert {"jwt-weak-secret", "jwt-forgery"} <= kinds
 
 
-def test_run_tanpa_jwt_di_skip():
+def test_run_without_jwt_is_skipped():
     class _Opaque(_Http):
         def request(self, method, url, **kw):
             if url.endswith("/api/login"):
@@ -191,15 +191,15 @@ def test_run_tanpa_jwt_di_skip():
     assert len(rows) == 1 and rows[0]["ok"] is True and "Sanctum" in rows[0]["note"]
 
 
-def test_obtain_token_dari_config_dan_cookie_sender():
+def test_obtain_token_from_config_and_cookie_sender():
     assert JW.obtain_token({"token": "abc"}, "http://t") == "abc"
     h = _Http(_token())
     JW.make_sender({**CFG, "cookie": "tok"}, "http://t", h)(_token())
     assert h.calls[-1][2]["cookies"] == {"tok": _token()} or "cookies" in h.calls[-1][2]
 
 
-# ── integrasi report ────────────────────────────────────────────────────────
-def test_report_memuat_jwt(tmp_path):
+# --- report integration ---
+def test_report_includes_jwt(tmp_path):
     rows = JW.run(CFG, http=_Http(_token("secret"), mode="accepts-none", secret="secret"))
     (tmp_path / "jwt.json").write_text(json.dumps(
         {"module": "jwt", "failures": 1, "results": rows}), encoding="utf-8")

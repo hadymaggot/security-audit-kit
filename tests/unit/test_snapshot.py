@@ -1,4 +1,4 @@
-"""Unit test snapshot data — runner palsu, tanpa Docker."""
+"""Unit tests for data snapshots: fake runner, no Docker."""
 import importlib.util
 import sys
 from pathlib import Path
@@ -24,24 +24,24 @@ PG = {"preset": "postgres-docker", "container": "pg", "user": "u", "databases": 
 
 
 class FakeRunner:
-    """Mencatat perintah; backup menulis isi ke stdout_to; restore dapat disuruh gagal."""
+    """Records commands; backup writes content to stdout_path; restore can be made to fail."""
 
     def __init__(self, fail_backup=None, fail_restore=None, empty=False):
         self.calls, self.fail_backup, self.fail_restore, self.empty = [], fail_backup, fail_restore, empty
 
     def __call__(self, cmd, stdin_path=None, stdout_path=None, timeout=1800):
         self.calls.append((list(cmd), stdin_path, stdout_path))
-        if stdout_path:                                           # langkah backup
+        if stdout_path:                                           # backup step
             if self.fail_backup and self.fail_backup in " ".join(cmd):
                 return 1, "pg_dump: error"
             Path(stdout_path).write_bytes(b"" if self.empty else b"DATA:" + cmd[-1].encode())
             return 0, ""
-        if self.fail_restore and self.fail_restore in " ".join(cmd):   # langkah restore
+        if self.fail_restore and self.fail_restore in " ".join(cmd):   # restore step
             return 2, "pg_restore: error"
         return 0, ""
 
 
-# ── preset & backup ─────────────────────────────────────────────────────────
+# preset and backup
 def test_expand_preset_postgres_docker():
     steps = SN.expand_preset(PG)
     assert [s["name"] for s in steps] == ["postgres auth", "postgres orders"]
@@ -53,15 +53,15 @@ def test_expand_preset_postgres_docker():
     assert SN.expand_preset({"steps": [{"name": "x"}]}) == [{"name": "x"}]
 
 
-def test_backup_membuat_berkas_dan_manifest(tmp_path):
+def test_backup_creates_files_and_manifest(tmp_path):
     m = SN.backup(PG, tmp_path / "s1", FakeRunner())
     assert [s["name"] for s in m["steps"]] == ["postgres auth", "postgres orders"]
     assert all(Path(s["file"]).exists() and s["bytes"] > 0 for s in m["steps"])
-    assert m["steps"][0]["restore"]["stdin_from"] == m["steps"][0]["file"]       # {dir} terisi
+    assert m["steps"][0]["restore"]["stdin_from"] == m["steps"][0]["file"]       # {dir} is filled in
     assert "{dir}" not in str(m)
 
 
-def test_backup_gagal_atau_kosong_melempar(tmp_path):
+def test_backup_failure_or_empty_file_raises(tmp_path):
     with pytest.raises(SN.SnapshotError, match="gagal"):
         SN.backup(PG, tmp_path / "a", FakeRunner(fail_backup="orders"))
     with pytest.raises(SN.SnapshotError, match="file kosong"):
@@ -71,43 +71,43 @@ def test_backup_gagal_atau_kosong_melempar(tmp_path):
                   FakeRunner())
 
 
-# ── restore ─────────────────────────────────────────────────────────────────
-def test_restore_menjalankan_semua_langkah_walau_satu_gagal(tmp_path):
+# restore
+def test_restore_runs_all_steps_even_if_one_fails(tmp_path):
     m = SN.backup(PG, tmp_path / "s", FakeRunner())
     runner = FakeRunner(fail_restore="auth")
     res = SN.restore(m, runner)
     assert [(n, ok) for n, ok, _ in res] == [("postgres auth", False), ("postgres orders", True)]
-    assert runner.calls[-1][1].endswith("orders.dump")                    # stdin dari berkas dump
+    assert runner.calls[-1][1].endswith("orders.dump")                    # stdin comes from the dump file
 
 
-# ── Guard ───────────────────────────────────────────────────────────────────
+# Guard
 def _guard(tmp_path, runner, cfg=PG, **kw):
     lines = []
     return SN.Guard(cfg, tmp_path, "ZAP full", runner=runner, echo=lines.append, **kw), lines
 
 
-def test_guard_backup_lalu_restore_dan_bersih(tmp_path):
+def test_guard_backs_up_then_restores_and_cleans_up(tmp_path):
     runner = FakeRunner()
     g, lines = _guard(tmp_path, runner)
     with g:
-        assert len(RB.pending(tmp_path)) == 1                                # jurnal dicatat SEBELUM scan
+        assert len(RB.pending(tmp_path)) == 1                                # journal is recorded BEFORE the scan
         pend = RB.pending(tmp_path)[0]
         assert pend["module"] == "snapshot" and "snapshot_manifest" in pend["action"]
-    assert g.ok is True and RB.pending(tmp_path) == []                       # selesai -> ditandai done
-    assert not list((tmp_path / "snapshots").rglob("*.dump"))                # berkas dihapus (keep: false)
+    assert g.ok is True and RB.pending(tmp_path) == []                       # finished -> marked done
+    assert not list((tmp_path / "snapshots").rglob("*.dump"))                # files are deleted (keep: false)
     kinds = ["pg_dump" in c[0] for c in runner.calls if c[2]]
     assert all(kinds) and any("pg_restore" in " ".join(c[0]) for c in runner.calls)
     assert any("Snapshot data sebelum ZAP full" in l for l in lines)
 
 
-def test_guard_keep_mempertahankan_berkas(tmp_path):
+def test_guard_keep_retains_files(tmp_path):
     g, _ = _guard(tmp_path, FakeRunner(), {**PG, "keep": True})
     with g:
         pass
     assert list((tmp_path / "snapshots").rglob("*.dump"))
 
 
-def test_guard_restore_tetap_jalan_saat_scan_melempar(tmp_path):
+def test_guard_restore_still_runs_when_scan_raises(tmp_path):
     runner = FakeRunner()
     g, _ = _guard(tmp_path, runner)
     with pytest.raises(ValueError):
@@ -117,7 +117,7 @@ def test_guard_restore_tetap_jalan_saat_scan_melempar(tmp_path):
     assert g.ok is True and RB.pending(tmp_path) == []
 
 
-def test_guard_backup_gagal_membatalkan_tanpa_restore_dan_tanpa_jurnal(tmp_path):
+def test_guard_backup_failure_aborts_without_restore_or_journal(tmp_path):
     runner = FakeRunner(fail_backup="pg_dump")
     g, _ = _guard(tmp_path, runner)
     with pytest.raises(SN.SnapshotError):
@@ -126,56 +126,56 @@ def test_guard_backup_gagal_membatalkan_tanpa_restore_dan_tanpa_jurnal(tmp_path)
     assert RB.pending(tmp_path) == [] and not any("pg_restore" in " ".join(c[0]) for c in runner.calls)
 
 
-def test_guard_restore_gagal_tetap_di_jurnal(tmp_path):
+def test_guard_failed_restore_stays_in_journal(tmp_path):
     g, lines = _guard(tmp_path, FakeRunner(fail_restore="orders"))
     with g:
         pass
     assert g.ok is False and len(RB.pending(tmp_path)) == 1
     assert any("PERINGATAN" in l for l in lines)
-    assert list((tmp_path / "snapshots").rglob("*.dump"))                    # berkas dipertahankan
+    assert list((tmp_path / "snapshots").rglob("*.dump"))                    # files are retained
 
 
-def test_guard_idempoten_bila_rollback_bawaan_sudah_memulihkan(tmp_path):
-    """Modul di dalam guard memanggil mod_rollback -> entri snapshot dipulihkan lebih dulu dan dump
-    dihapus; __exit__ tidak boleh memulihkan lagi (sebelumnya: FileNotFoundError)."""
+def test_guard_is_idempotent_when_builtin_rollback_already_restored(tmp_path):
+    """A module inside the guard calls mod_rollback, so the snapshot entry is restored first and the
+    dump deleted; __exit__ must not restore again (it used to raise FileNotFoundError)."""
     runner = FakeRunner()
     g, lines = _guard(tmp_path, runner)
     with g:
         entry = RB.pending(tmp_path)[0]
-        ok, _ = SN.restore_entry(entry, runner)                # meniru mod_rollback di dalam scan
+        ok, _ = SN.restore_entry(entry, runner)                # simulates mod_rollback running inside the scan
         assert ok
         data = RB.load(tmp_path)
         for e in data:
-            e["done"] = True                                   # replay menandai selesai
+            e["done"] = True                                   # replay marks it done
         RB._write(tmp_path, data)
         restores_before = sum("pg_restore" in " ".join(c[0]) for c in runner.calls)
     restores_after = sum("pg_restore" in " ".join(c[0]) for c in runner.calls)
-    assert restores_after == restores_before                  # tidak ada restore kedua
+    assert restores_after == restores_before                  # no second restore
     assert g.ok is True and g.results == []
     assert any("sudah dipulihkan" in l for l in lines)
 
 
-def test_guard_tanpa_konfigurasi_tidak_melakukan_apa_apa(tmp_path):
+def test_guard_without_config_does_nothing(tmp_path):
     runner = FakeRunner()
     with SN.Guard(None, tmp_path, "x", runner=runner) as g:
         pass
     assert runner.calls == [] and g.ok is True and RB.pending(tmp_path) == []
 
 
-def test_restore_entry_dari_jurnal_untuk_audit_rollback(tmp_path):
+def test_restore_entry_from_journal_for_audit_rollback(tmp_path):
     g, _ = _guard(tmp_path, FakeRunner(fail_restore="orders"))
     with g:
         pass
     entry = RB.pending(tmp_path)[0]
-    ok, note = SN.restore_entry(entry, FakeRunner())                         # pemulihan ulang berhasil
+    ok, note = SN.restore_entry(entry, FakeRunner())                         # the retried restore succeeds
     assert ok and "postgres auth: dipulihkan" in note
     assert not list((tmp_path / "snapshots").rglob("*.dump"))
     assert SN.restore_entry({"action": {"snapshot_manifest": str(tmp_path / "x.json")}},
                             FakeRunner())[0] is False
 
 
-# ── integrasi mod_zap ───────────────────────────────────────────────────────
-def test_zap_scan_opts_exclude_dan_menit():
+# mod_zap integration
+def test_zap_scan_opts_exclude_and_minutes():
     o = AU.zap_scan_opts({"zap_exclude": [".*/logout.*", ".*/delete.*"], "zap_spider_minutes": 3,
                           "zap_timeout_minutes": 20})
     assert o[:4] == ["-m", "3", "-T", "20"] and o[4] == "-z"
@@ -188,23 +188,23 @@ def test_zap_scan_cmd():
     assert AU.zap_scan_cmd({"openapi": "http://t/o.json"}, "api")[:2] == ["zap-api-scan.py", "-t"]
 
 
-def test_mod_zap_full_dibungkus_snapshot(monkeypatch, tmp_path):
+def test_mod_zap_full_is_wrapped_in_snapshot(monkeypatch, tmp_path):
     order = []
     monkeypatch.setattr(AU, "have_docker", lambda: True)
     monkeypatch.setattr(AU, "reports_dir", lambda: tmp_path)
     monkeypatch.setattr(AU, "run", lambda cmd: order.append("zap") or 0)
     runner = FakeRunner()
-    import _snapshot as real                       # modul yang sama dengan yang dipakai audit.mod_zap
+    import _snapshot as real                       # the same module audit.mod_zap uses
     real_guard = real.Guard
     monkeypatch.setattr(real, "Guard",
                         lambda cfg, rd, label, **k: real_guard(cfg, rd, label, runner=runner,
                                                                echo=lambda s: order.append("g")))
     rc = AU.mod_zap({"base_url": "http://t", "snapshot": PG}, "full")
     assert rc == 0 and order.count("zap") == 1
-    assert any("pg_restore" in " ".join(c[0]) for c in runner.calls)         # restore dijalankan
+    assert any("pg_restore" in " ".join(c[0]) for c in runner.calls)         # restore ran
 
 
-def test_mod_zap_full_dibatalkan_bila_backup_gagal(monkeypatch, tmp_path):
+def test_mod_zap_full_aborted_when_backup_fails(monkeypatch, tmp_path):
     ran = []
     monkeypatch.setattr(AU, "have_docker", lambda: True)
     monkeypatch.setattr(AU, "reports_dir", lambda: tmp_path)
@@ -216,10 +216,10 @@ def test_mod_zap_full_dibatalkan_bila_backup_gagal(monkeypatch, tmp_path):
                         lambda cfg, rd, label, **k: real_guard(cfg, rd, label, runner=runner,
                                                                echo=lambda s: None))
     assert AU.mod_zap({"base_url": "http://t", "snapshot": PG}, "full") == 2
-    assert ran == []                                                         # ZAP tidak dijalankan
+    assert ran == []                                                         # ZAP did not run
 
 
-def test_mod_zap_baseline_tanpa_snapshot(monkeypatch):
+def test_mod_zap_baseline_without_snapshot(monkeypatch):
     ran = []
     monkeypatch.setattr(AU, "have_docker", lambda: True)
     monkeypatch.setattr(AU, "run", lambda cmd: ran.append(cmd) or 0)

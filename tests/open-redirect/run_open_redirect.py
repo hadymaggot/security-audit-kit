@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Deteksi open redirect (non-destruktif, hanya GET tanpa mengikuti redirect).
+"""Detect open redirects (non-destructive, GET only, redirects not followed).
 
-Buat tiap path x nama parameter pengalih, kirim GET dengan nilai parameter = tujuan
-eksternal uji, lalu baca header Location TANPA mengikutinya. Ditandai kalau Location
-mengarah ke host luar (termasuk bentuk protocol-relative //host).
+For each path x redirect parameter name, sends a GET with the parameter set to an
+external test target, then reads the Location header WITHOUT following it. Flagged
+when Location points to an external host (including protocol-relative //host).
 
-Konfigurasi di open_redirect.yml. Pakai:
+Configured in open_redirect.yml. Usage:
     python run_open_redirect.py --config open_redirect.yml [--json out.json]
 """
 from __future__ import annotations
@@ -21,7 +21,7 @@ import requests
 import yaml
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import _color as C  # noqa: E402  (warna ANSI konsol lintas-modul di tests/)
+import _color as C  # noqa: E402  (shared console ANSI colors in tests/)
 
 ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 
@@ -37,7 +37,7 @@ def expand(v):
 
 
 def is_external(location, evil_host):
-    """True kalau Location mengarah ke host luar uji (absolut atau protocol-relative)."""
+    """True if Location points to the external test host (absolute or protocol-relative)."""
     if not location:
         return False
     loc = location.strip()
@@ -63,7 +63,7 @@ def main():
     params = cfg.get("params") or ["next", "url", "redirect", "return", "returnUrl",
                                     "continue", "dest", "r"]
     paths = cfg.get("paths") or ["/"]
-    # Payload: URL absolut + bentuk protocol-relative.
+    # Payloads: absolute URL + protocol-relative form.
     payloads = [evil, f"//{evil_host}"]
 
     s = requests.Session()
@@ -89,7 +89,7 @@ def main():
                                     "status": r.status_code, "ok": False,
                                     "note": f"Location -> {loc} (host luar)",
                                     "url": f"GET {url}"})
-                # Kalau tak redirect ke host luar: aman, tak dicatat sebagai temuan.
+                # No redirect to an external host: safe, not recorded.
 
     failures = sum(1 for r in results if not r["ok"])
     if not results:

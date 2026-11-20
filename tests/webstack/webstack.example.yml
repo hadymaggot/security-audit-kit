@@ -1,25 +1,25 @@
-# Salin ke webstack.yml. Non-destruktif: hanya membaca banner Server/X-Powered-By
-# dan menegosiasi HTTP/2 (ALPN). Tidak mengirim payload exploit.
+# Copy to webstack.yml. Non-destructive: only reads the Server/X-Powered-By banners
+# and negotiates HTTP/2 (ALPN). Sends no exploit payloads.
 base_url: "${TARGET_BASE_URL}"
 
-# Host/port tambahan yang diperiksa langsung (opsional), mis. port service di balik gateway.
+# Extra hosts/ports to check directly (optional), e.g. service ports behind the gateway.
 extra_targets: []
 #   - "http://localhost:8080"
 
-# Autentikasi opsional (umumnya tidak diperlukan untuk membaca banner).
+# Optional authentication (usually not needed to read banners).
 # auth: { header: "Authorization", value: "${TOKEN}" }
 
-# Daftar versi rentan. 'server' dicocokkan sebagai substring (case-insensitive) pada
-# banner 'Server' maupun 'X-Powered-By'. Versi dianggap rentan bila berada pada rentang
-# min_version..<max_version (min opsional; untuk backport multi-branch buat beberapa entri).
-# Perbarui dari advisory vendor saat ada CVE baru.
+# Vulnerable version list. 'server' is matched as a case-insensitive substring against both the
+# 'Server' and 'X-Powered-By' banners. A version is vulnerable if it falls in the range
+# min_version..<max_version (min is optional; for multi-branch backports add several entries).
+# Update from vendor advisories when new CVEs appear.
 known_vulnerable:
   - server: "apache"
-    max_version: "2.4.71"          # perbaikan mod_http2
+    max_version: "2.4.71"          # mod_http2 fix
     cve: "CVE-2026-119618"
     note: "Apache mod_http2 unauthenticated RCE (aktif dieksploitasi 2026)"
-  # NGINX HTTP/2 (Black October 2026, CVSS 9.2) — stable line; untuk mainline 1.31.x,
-  # ganti max_version ke 1.31.9.
+  # NGINX HTTP/2 (Black October 2026, CVSS 9.2), stable line; for mainline 1.31.x,
+  # change max_version to 1.31.9.
   - server: "nginx"
     min_version: "1.9.5"
     max_version: "1.30.7"
@@ -30,8 +30,8 @@ known_vulnerable:
     max_version: "1.30.7"
     cve: "CVE-2026-123633"
     note: "NGINX HTTP/2 use-after-free RCE"
-  # PHP2Shell (CVE-2026-109618/109619) — terdeteksi via X-Powered-By: PHP/x.y.z.
-  # Backport per-branch: entri terpisah agar versi yang sudah di-patch tidak false positive.
+  # PHP2Shell (CVE-2026-109618/109619), detected via X-Powered-By: PHP/x.y.z.
+  # Per-branch backports: separate entries so already-patched versions are not false positives.
   - server: "php"
     min_version: "8.5.0"
     max_version: "8.5.12"

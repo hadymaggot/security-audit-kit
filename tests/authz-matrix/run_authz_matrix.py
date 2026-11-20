@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Regresi kontrol akses berbasis role.
+"""Role-based access control regression test.
 
-Membaca authz_matrix.yml, login sebagai tiap role, memukul tiap endpoint, lalu
-membandingkan status sebenarnya dengan harapan (allow/deny). Keluar dengan kode != 0
-bila ada ketidakcocokan — jadi bisa jadi gerbang CI.
+Reads authz_matrix.yml, logs in as each role, hits each endpoint, and compares the
+actual status with the expectation (allow/deny). Exits non-zero on any mismatch, so
+it can gate CI.
 
-Prinsipnya defensif: yang dicek terutama bahwa yang SEHARUSNYA DITOLAK memang ditolak.
-Tidak meng-eksploitasi apa pun; hanya mengirim request biasa dan membaca kode status.
+Defensive: mainly checks that what SHOULD BE DENIED is denied. Nothing is exploited;
+it only sends plain requests and reads status codes.
 
-Pakai:
+Usage:
     python run_authz_matrix.py --config authz_matrix.yml [--json hasil.json]
 """
 from __future__ import annotations
@@ -24,15 +24,15 @@ import requests
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import _sanctum  # noqa: E402  (helper auth Sanctum lintas-modul di tests/)
-import _screenshot  # noqa: E402  (helper screenshot bukti lintas-modul di tests/)
-import _color as C  # noqa: E402  (warna ANSI konsol lintas-modul di tests/)
+import _sanctum  # noqa: E402  (shared Sanctum auth helper in tests/)
+import _screenshot  # noqa: E402  (shared evidence screenshot helper in tests/)
+import _color as C  # noqa: E402  (shared console ANSI colors in tests/)
 
 ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 
 
 def expand(value):
-    """Ganti ${VAR} dengan environment variable, rekursif untuk dict/list."""
+    """Replace ${VAR} with the environment variable, recursing into dicts/lists."""
     if isinstance(value, str):
         return ENV_RE.sub(lambda m: os.environ.get(m.group(1), ""), value)
     if isinstance(value, dict):
@@ -43,7 +43,7 @@ def expand(value):
 
 
 def dig(obj, dotted):
-    """Ambil nilai bersarang via 'a.b.c'."""
+    """Get a nested value via 'a.b.c'."""
     for part in dotted.split("."):
         if isinstance(obj, dict):
             obj = obj.get(part)
@@ -53,7 +53,7 @@ def dig(obj, dotted):
 
 
 class Session:
-    """Kredensial satu role: menyimpan cookie (termasuk sesi Sanctum) atau bearer token."""
+    """Credentials for one role: cookies (incl. Sanctum session) or a bearer token."""
 
     def __init__(self, role, auth_cfg, base_url, sanctum=None):
         self.role = role
@@ -61,7 +61,7 @@ class Session:
         self.sess = requests.Session()
         self.bearer = None
         self.anonymous = bool(auth_cfg.get("anonymous"))
-        # Blok 'sanctum' (opsional) untuk mode session_cookie: {enabled, origin, csrf_path}.
+        # Optional 'sanctum' block for session_cookie mode: {enabled, origin, csrf_path}.
         self.sanctum = sanctum if (sanctum and sanctum.get("enabled")) else None
 
     def _sanctum_headers(self):
@@ -70,7 +70,7 @@ class Session:
     def login(self, login_cfg, creds, mode):
         if self.anonymous:
             return
-        # Sanctum SPA: ambil cookie CSRF + sesi dulu, bawa Origin yang stateful.
+        # Sanctum SPA: fetch the CSRF + session cookies first, send a stateful Origin.
         if self.sanctum:
             _sanctum.prime_csrf(self.sess, self.base_url, self.sanctum)
         body = {}
@@ -91,23 +91,23 @@ class Session:
             self.bearer = token
 
     def request(self, method, path, body=None, extra_headers=None, base_url=None):
-        # Header stateful + X-XSRF-TOKEN dulu, lalu header uji (mis. X-Auth-* palsu)
-        # menimpanya bila bentrok — supaya uji header palsu tetap apa adanya.
+        # Stateful + X-XSRF-TOKEN headers first; test headers (e.g. forged X-Auth-*)
+        # override them on conflict so the forged-header test is sent as-is.
         headers = self._sanctum_headers()
         headers.update(extra_headers or {})
         if self.bearer:
             headers["Authorization"] = f"Bearer {self.bearer}"
-        # base_url per endpoint: mis. port service langsung untuk uji bypass gateway.
+        # Per-endpoint base_url, e.g. the service port directly to test gateway bypass.
         url = (base_url or self.base_url).rstrip("/") + path
         return self.sess.request(method, url, json=body, headers=headers,
                                  timeout=20, allow_redirects=False)
 
 
 def forged_blocks(fh):
-    """Normalisasi 'forged_headers' jadi list blok aktif.
+    """Normalize 'forged_headers' into a list of active blocks.
 
-    Dict tunggal (format lama) aktif hanya bila enabled: true; tiap item list
-    aktif kecuali ditulis enabled: false.
+    A single dict (legacy format) is active only with enabled: true; each list
+    item is active unless it sets enabled: false.
     """
     if isinstance(fh, list):
         return [b for b in fh if b.get("enabled", True) and b.get("as_role")]
@@ -116,7 +116,7 @@ def forged_blocks(fh):
 
 
 def classify(expected, status):
-    """Kembalikan (ok, catatan) untuk satu harapan vs status nyata."""
+    """Return (ok, note) for one expectation vs the actual status."""
     allow_ok = 200 <= status < 400
     deny_ok = status in (401, 403)
     if expected == "allow":
@@ -133,7 +133,7 @@ def classify(expected, status):
 
 
 def _evidence_shot(shot_cfg, reports_dir, sess_obj, method, full_url, extra_headers, tag):
-    """Tangkap bukti screenshot halaman yang tembus (gated + graceful). Return path / ''."""
+    """Capture a screenshot of a page that got through (gated, fails gracefully). Returns path or ''."""
     if not (shot_cfg.get("enabled") and reports_dir and (method or "GET").upper() == "GET"):
         return ""
     headers = dict(extra_headers or {})
@@ -158,13 +158,13 @@ def main():
     base_url = cfg["base_url"]
     auth = cfg["auth"]
     mode = auth.get("mode", "bearer")
-    sanctum = auth.get("sanctum")  # opsional; dipakai saat mode session_cookie
-    # Bukti screenshot (opsional, default off): tangkap halaman yang TEMBUS oleh role tak
-    # berwenang via Chromium headless. Graceful bila Playwright/Chromium tak terpasang.
+    sanctum = auth.get("sanctum")  # optional; used in session_cookie mode
+    # Optional screenshot evidence (off by default): capture pages an unauthorized role
+    # GOT THROUGH via headless Chromium. No-op if Playwright/Chromium is missing.
     shot_cfg = cfg.get("screenshot") or {}
     reports_dir = str(Path(args.json).resolve().parent) if args.json else None
 
-    # Login semua role lebih dulu.
+    # Log in all roles first.
     sessions = {}
     for role, creds in auth["roles"].items():
         s = Session(role, creds, base_url, sanctum=sanctum)
@@ -206,8 +206,8 @@ def main():
                 "url": f"{ep.get('method', 'GET')} {full}", "screenshot": shot,
             })
 
-    # Uji header palsu. Satu blok atau daftar blok — mis. lewat gateway sebagai role
-    # rendah, dan langsung ke port service sebagai anon (bypass gateway).
+    # Forged-header test. One block or a list, e.g. via the gateway as a low role and
+    # straight to the service port as anon (gateway bypass).
     for fh in forged_blocks(cfg.get("forged_headers")):
         s = sessions.get(fh["as_role"])
         for ep in fh.get("endpoints", []):
@@ -218,7 +218,7 @@ def main():
                 status = resp.status_code
             except Exception as exc:  # noqa: BLE001
                 status = -1
-            # Header palsu harus TIDAK menaikkan hak akses → tetap ditolak.
+            # Forged headers must NOT raise privileges, so the request must stay denied.
             ok = status in (401, 403)
             if not ok:
                 failures += 1
@@ -236,7 +236,7 @@ def main():
                 "url": f"{ep.get('method', 'GET')} {full}  (inject: {inj})", "screenshot": shot,
             })
 
-    # Laporan.
+    # Report.
     width = max((len(r["endpoint"]) for r in results), default=20)
     print(f"\n{'ENDPOINT':<{width}}  {'ROLE':<12} {'EXP':<6} {'HTTP':>5}  RESULT")
     print("-" * (width + 40))

@@ -1,40 +1,40 @@
-# Salin ke upload_safety.yml. Kredensial dari env var.
+# Copy to upload_safety.yml. Credentials come from env vars.
 #
-# Langkah dapat kredensial uji:
-#   - Bearer/JWT: login sekali sebagai akun uji, ambil token dari respons, lalu
+# How to get test credentials:
+#   - Bearer/JWT: log in once as a test account, take the token from the response, then
 #       export UPLOAD_TOKEN="Bearer <token>"
-#     mis. curl -s -X POST "$TARGET_BASE_URL/api/login" -H 'Content-Type: application/json' \
+#     e.g. curl -s -X POST "$TARGET_BASE_URL/api/login" -H 'Content-Type: application/json' \
 #            -d '{"email":"...","password":"..."}' | jq -r .token
-#   - Laravel Sanctum (SPA, cookie sesi): tak perlu token manual — isi
+#   - Laravel Sanctum (SPA, session cookie): no manual token needed; set
 #       export UPLOAD_USER=... UPLOAD_PASS=...
-#     dan aktifkan Pilihan B; runner ambil cookie CSRF lalu login sendiri.
-#   Gunakan akun peran terendah yang memang boleh upload, ke objek MILIKNYA sendiri.
+#     and enable Option B; the runner fetches the CSRF cookie and logs in itself.
+#   Use the lowest-privilege account that may upload, to an object it OWNS.
 base_url: "${TARGET_BASE_URL}"
 auth:
-  # Pilihan A — token statis (Bearer/JWT atau header kustom):
+  # Option A: static token (Bearer/JWT or a custom header):
   header: "Authorization"
-  value: "${UPLOAD_TOKEN}"        # mis. "Bearer xxx"
-  # Pilihan B — Laravel Sanctum (SPA, session cookie). Hapus header/value di atas,
-  # lalu aktifkan blok ini. Runner ambil cookie CSRF, login, dan bawa X-XSRF-TOKEN.
+  value: "${UPLOAD_TOKEN}"        # e.g. "Bearer xxx"
+  # Option B: Laravel Sanctum (SPA, session cookie). Remove header/value above, then enable
+  # this block. The runner fetches the CSRF cookie, logs in, and sends X-XSRF-TOKEN.
   # sanctum:
   #   enabled: true
   #   csrf_path: "/sanctum/csrf-cookie"
-  #   origin: "${TARGET_BASE_URL}"   # wajib cocok SANCTUM_STATEFUL_DOMAINS
+  #   origin: "${TARGET_BASE_URL}"   # must match SANCTUM_STATEFUL_DOMAINS
   # login:
   #   method: POST
   #   path: "/api/login"
   #   body: { email: "${UPLOAD_USER}", password: "${UPLOAD_PASS}" }
 endpoint:
   method: POST
-  path: "/api/upload"             # mis. "/api/reports/<id-milik-sendiri>/attachments"
-  field: "file"                   # nama field multipart
-  # data: { type: "lainnya" }     # field form tambahan yang diwajibkan endpoint
-allow_only: [".pdf"]              # ekstensi sah menurut aplikasi
-max_bytes: 2097152                # 2 MB; berkas lebih besar harus ditolak
+  path: "/api/upload"             # e.g. "/api/reports/<own-id>/attachments"
+  field: "file"                   # multipart field name
+  # data: { type: "lainnya" }     # extra form fields the endpoint requires
+allow_only: [".pdf"]              # extensions the app considers valid
+max_bytes: 2097152                # 2 MB; larger files must be rejected
 
-# Opsional, sangat disarankan ke target bersama: berkas uji yang DITERIMA (termasuk
-# kontrol PDF sah & temuan) langsung dihapus. {id} diambil dari respons upload.
+# Optional, strongly recommended on shared targets: accepted test files (including the valid
+# PDF control and findings) are deleted right away. {id} is taken from the upload response.
 # cleanup:
 #   method: DELETE
-#   path: "/api/reports/<id-milik-sendiri>/attachments/{id}"
-#   id_field: "id"                # dotted, mis. "data.id"
+#   path: "/api/reports/<own-id>/attachments/{id}"
+#   id_field: "id"                # dotted, e.g. "data.id"

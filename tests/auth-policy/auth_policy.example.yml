@@ -1,24 +1,24 @@
-# Salin ke auth_policy.yml. Non-destruktif — tidak brute-force, tak menyimpan apa pun
-# bila template disusun agar request gagal di field LAIN (lihat password_checks).
+# Copy to auth_policy.yml. Non-destructive: no brute force, and nothing is saved
+# if the template makes the request fail on ANOTHER field (see password_checks).
 base_url: "${TARGET_BASE_URL}"
 
-# Opsional — untuk stack Laravel Sanctum, endpoint register sering menolak tanpa
-# CSRF + Origin stateful. Aktifkan agar runner mengirim X-XSRF-TOKEN + Origin.
+# Optional. On Laravel Sanctum the register endpoint often rejects requests without
+# CSRF + a stateful Origin. Enable to send X-XSRF-TOKEN + Origin.
 # sanctum:
 #   enabled: true
 #   csrf_path: "/sanctum/csrf-cookie"
-#   origin: "${TARGET_BASE_URL}"     # wajib cocok SANCTUM_STATEFUL_DOMAINS
+#   origin: "${TARGET_BASE_URL}"     # must match SANCTUM_STATEFUL_DOMAINS
 
-# Opsional — sesi login untuk uji yang butuh autentikasi (mis. ganti sandi).
-#   export POLICY_USER=... POLICY_PASS=...   (akun uji, bukan akun admin produksi)
+# Optional login session for authenticated checks (e.g. change password).
+#   export POLICY_USER=... POLICY_PASS=...   (test account, not a production admin)
 # login:
 #   method: POST
 #   path: "/api/login"
 #   body: { email: "${POLICY_USER}", password: "${POLICY_PASS}" }
 
-# Uji penolakan sandi lemah saat registrasi (opsional — hapus blok bila tak ada endpoint).
-# Agar sandi kuat (kontrol) pun tak membuat akun, sengaja hilangkan satu field wajib
-# lain (mis. persetujuan privasi) dari template.
+# Weak password rejected at signup (optional; remove the block if there is no endpoint).
+# So that even the strong-password control creates no account, deliberately omit one
+# other required field (e.g. privacy consent) from the template.
 register:
   path: "/api/auth/register"
   template:
@@ -27,8 +27,8 @@ register:
   password_field: "password"
   # confirm_field: "password_confirmation"
 
-# Uji tambahan (opsional). Ganti sandi: kirim current_password yang SALAH supaya
-# tak ada yang berubah — sandi lemah harus gagal di field sandi, bukan current_password.
+# Extra checks (optional). Change password: send a WRONG current_password so nothing
+# changes; a weak password must fail on the password field, not current_password.
 # password_checks:
 #   - name: "ganti sandi"
 #     path: "/api/auth/change-password"
@@ -37,16 +37,16 @@ register:
 #     password_field: "password"
 #     confirm_field: "password_confirmation"
 
-# Captcha harus berganti tiap kali diterbitkan (opsional).
+# Captcha must change on every issue (optional).
 captcha:
   issue_path: "/api/captcha"
   token_field: "data.id"
 
-# Sertakan sandi yang lolos aturan kompleksitas tapi dikenal bocor (uji HIBP).
+# Include passwords that pass complexity rules but are known leaked (HIBP check).
 weak_passwords: ["12345678", "password", "aaaaaaaa", "qwerty12", "11111111", "Password123!"]
 
-# Kontrol positif: sandi kuat tak boleh kena error di field sandi.
+# Positive control: a strong password must not get an error on the password field.
 # strong_password: "${POLICY_STRONG}"
 
-# Jeda antar request (detik) agar tak kena rate limit; 429 dicatat sebagai skip.
+# Pause between requests (seconds) to avoid rate limits; 429 is recorded as skip.
 # delay_seconds: 20

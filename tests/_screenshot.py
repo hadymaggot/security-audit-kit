@@ -1,16 +1,16 @@
-"""Helper screenshot bukti reusable lintas-modul (Playwright/Chromium).
+"""Reusable cross-module evidence screenshot helper (Playwright/Chromium).
 
-Dua entry point:
-  capture_page(page, ...) — tangkap dari page Playwright yang sudah terbuka
-                            (dipakai modul yang memang menjalankan browser, mis. client-leak).
-  capture_url(url, ...)   — luncurkan Chromium headless, buka url (opsional headers/cookies),
-                            lalu tangkap (dipakai modul berbasis requests, mis. authz).
+Two entry points:
+  capture_page(page, ...) — capture from an already open Playwright page
+                            (used by modules that run a browser anyway, e.g. client-leak).
+  capture_url(url, ...)   — launch headless Chromium, open url (optional headers/cookies),
+                            then capture (used by requests-based modules, e.g. authz).
 
-Keduanya GRACEFUL: mengembalikan "" bila Playwright/Chromium tidak terpasang atau gagal,
-sehingga modul tetap jalan tanpa screenshot. Path yang dikembalikan relatif terhadap
-reports_dir (mis. "evidence/authz_admin_users.png") agar langsung bisa disematkan di laporan.
+Both are GRACEFUL: they return "" if Playwright/Chromium is not installed or fails, so the
+module still runs without a screenshot. The returned path is relative to reports_dir
+(e.g. "evidence/authz_admin_users.png") so it can be embedded in the report directly.
 
-Opsional: butuh `pip install playwright` + `python -m playwright install chromium`.
+Optional: needs `pip install playwright` + `python -m playwright install chromium`.
 """
 from __future__ import annotations
 
@@ -25,18 +25,18 @@ def _slug(name, prefix):
 
 def capture_page(page, reports_dir, name, prefix="shot",
                  selector=None, clip=None, full_page=False):
-    """Tangkap dari page Playwright yang sudah terbuka. Return path relatif / ''."""
+    """Capture from an already open Playwright page. Returns a relative path or ''."""
     if not reports_dir:
         return ""
     try:
         ssdir = Path(reports_dir) / "evidence"
         ssdir.mkdir(parents=True, exist_ok=True)
         fpath = ssdir / _slug(name, prefix)
-        if selector:                                   # crop ke elemen tertentu
+        if selector:                                   # crop to a specific element
             page.locator(selector).first.screenshot(path=str(fpath))
-        elif clip:                                     # crop ke region x/y/width/height
+        elif clip:                                     # crop to an x/y/width/height region
             page.screenshot(path=str(fpath), clip=clip)
-        else:                                          # viewport (default) atau full_page
+        else:                                          # viewport (default) or full_page
             page.screenshot(path=str(fpath), full_page=bool(full_page))
         return "evidence/" + fpath.name
     except Exception:  # noqa: BLE001
@@ -45,12 +45,12 @@ def capture_page(page, reports_dir, name, prefix="shot",
 
 def capture_url(url, reports_dir, name, prefix="shot", headers=None, cookies=None,
                 full_page=False, timeout=20000, _pw=None):
-    """Luncurkan Chromium headless, buka url (opsional headers/cookies auth), tangkap.
+    """Launch headless Chromium, open url (optional auth headers/cookies) and capture.
 
-    headers: dict header tambahan (mis. {"Authorization": "Bearer ..."}).
-    cookies: list cookie Playwright (mis. hasil _cookies_from_requests()).
-    _pw    : untuk test — inject pengganti sync_playwright.
-    Return path relatif terhadap reports_dir, atau '' (graceful)."""
+    headers: dict of extra headers (e.g. {"Authorization": "Bearer ..."}).
+    cookies: list of Playwright cookies (e.g. the result of _cookies_from_requests()).
+    _pw    : for tests, injects a replacement for sync_playwright.
+    Returns a path relative to reports_dir, or '' (graceful)."""
     if not reports_dir or not url:
         return ""
     pwf = _pw
@@ -77,7 +77,7 @@ def capture_url(url, reports_dir, name, prefix="shot", headers=None, cookies=Non
 
 
 def cookies_from_requests(sess, url):
-    """Ubah cookie dari requests.Session jadi format cookie Playwright (best-effort)."""
+    """Convert requests.Session cookies to the Playwright cookie format (best-effort)."""
     try:
         from urllib.parse import urlparse
         host = urlparse(url).hostname or ""

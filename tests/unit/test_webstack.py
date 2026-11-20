@@ -1,4 +1,4 @@
-"""Unit test runner webstack — tanpa jaringan."""
+"""Unit tests for the webstack runner. No network."""
 import importlib.util
 import json
 import sys
@@ -48,7 +48,7 @@ def _check(headers, http2=None, known=None):
                            http2_probe=lambda u: http2)
 
 
-# known_vulnerable PHP multi-branch (backport) — dua entri, CVE sama.
+# known_vulnerable PHP multi-branch (backport): two entries, same CVE.
 PHP_KNOWN = [
     {"server": "php", "min_version": "8.4.0", "max_version": "8.4.27",
      "cve": "CVE-2026-109618", "note": "PHP2Shell"},
@@ -69,29 +69,29 @@ def test_x_powered_by_php_in_range_flagged():
 
 
 def test_php_patched_version_not_flagged():
-    res = _check({"X-Powered-By": "PHP/8.3.36"}, known=PHP_KNOWN)   # tepat versi perbaikan
+    res = _check({"X-Powered-By": "PHP/8.3.36"}, known=PHP_KNOWN)   # exactly the fixed version
     assert _vuln(res) == []
 
 
 def test_php_other_branch_not_false_positive():
-    # 8.5.x tak masuk rentang 8.3/8.4 → tak ditandai oleh entri itu.
+    # 8.5.x is outside the 8.3/8.4 ranges, so those entries do not flag it.
     res = _check({"X-Powered-By": "PHP/8.5.1"}, known=PHP_KNOWN)
     assert _vuln(res) == []
 
 
 def test_php_multibranch_dedup_one_finding():
-    # Versi 8.3.20 cocok entri 8.3; CVE sama dengan entri 8.4 → tetap satu temuan.
+    # 8.3.20 matches the 8.3 entry; same CVE as the 8.4 entry, so still one finding.
     res = _check({"X-Powered-By": "PHP/8.3.20"}, known=PHP_KNOWN)
     assert len(_vuln(res)) == 1
 
 
-# --- helper versi ---
+# version helpers
 
 def test_ver_tuple_and_less_than():
     assert WS.ver_tuple("2.4.70") == (2, 4, 70)
     assert WS.less_than("2.4.70", "2.4.71") is True
     assert WS.less_than("2.4.71", "2.4.71") is False
-    assert WS.less_than("1.31.0", "1.30.7") is False      # panjang beda, >= tetap benar
+    assert WS.less_than("1.31.0", "1.30.7") is False      # different lengths, >= still correct
 
 
 def test_parse_banner():
@@ -100,14 +100,14 @@ def test_parse_banner():
     assert WS.parse_banner("") == ("", "")
 
 
-# --- deteksi ---
+# detection
 
 def test_flags_known_vulnerable_version():
     res = _check({"Server": "Apache/2.4.70"})
     vuln = [r for r in res if r["check"].startswith("Versi rentan")]
     assert len(vuln) == 1
     assert vuln[0]["ok"] is False and vuln[0]["cve"] == ["CVE-2026-119618"]
-    # Version disclosure juga jadi temuan (banner memuat versi).
+    # Version disclosure is also a finding (the banner contains the version).
     disc = [r for r in res if r["check"].startswith("Version disclosure")][0]
     assert disc["ok"] is False and "2.4.70" in disc["note"]
 
@@ -115,12 +115,12 @@ def test_flags_known_vulnerable_version():
 def test_patched_version_not_flagged():
     res = _check({"Server": "Apache/2.4.71"})
     assert not [r for r in res if r["check"].startswith("Versi rentan")]
-    # Masih version-disclosure (banner tetap bocor versi), tapi bukan server-vuln.
+    # Still version disclosure (the banner leaks the version), but not a vulnerable server.
     assert any(r["check"].startswith("Version disclosure") and not r["ok"] for r in res)
 
 
 def test_no_version_not_claimed_vulnerable():
-    # Banner tanpa versi (ServerTokens Prod) → tak ada klaim rentan, tak ada disclosure.
+    # A banner without a version (ServerTokens Prod) makes no vulnerability claim and no disclosure.
     res = _check({"Server": "Apache"})
     assert not [r for r in res if r["check"].startswith("Versi rentan")]
     disc = [r for r in res if r["check"].startswith("Version disclosure")][0]
@@ -150,7 +150,7 @@ def test_request_error_is_skip():
     assert len(res) == 1 and res[0]["ok"] is True and res[0]["note"].startswith("skip")
 
 
-# --- main() end-to-end ---
+# main() end-to-end
 
 def test_main_writes_json_and_rc(tmp_path, monkeypatch):
     cfg = {"base_url": "http://t", "known_vulnerable": KNOWN}

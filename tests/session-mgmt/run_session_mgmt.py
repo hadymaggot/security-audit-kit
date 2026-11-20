@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""Uji manajemen sesi (regresi defensif) pada AKUN UJI sekali pakai.
+"""Session management tests (defensive regression) on a DISPOSABLE test account.
 
-Memeriksa apakah siklus hidup sesi dicabut dengan benar di sisi server:
-  1. LOGOUT     : cookie sesi yang disalin sebelum logout tidak boleh berlaku lagi sesudahnya
-                  (replay cookie lama harus ditolak).
-  2. GANTI SANDI: setelah sandi diganti dari satu sesi, sesi LAIN milik akun yang sama harus
-                  dicabut (agar sesi yang mungkin dicuri tak bertahan), dan sandi LAMA tidak
-                  boleh lagi diterima.
-Semua uji memakai akun uji sekali pakai (dibuat lalu dihapus lewat fixture admin); akun nyata
-tidak tersentuh.
+Checks that sessions are properly revoked server-side:
+  1. LOGOUT          : a session cookie copied before logout must not work afterwards
+                       (replaying the old cookie must be rejected).
+  2. PASSWORD CHANGE : after the password is changed from one session, OTHER sessions of the
+                       same account must be revoked (so a possibly stolen session does not
+                       survive), and the OLD password must no longer be accepted.
+All tests use a disposable account (created and deleted via the admin fixture); real accounts
+are untouched.
 
-Konfigurasi di session_mgmt.yml. Pakai:
+Config in session_mgmt.yml. Usage:
     python run_session_mgmt.py --config session_mgmt.yml [--json out.json]
 """
 from __future__ import annotations
@@ -29,7 +29,7 @@ import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import _fixture  # noqa: E402
 import _sanctum  # noqa: E402
-import _color as C  # noqa: E402  (warna ANSI konsol lintas-modul di tests/)
+import _color as C  # noqa: E402  (shared ANSI console colors)
 
 ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 
@@ -48,7 +48,7 @@ def is_valid(status):
     return status is not None and 200 <= status < 300
 
 
-# ── evaluator murni ─────────────────────────────────────────────────────────
+# ── pure evaluators ─────────────────────────────────────────────────────────
 def row_logout(replay_status, url):
     ok = not is_valid(replay_status)
     return {"check": "logout: session dicabut di server", "status": replay_status, "ok": ok,
@@ -82,16 +82,16 @@ def row_info(check, ok, note, url, kind="session-not-revoked", status=None):
 
 
 def cookie_snapshot(jar):
-    """nama->nilai dari cookie jar requests (iterasi objek Cookie) atau dict biasa."""
+    """Return name->value from a requests cookie jar (Cookie objects) or a plain dict."""
     try:
         return {c.name: c.value for c in jar}
     except AttributeError:
         return dict(jar)
 
 
-# ── bagian jaringan ─────────────────────────────────────────────────────────
+# ── network ─────────────────────────────────────────────────────────
 class Caller:
-    """Pembungkus request ter-autentikasi Sanctum (Origin/Referer + XSRF tiap request)."""
+    """Sanctum-authenticated request wrapper (Origin/Referer + XSRF on every request)."""
 
     def __init__(self, base, origin):
         self.base, self.origin = base, origin
@@ -119,7 +119,7 @@ def run_session_checks(acc, cfg, base, http=requests.Session, sleep=time.sleep):
         sleep(delay)
         return s, r.status_code
 
-    # sesi A (yang mengganti sandi), B (sesi "lain"), C (untuk uji logout)
+    # session A (changes the password), B (the "other" session), C (for the logout test)
     A, sa = login()
     B, sb = login()
     C, sc_ = login()
@@ -132,7 +132,7 @@ def run_session_checks(acc, cfg, base, http=requests.Session, sleep=time.sleep):
         return [row_info("session: akses profil akun uji", True,
                          f"skip: session akun uji tidak dapat membaca {me} (HTTP {pre}).", base)]
 
-    # 1) logout + replay cookie lama
+    # 1) logout, then replay the old cookie
     lo = sc.get("logout")
     if lo:
         snapshot = cookie_snapshot(C.cookies)
@@ -146,7 +146,7 @@ def run_session_checks(acc, cfg, base, http=requests.Session, sleep=time.sleep):
                              "skip: `session.logout` tidak dikonfigurasi.", base,
                              kind="logout-no-invalidate"))
 
-    # 2) ganti sandi dari sesi A; periksa sesi B dan sandi lama
+    # 2) change the password from session A; check session B and the old password
     cp = sc.get("change_password")
     if cp:
         st = call(A, cp.get("method", "POST"), cp["path"], acc.render(cp.get("body") or {}))

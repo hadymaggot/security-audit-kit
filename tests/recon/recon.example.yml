@@ -1,39 +1,39 @@
-# Konfigurasi modul recon — salin ke recon.yml lalu sesuaikan.
-# Jalankan: python audit.py recon            (pakai nilai di file ini)
-#      atau: python audit.py recon contoh.example -m owasp --active
+# Recon module config: copy to recon.yml and adjust.
+# Run: python audit.py recon            (uses the values in this file)
+#  or: python audit.py recon contoh.example -m owasp --active
 #
-# Hanya untuk target yang Anda miliki/berwenang uji.
+# Only for targets you own or are authorized to test.
 
-# Target domain/host. Boleh dikosongkan bila base_url diisi (diturunkan dari host-nya).
+# Target domain/host. May be left empty if base_url is set (the host is derived from it).
 target: "contoh.example"
 base_url: "https://contoh.example"
 
-# Kedalaman fase:
-#   osint : subfinder -> dnsx -> httpx                 (non-intrusif)
-#   infra : + naabu (port scan)                        (AKTIF, lihat gating)
-#   full  : + nuclei (vuln scan)                       (AKTIF, lihat gating)
+# Phase depth:
+#   osint : subfinder -> dnsx -> httpx                 (non-intrusive)
+#   infra : + naabu (port scan)                        (ACTIVE, see gating)
+#   full  : + nuclei (vuln scan)                       (ACTIVE, see gating)
 depth: "infra"
 
-# Mode nuclei (hanya relevan pada depth full):
+# Nuclei mode (only relevant at depth full):
 #   fast | stealth | full | owasp
 mode: "fast"
 
-# Gating fase intrusif. SEMUA default off — port scan/nuclei/crawl/fuzz tidak jalan
-# kecuali enabled:true DAN toggle tool-nya true (atau pakai flag --active di CLI).
+# Intrusive phase gating. ALL off by default: port scan/nuclei/crawl/fuzz do not run
+# unless enabled: true AND the tool's own toggle is true (or use --active on the CLI).
 active:
   enabled: false
   naabu: false     # port scan (infra/full)
   nuclei: false    # vuln scan (full)
-  katana: false    # crawl untuk memperluas URL sebelum nuclei (full)
-  ffuf: false      # content discovery/fuzzing path (full)
+  katana: false    # crawl to expand URLs before nuclei (full)
+  ffuf: false      # content discovery / path fuzzing (full)
 
-# Scan rahasia (trufflehog) atas source lokal. Pasif; hanya jalan bila diisi.
-code_path: ""              # mis. "." untuk repo saat ini
+# Secret scan (trufflehog) of local source. Passive; only runs when set.
+code_path: ""              # e.g. "." for the current repo
 
-# Wordlist untuk ffuf (wajib bila active.ffuf: true).
-ffuf_wordlist: ""          # mis. "/usr/share/seclists/Discovery/Web-Content/common.txt"
+# Wordlist for ffuf (required if active.ffuf: true).
+ffuf_wordlist: ""          # e.g. "/usr/share/seclists/Discovery/Web-Content/common.txt"
 
-# Override nama/path binari bila tidak di PATH (opsional).
+# Override binary names/paths if not on PATH (optional).
 tools:
   subfinder: "subfinder"
   amass: "amass"
@@ -47,8 +47,8 @@ tools:
   ffuf: "ffuf"
   trufflehog: "trufflehog"
 
-# Timeout per tool (detik).
+# Timeout per tool (seconds).
 timeout: 600
 
-# API key sumber pasif subfinder (opsional) lewat environment variable, bukan di file:
-#   export PDCP_API_KEY=...   lalu rujuk sebagai ${PDCP_API_KEY} bila perlu.
+# Optional subfinder passive-source API keys via environment variable, not in this file:
+#   export PDCP_API_KEY=...   then reference it as ${PDCP_API_KEY} if needed.

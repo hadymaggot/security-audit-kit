@@ -1,83 +1,83 @@
-# Salin ke config/targets.yml lalu isi untuk aplikasi yang diuji.
-# config/targets.yml di-gitignore — jangan commit base URL internal / kredensial.
+# Copy to config/targets.yml and fill in for the application under test.
+# config/targets.yml is gitignored: never commit internal base URLs or credentials.
 #
-# Multi-project (paralel): jangan salin manual, buat folder project sendiri per target:
+# Multi-project (parallel): do not copy by hand; create a dedicated project folder per target:
 #   python audit.py --project my-app init authz,upload   # -> projects/my-app/config/targets.yml
-#   python audit.py --project my-app all                 # config & reports milik project itu
-# Nama saja -> <kit>/projects/<nama> (di-gitignore); boleh juga path folder di mana saja.
+#   python audit.py --project my-app all                 # that project's own config and reports
+# A bare name -> <kit>/projects/<name> (gitignored); any folder path also works.
 
-# Nama bebas untuk laporan.
+# Free-form name for the report.
 name: "Contoh Aplikasi"
 
-# Identitas penyusun laporan (opsional). Tampil di laporan HTML/MD/slide pada baris
-# "Disusun oleh"; kredit Security Audit Kit tetap tampil di baris "Alat".
-# Bisa juga lewat env: SAK_REPORT_AUTHOR, SAK_REPORT_ORG, SAK_REPORT_CONTACT (menimpa nilai di sini).
+# Report preparer identity (optional). Shown in the HTML/MD/slide report on the "Disusun oleh"
+# row; the Security Audit Kit credit always stays on the "Alat" row.
+# Can also be set via env: SAK_REPORT_AUTHOR, SAK_REPORT_ORG, SAK_REPORT_CONTACT (override values here).
 # report:
-#   prepared_by: "Sapto Hadi"                  # default bila tak diisi: Sapto Hadi
-#   organization: "PT. Wahana Reka Tekindo"    # default bila tak diisi; isi "" untuk menyembunyikan
-#   contact: "wahanarekatekindo@gmail.com"     # default hanya bila perusahaan default; "" = sembunyikan
-#   version: "1.0"                             # versi dokumen, default 1.0
+#   prepared_by: "Sapto Hadi"                  # default when unset: Sapto Hadi
+#   organization: "PT. Wahana Reka Tekindo"    # default when unset; use "" to hide
+#   contact: "wahanarekatekindo@gmail.com"     # default only when the organization is the default; "" = hide
+#   version: "1.0"                             # document version, default 1.0
 
-# Base URL target. Gunakan dev/staging untuk scanner aktif.
+# Target base URL. Use dev/staging for active scanners.
 base_url: "https://dev.contoh.local"
 
-# Spesifikasi OpenAPI untuk ZAP API scan (opsional). Boleh URL atau path berkas.
-# Banyak framework meng-generate ini otomatis (Scramble, springdoc, drf-spectacular, dll).
+# OpenAPI spec for the ZAP API scan (optional); a URL or a file path.
+# Many frameworks generate it automatically (Scramble, springdoc, drf-spectacular, etc.).
 openapi: "https://dev.contoh.local/api/docs/openapi.json"
 
-# Host untuk uji TLS & header (tanpa skema).
+# Host for the TLS and header tests (no scheme).
 tls_host: "dev.contoh.local"
 
-# Path yang aman dipukul untuk uji header respons.
+# Path that is safe to hit for the response header test.
 header_probe_path: "/"
 
-# Direktori repo kode (untuk scanner statis: trivy, semgrep, gitleaks).
+# Code repo directory (for the static scanners: trivy, semgrep, gitleaks).
 code_path: "."
-# Jalankan satu tool per jalan (hemat memori): `python audit.py deps gitleaks|semgrep|trivy`.
-# Semgrep di repo besar/bind mount Windows bisa sangat lambat — persempit ke direktori sumber:
-# semgrep_paths: ["services/iam/app", "frontend-vue/src"]   # default: seluruh repo
-# semgrep_exclude: ["legacy"]                               # tambahan di atas vendor/node_modules/dist/docs
-# semgrep_timeout_minutes: 20                               # batas dinding; container dihentikan bila lewat
-# Cache DB trivy dipakai bersama semua project (default ~/.cache/sak-trivy). Run trivy dari
-# beberapa project sekaligus otomatis diantrekan (kunci berkas); isi folder lain untuk cache terpisah.
+# Run one tool per invocation (saves memory): `python audit.py deps gitleaks|semgrep|trivy`.
+# Semgrep on a large repo or a Windows bind mount can be very slow; narrow it to source directories:
+# semgrep_paths: ["services/iam/app", "frontend-vue/src"]   # default: whole repo
+# semgrep_exclude: ["legacy"]                               # on top of vendor/node_modules/dist/docs
+# semgrep_timeout_minutes: 20                               # wall-clock limit; the container is killed when exceeded
+# The trivy DB cache is shared by all projects (default ~/.cache/sak-trivy). Trivy runs from
+# several projects at once are queued automatically (file lock); set another folder for a separate cache.
 # trivy_cache_dir: "~/.cache/sak-trivy"
 
-# Jaringan Docker untuk scanner berbasis container (ZAP, testssl) — OPSIONAL.
-# Perlu bila target hanya terjangkau dari jaringan tertentu, terutama target `localhost`:
-# di dalam container, `localhost` menunjuk ke container itu sendiri (Connection refused).
-# Nilai:
-#   "host"                 jaringan host (Docker Desktop: aktifkan host networking)
-#   "<nama-jaringan>"      bergabung ke jaringan Docker tertentu (mis. jaringan compose)
-#   "container:<nama>"     berbagi network namespace container lain (mis. gateway/proxy
-#                          yang melayani base_url) -> `localhost` = container tsb.
-# Contoh (target di balik Traefik pada localhost:8080):
+# Docker network for the container-based scanners (ZAP, testssl) - OPTIONAL.
+# Needed when the target is only reachable from a specific network, especially a `localhost` target:
+# inside a container, `localhost` points at the container itself (Connection refused).
+# Values:
+#   "host"                 host network (Docker Desktop: enable host networking)
+#   "<network-name>"       join a specific Docker network (e.g. the compose network)
+#   "container:<name>"     share another container's network namespace (e.g. the gateway/proxy
+#                          serving base_url) -> `localhost` is that container.
+# Example (target behind Traefik on localhost:8080):
 # docker_network: "container:app-traefik-1"
 
-# ── Scan AKTIF (ZAP full / api) ───────────────────────────────────────────────────────────
-# Scan aktif menulis ke target secara acak sehingga tidak dapat dibalik per tindakan. Rollback yang
-# realistis adalah SNAPSHOT DATA: dump sebelum scan, pulihkan sesudahnya (otomatis, juga bila scan
-# gagal). Backup yang gagal MEMBATALKAN scan. Entri jurnal dicatat agar `python audit.py rollback`
-# dapat memulihkan bila proses mati di tengah jalan.
-# Catatan: hanya data yang dicakup langkah snapshot yang dipulihkan (PostgreSQL). MinIO/S3, RabbitMQ,
-# dan Redis tidak ikut kecuali Anda menambah langkahnya.
+# ── ACTIVE scan (ZAP full / api) ───────────────────────────────────────────────────────────
+# An active scan writes to the target at random, so it cannot be undone action by action. The realistic
+# rollback is a DATA SNAPSHOT: dump before the scan, restore afterwards (automatic, even if the scan
+# fails). A failed backup ABORTS the scan. A journal entry is recorded so `python audit.py rollback`
+# can restore if the process dies midway.
+# Note: only data covered by a snapshot step is restored (PostgreSQL). MinIO/S3, RabbitMQ and Redis
+# are not included unless you add a step for them.
 #
-# Preset PostgreSQL di Docker:
+# PostgreSQL preset in Docker:
 # snapshot:
 #   preset: postgres-docker
 #   container: "app-postgres-1"
 #   user: "app-user"
-#   databases: ["auth", "orders"]   # database yang mungkin berubah oleh scan
-#   keep: false                      # hapus berkas snapshot setelah berhasil dipulihkan
+#   databases: ["auth", "orders"]   # databases the scan may change
+#   keep: false                      # delete the snapshot files after a successful restore
 #   timeout_seconds: 1800
 #
-# Atau langkah kustom (argv tanpa shell; {dir} = direktori snapshot):
+# Or custom steps (argv without a shell; {dir} = snapshot directory):
 # snapshot:
 #   steps:
 #     - name: "mysql app"
 #       backup:  { cmd: ["docker","exec","db","mysqldump","-uroot","app"], stdout_to: "{dir}/app.sql" }
 #       restore: { cmd: ["docker","exec","-i","db","mysql","-uroot","app"], stdin_from: "{dir}/app.sql" }
 #
-# Opsi tambahan scan aktif ZAP:
-# zap_exclude: [".*/logout.*", ".*/delete.*"]   # regex URL penuh yang dilewati scanner
-# zap_spider_minutes: 3                         # -m : lama spider (menit)
-# zap_timeout_minutes: 20                       # -T : batas waktu (menit)
+# Extra ZAP active-scan options:
+# zap_exclude: [".*/logout.*", ".*/delete.*"]   # full-URL regexes the scanner skips
+# zap_spider_minutes: 3                         # -m : spider duration (minutes)
+# zap_timeout_minutes: 20                       # -T : time limit (minutes)

@@ -1,4 +1,4 @@
-"""Unit test fixture akun uji sekali pakai — session HTTP palsu, tanpa jaringan."""
+"""Unit tests for the disposable test-account fixture: fake HTTP session, no network."""
 import importlib.util
 import json
 from pathlib import Path
@@ -50,7 +50,7 @@ class _Cookies(dict):
 
 
 class FakeHttp:
-    """Mencatat semua request; perilaku diatur lewat `routes` per (method, path)."""
+    """Records every request; behavior is set via `routes` per (method, path)."""
     calls = []
     routes = {}
 
@@ -75,14 +75,14 @@ def _reset():
     yield
 
 
-# ── templating ──────────────────────────────────────────────────────────────
-def test_render_rekursif_dan_placeholder_tak_dikenal_dibiarkan():
+# --- templating ---
+def test_render_is_recursive_and_keeps_unknown_placeholders():
     v = {"email": "a@x", "password": "pw", "id": "7", "rand": "r"}
     assert FX.render({"a": ["{email}", {"b": "{password}-{id}"}], "c": "{tak-dikenal}"}, v) == \
         {"a": ["a@x", {"b": "pw-7"}], "c": "{tak-dikenal}"}
 
 
-def test_dig_dan_strong_password():
+def test_dig_and_strong_password():
     assert FX.dig({"data": {"id": "z"}}, "data.id") == "z"
     assert FX.dig({"data": 1}, "data.id") is None
     p = FX.strong_password()
@@ -90,29 +90,29 @@ def test_dig_dan_strong_password():
     assert FX.strong_password() != p
 
 
-# ── siklus hidup ────────────────────────────────────────────────────────────
-def test_buat_login_hapus_dan_jurnal(tmp_path):
+# --- lifecycle ---
+def test_create_login_delete_and_journal(tmp_path):
     with FX.DisposableAccount(BASE, CFG, tmp_path, tmp_path / "c.yml", http=FakeHttp) as acc:
         assert acc.id == "u1" and acc.email.startswith("kit-probe-") and acc.password
         create = [c for c in FakeHttp.calls if c[0] == "POST" and c[1] == "/api/users"][0]
         assert create[2]["email"] == acc.email and create[2]["password"] == acc.password
-        pend = RB.pending(tmp_path)                       # jurnal ditulis segera setelah dibuat
+        pend = RB.pending(tmp_path)                       # journal is written right after creation
         assert len(pend) == 1 and pend[0]["action"]["path"] == "/api/users/u1"
         assert pend[0]["action"]["fixture_config"].endswith("c.yml")
         s, r = acc.new_session()
         assert r.status_code == 200
-    assert ("DELETE", "/api/users/u1", None) in FakeHttp.calls     # dihapus saat keluar
-    assert RB.pending(tmp_path) == []                              # entri jurnal ditandai selesai
+    assert ("DELETE", "/api/users/u1", None) in FakeHttp.calls     # deleted on exit
+    assert RB.pending(tmp_path) == []                              # journal entry marked done
 
 
-def test_akun_dihapus_walau_uji_melempar_exception(tmp_path):
+def test_account_deleted_even_when_test_raises(tmp_path):
     with pytest.raises(ValueError):
         with FX.DisposableAccount(BASE, CFG, tmp_path, None, http=FakeHttp):
             raise ValueError("uji gagal")
     assert any(c[0] == "DELETE" for c in FakeHttp.calls)
 
 
-def test_login_as_identitas_fiktif_memakai_email_itu():
+def test_login_as_fictional_identity_uses_that_email():
     acc = FX.DisposableAccount(BASE, CFG, None, None, http=FakeHttp)
     acc.login_as("nobody@x", "salah", None)
     last = FakeHttp.calls[-1]
@@ -120,7 +120,7 @@ def test_login_as_identitas_fiktif_memakai_email_itu():
     assert last[2] == {"email": "nobody@x", "password": "salah"}
 
 
-def test_pembuatan_gagal_tidak_meninggalkan_jurnal(tmp_path):
+def test_failed_creation_leaves_no_journal(tmp_path):
     FakeHttp.routes[("POST", "/api/users")] = lambda b: _Resp(422, {"message": "x"})
     with pytest.raises(RuntimeError, match="membuat akun uji gagal"):
         with FX.DisposableAccount(BASE, CFG, tmp_path, None, http=FakeHttp):
@@ -129,21 +129,21 @@ def test_pembuatan_gagal_tidak_meninggalkan_jurnal(tmp_path):
     assert not any(c[0] == "DELETE" for c in FakeHttp.calls)
 
 
-def test_id_tak_ditemukan_melapor_email_untuk_bersih_manual(tmp_path):
+def test_missing_id_reports_email_for_manual_cleanup(tmp_path):
     FakeHttp.routes[("POST", "/api/users")] = lambda b: _Resp(201, {"data": {}})
     with pytest.raises(RuntimeError, match="id tidak ditemukan"):
         with FX.DisposableAccount(BASE, CFG, tmp_path, None, http=FakeHttp):
             pass
 
 
-def test_gagal_hapus_tetap_di_jurnal(tmp_path):
+def test_failed_delete_stays_in_journal(tmp_path):
     FakeHttp.routes[("DELETE", "/api/users/*")] = lambda b: _Resp(500)
     with FX.DisposableAccount(BASE, CFG, tmp_path, None, http=FakeHttp):
         pass
-    assert len(RB.pending(tmp_path)) == 1                           # tetap tercatat utk rollback
+    assert len(RB.pending(tmp_path)) == 1                           # still recorded for rollback
 
 
-def test_restore_entry_menghapus_dengan_sesi_admin(tmp_path, monkeypatch):
+def test_restore_entry_deletes_with_admin_session(tmp_path, monkeypatch):
     cfgfile = tmp_path / "m.yml"
     import yaml
     cfgfile.write_text(yaml.safe_dump({"base_url": BASE, "fixture": CFG}), encoding="utf-8")

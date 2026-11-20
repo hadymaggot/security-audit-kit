@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""Audit atribut keamanan cookie (pasif, non-destruktif).
+"""Audit cookie security attributes (passive, non-destructive).
 
-Mengumpulkan header Set-Cookie dari beberapa request (halaman awal, endpoint CSRF
-Sanctum, dan — bila dikonfigurasi — login) lalu memeriksa tiap cookie:
-  - HttpOnly  : cookie sesi/autentikasi tak boleh terbaca JavaScript
-                (kecuali yang memang harus dibaca SPA, mis. XSRF-TOKEN).
-  - Secure    : cookie hanya dikirim lewat HTTPS (hanya berlaku bila target HTTPS).
-  - SameSite  : Lax/Strict (None wajib dipadu Secure) — mitigasi CSRF.
-  - Masa berlaku cookie sesi tak berlebihan (default <= 30 hari).
+Collects Set-Cookie headers from several requests (landing page, Sanctum CSRF
+endpoint, and login if configured), then checks each cookie:
+  - HttpOnly  : session/auth cookies must not be readable by JavaScript
+                (except those the SPA must read, e.g. XSRF-TOKEN).
+  - Secure    : cookie sent over HTTPS only (applies only to HTTPS targets).
+  - SameSite  : Lax/Strict (None must be paired with Secure); CSRF mitigation.
+  - Session cookie lifetime is not excessive (default <= 30 days).
 
-Konfigurasi di cookie_flags.yml. Pakai:
+Configured in cookie_flags.yml. Usage:
     python run_cookie_flags.py --config cookie_flags.yml [--json out.json]
 """
 from __future__ import annotations
@@ -28,7 +28,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import _sanctum  # noqa: E402
-import _color as C  # noqa: E402  (warna ANSI konsol lintas-modul di tests/)
+import _color as C  # noqa: E402  (shared console ANSI colors in tests/)
 
 ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 SENSITIVE_RE = re.compile(r"(sess|sid|token|auth|jwt|login|remember)", re.I)
@@ -45,7 +45,7 @@ def expand(v):
 
 
 def parse_set_cookie(header):
-    """Parse satu header Set-Cookie -> {name, value, attrs{lowercase:str|True}}."""
+    """Parse one Set-Cookie header into {name, value, attrs{lowercase: str|True}}."""
     parts = [p.strip() for p in (header or "").split(";") if p.strip()]
     if not parts or "=" not in parts[0]:
         return None
@@ -58,7 +58,7 @@ def parse_set_cookie(header):
 
 
 def set_cookie_headers(resp):
-    """Semua header Set-Cookie dari sebuah respons (requests menggabungkannya di .headers)."""
+    """All Set-Cookie headers of a response (requests merges them in .headers)."""
     try:
         raw = resp.raw.headers
         if hasattr(raw, "getlist"):
@@ -72,7 +72,7 @@ def set_cookie_headers(resp):
 
 
 def _lifetime_days(attrs, now=None):
-    """Masa berlaku cookie dalam hari (None bila cookie sesi/tak diketahui)."""
+    """Cookie lifetime in days (None for a session cookie or unknown)."""
     now = now or datetime.now(timezone.utc)
     ma = attrs.get("max-age")
     if isinstance(ma, str) and re.fullmatch(r"-?\d+", ma):
@@ -90,7 +90,7 @@ def _lifetime_days(attrs, now=None):
 
 
 def evaluate(cookie, origin_url, cfg, where="", status=None, now=None):
-    """Periksa satu cookie. Kembalikan daftar baris hasil (ok=True artinya lolos)."""
+    """Check one cookie. Returns result rows (ok=True means pass)."""
     name, attrs = cookie["name"], cookie["attrs"]
     exempt = {n.lower() for n in cfg.get("httponly_exempt", ["XSRF-TOKEN"])}
     sensitive = bool(SENSITIVE_RE.search(name)) and name.lower() not in exempt
@@ -138,7 +138,7 @@ def evaluate(cookie, origin_url, cfg, where="", status=None, now=None):
         row("SameSite", False, "SameSite tidak diset eksplisit — bergantung default browser "
             "(mitigasi CSRF tidak terjamin)")
 
-    # Masa berlaku cookie sesi
+    # Session cookie lifetime
     if sensitive:
         days = _lifetime_days(attrs, now)
         if days is None:
@@ -152,7 +152,7 @@ def evaluate(cookie, origin_url, cfg, where="", status=None, now=None):
 
 
 def evaluate_all(cookies_seen, origin_url, cfg):
-    """cookies_seen: daftar (cookie, where, status). Dedup per nama cookie (kemunculan pertama)."""
+    """cookies_seen: list of (cookie, where, status). Deduplicated by cookie name (first seen wins)."""
     seen, rows = set(), []
     for cookie, where, status in cookies_seen:
         if cookie["name"] in seen:
@@ -163,7 +163,7 @@ def evaluate_all(cookies_seen, origin_url, cfg):
 
 
 def collect(cfg, sess=None):
-    """Kumpulkan cookie dari request pantau. Kembalikan (cookies_seen, notes)."""
+    """Collect cookies from the probe requests. Returns (cookies_seen, notes)."""
     base = cfg["base_url"].rstrip("/")
     s = sess or requests.Session()
     if os.environ.get("SAK_INSECURE_TLS") == "1":
@@ -176,7 +176,7 @@ def collect(cfg, sess=None):
             if c:
                 seen.append((c, where, resp.status_code))
 
-    # 1) halaman/path pantau (GET)
+    # 1) probe pages/paths (GET)
     for path in cfg.get("probe_paths", ["/"]):
         try:
             grab(s.get(base + path, timeout=20, allow_redirects=False), path)
@@ -184,7 +184,7 @@ def collect(cfg, sess=None):
             notes.append({"check": f"probe {path}", "status": -1, "ok": True,
                           "note": f"skip: {exc}", "url": f"GET {base}{path}"})
 
-    # 2) Sanctum + login (opsional): cookie sesi terbit saat autentikasi.
+    # 2) Optional Sanctum + login: the session cookie is issued on authentication.
     auth = cfg.get("auth") or {}
     san = auth.get("sanctum") if (auth.get("sanctum") or {}).get("enabled") else None
     login = auth.get("login")

@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
-"""Uji mass assignment / eskalasi properti objek (OWASP API3:2023 BOPLA).
+"""Mass assignment / object property escalation test (OWASP API3:2023 BOPLA).
 
-Menyuntik field terlarang (mis. role, is_admin, company_id) ke objek yang BOLEH
-diubah user uji, lalu memeriksa apakah server menerimanya. Ini DESTRUKTIF (menulis
-ke target), tetapi 'rasa non-destruktif': tiap penulisan dicatat ke jurnal rollback,
-dan audit.py memulihkan nilai semula otomatis di akhir (setelah laporan).
+Injects forbidden fields (e.g. role, is_admin, company_id) into an object the test user
+MAY modify, then checks whether the server accepted them. This is DESTRUCTIVE (writes
+to the target) but made safe: every write is recorded in the rollback journal, and
+audit.py restores the original values automatically at the end (after the report).
 
-Alur per target:
-  1. GET objek         -> snapshot nilai asli field yang akan disentuh.
-  2. PATCH/PUT objek   -> suntik field terlarang.  [DESTRUKTIF]
-  3. CATAT jurnal      -> cara mengembalikan field ke nilai asli (segera, crash-safe).
-  4. GET objek         -> baca nilai baru; temuan bila field terlarang IKUT berubah.
+Flow per target:
+  1. GET object        -> snapshot the original values of the fields to be touched.
+  2. PATCH/PUT object  -> inject the forbidden fields.  [DESTRUCTIVE]
+  3. RECORD journal    -> how to restore the fields to original values (immediately, crash-safe).
+  4. GET object        -> read the new values; a finding if a forbidden field CHANGED too.
 
-Pemulihan TIDAK dilakukan inline — dijalankan fase rollback audit.py setelah laporan.
+Restoring is NOT done inline; the rollback phase of audit.py runs it after the report.
 
-Pakai: python run_mass_assignment.py --config mass_assignment.yml [--json out.json]
+Usage: python run_mass_assignment.py --config mass_assignment.yml [--json out.json]
 """
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import _rollback  # noqa: E402
 import _sanctum  # noqa: E402
-import _color as C  # noqa: E402  (warna ANSI konsol lintas-modul di tests/)
+import _color as C  # noqa: E402  (shared console ANSI colors in tests/)
 
 ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 
@@ -47,7 +47,7 @@ def expand(v):
 
 
 def dig(obj, dotted):
-    """Ambil nilai bersarang via 'a.b.c'; '' mengembalikan obj apa adanya."""
+    """Get a nested value via 'a.b.c'; an empty path returns obj unchanged."""
     if not dotted:
         return obj
     for p in dotted.split("."):
@@ -56,7 +56,7 @@ def dig(obj, dotted):
 
 
 def extract(body, data_path):
-    """Ambil objek dari respons JSON: pakai data_path bila diberi, atau coba wrapper umum."""
+    """Extract the object from a JSON response: use data_path if given, else try common wrappers."""
     if data_path:
         return dig(body, data_path)
     if isinstance(body, dict):
@@ -93,7 +93,7 @@ def main():
         cfg = expand(yaml.safe_load(f))
 
     base = cfg["base_url"].rstrip("/")
-    # Folder jurnal rollback: reports_dir eksplisit > folder --json (project aktif) > <kit>/reports.
+    # Rollback journal dir: explicit reports_dir > --json folder (active project) > <kit>/reports.
     reports = Path(cfg.get("reports_dir")
                    or (Path(args.json).parent if args.json else None)
                    or (Path(__file__).resolve().parents[2] / "reports"))
@@ -119,7 +119,7 @@ def main():
         touched = list(t.get("fields") or inject.keys())
         ev_url = f"{upd.get('method', 'PATCH')} {upd_url}  (inject: {','.join(inject)})"
 
-        # 1. Snapshot nilai asli.
+        # 1. Snapshot the original values.
         try:
             g = sess.get(base + get_path, headers=h(), timeout=20)
             obj = extract(g.json(), t.get("data_path"))
@@ -134,7 +134,7 @@ def main():
             continue
         original = {f: obj.get(f) for f in touched}
 
-        # 2. Suntik field terlarang (DESTRUKTIF).
+        # 2. Inject the forbidden fields (DESTRUCTIVE).
         try:
             w = sess.request(upd.get("method", "PATCH"), upd_url, json=inject,
                              headers=h(), timeout=20)
@@ -143,7 +143,7 @@ def main():
                             "note": f"skip: update gagal ({exc})", "url": ev_url})
             continue
 
-        # 3. Catat rollback SEGERA (crash-safe), kembalikan field ke nilai asli.
+        # 3. Record the rollback IMMEDIATELY (crash-safe); it restores the original values.
         _rollback.record(reports, {
             "label": f"mass-assignment: pulihkan {name}",
             "module": "mass-assignment",
@@ -152,7 +152,7 @@ def main():
             "original": original,
         })
 
-        # 4. Verifikasi: apakah field terlarang IKUT berubah ke nilai suntikan?
+        # 4. Verify: did a forbidden field change to the injected value?
         try:
             g2 = sess.get(base + get_path, headers=h(), timeout=20)
             after = extract(g2.json(), t.get("data_path"))

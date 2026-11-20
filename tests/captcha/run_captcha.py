@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""Deteksi kebocoran jawaban pada captcha (analisis statis, non-destruktif).
+"""Detect captcha answer leaks (static, non-destructive analysis).
 
-Mengambil tantangan captcha (GET) lalu memeriksa apakah RESPONS-nya sendiri sudah membocorkan
-jawabannya sehingga captcha dapat dilewati tanpa "melihat" gambar:
-  1. kunci JSON bernama answer/solution/target/expected/x_position/... yang berisi angka;
-  2. captcha slider berbasis SVG: offset `translate(-X,-Y)` pada lapisan puzzle (dan
-     `translate(X,Y)` pada latar) mengungkap posisi target X, terutama bila Y sama dengan
-     `y_position` yang memang dikirim ke klien;
-  3. posisi target yang tetap (tidak acak) antar tantangan.
-Modul ini TIDAK menyelesaikan atau mengirim jawaban captcha — hanya menganalisis tantangan.
+Fetches a captcha challenge (GET) and checks whether the RESPONSE itself leaks the
+answer, so the captcha can be passed without "seeing" the image:
+  1. JSON keys named answer/solution/target/expected/x_position/... holding a number;
+  2. SVG slider captcha: a `translate(-X,-Y)` offset on the puzzle layer (and
+     `translate(X,Y)` on the background) reveals target position X, especially when Y
+     equals the `y_position` already sent to the client;
+  3. a fixed (non-random) target position across challenges.
+This module does NOT solve or submit captcha answers; it only analyzes challenges.
 
-Konfigurasi di captcha.yml. Pakai:
+Configured in captcha.yml. Usage:
     python run_captcha.py --config captcha.yml [--json out.json]
 """
 from __future__ import annotations
@@ -27,7 +27,7 @@ from pathlib import Path
 import requests
 import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import _color as C  # noqa: E402  (warna ANSI konsol lintas-modul di tests/)
+import _color as C  # noqa: E402  (shared console ANSI colors in tests/)
 
 ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 ANSWER_KEY_RE = re.compile(r"(answer|solution|jawaban|expected|correct|target|gap_?x|x_?pos(ition)?)",
@@ -58,7 +58,7 @@ def walk(obj, path=""):
 
 
 def find_answer_keys(data):
-    """[(path, nilai)] kunci yang tampak seperti jawaban dan berisi angka."""
+    """[(path, value)] for keys that look like answers and hold a number."""
     out = []
     for path, key, val in walk(data):
         if isinstance(val, bool) or not isinstance(val, (int, float)):
@@ -69,7 +69,7 @@ def find_answer_keys(data):
 
 
 def decode_svg_layers(data):
-    """{path: teks_svg} untuk string base64/data-URI/mentah yang berisi SVG."""
+    """{path: svg_text} for base64 / data-URI / raw strings containing SVG."""
     layers = {}
     for path, _key, val in walk(data):
         if not isinstance(val, str) or len(val) < 40:
@@ -95,8 +95,8 @@ def translates(svg_text):
 
 
 def find_translate_leak(layers, data):
-    """Cari pasangan translate(-X,-Y) pada satu lapisan dan translate(X,Y) pada lapisan lain
-    (atau Y == salah satu nilai numerik di respons, mis. y_position). Return daftar kandidat."""
+    """Find a translate(-X,-Y) on one layer paired with translate(X,Y) on another
+    (or Y equal to a numeric value in the response, e.g. y_position). Returns candidates."""
     numbers = {float(v) for _p, _k, v in walk(data)
                if isinstance(v, (int, float)) and not isinstance(v, bool)}
     img_w = next((float(v) for _p, k, v in walk(data)
@@ -106,7 +106,7 @@ def find_translate_leak(layers, data):
     found = []
     for p_neg, lst in pos.items():
         for x, y in lst:
-            if x >= 0 or y > 0:                       # kandidat lapisan puzzle: offset negatif
+            if x >= 0 or y > 0:                       # puzzle layer candidates have a negative offset
                 continue
             cx, cy = -x, -y
             if cx <= 0 or (img_w and cx > img_w):
@@ -120,7 +120,7 @@ def find_translate_leak(layers, data):
 
 
 def analyze_challenge(data):
-    """Baris hasil untuk satu tantangan (pure)."""
+    """Result rows for one challenge (pure)."""
     rows = []
     keys = find_answer_keys(data)
     if keys:
@@ -155,7 +155,7 @@ def analyze_challenge(data):
 
 
 def evaluate_randomness(xs):
-    """xs: daftar posisi target hasil bocor dari beberapa tantangan."""
+    """xs: leaked target positions from several challenges."""
     if len(xs) < 2:
         return None
     if len(set(xs)) == 1:

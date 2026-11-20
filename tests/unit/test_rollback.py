@@ -1,4 +1,4 @@
-"""Unit test jurnal rollback (tests/_rollback.py) — tanpa jaringan."""
+"""Unit tests for the rollback journal (tests/_rollback.py). No network."""
 import importlib.util
 import json
 import sys
@@ -47,7 +47,7 @@ def test_replay_marks_done_and_writes_log(tmp_path):
     res = RB.replay(tmp_path, do_restore)
     assert calls == ["a", "b"]
     assert {r["label"]: r["ok"] for r in res} == {"a": True, "b": False}
-    # 'a' done, 'b' masih pending (gagal dipulihkan).
+    # 'a' is done; 'b' stays pending (restore failed).
     assert [e["label"] for e in RB.pending(tmp_path)] == ["b"]
     log = json.loads((tmp_path / RB.LOG).read_text(encoding="utf-8"))
     assert log["restored"] == 1 and log["failed"] == 1
@@ -56,7 +56,7 @@ def test_replay_marks_done_and_writes_log(tmp_path):
 def test_replay_skips_already_done(tmp_path):
     RB.record(tmp_path, _entry("a"))
     RB.replay(tmp_path, lambda e: (True, "ok"))
-    # replay kedua: tak ada yang dikerjakan lagi.
+    # second replay: nothing left to do.
     seen = []
     RB.replay(tmp_path, lambda e: seen.append(e) or (True, "ok"))
     assert seen == []
@@ -70,7 +70,7 @@ def test_replay_catches_exception(tmp_path):
 
     res = RB.replay(tmp_path, boom)
     assert res[0]["ok"] is False and "putus" in res[0]["note"]
-    assert len(RB.pending(tmp_path)) == 1          # tetap pending, bisa diulang
+    assert len(RB.pending(tmp_path)) == 1          # stays pending so it can be retried
 
 
 def test_clear(tmp_path):

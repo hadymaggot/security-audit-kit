@@ -1,4 +1,4 @@
-"""Unit test modul ssrf — canary asli pada loopback, target palsu (tanpa jaringan eksternal)."""
+"""Unit tests for the ssrf module: real canary on loopback, fake target (no external network)."""
 import importlib.util
 import json
 import threading
@@ -20,7 +20,7 @@ RP = _load("report_ss_t", "report.py")
 WHERE = "GET http://t/api/fetch (param url)"
 
 
-# ── varian payload ──────────────────────────────────────────────────────────
+# payload variants
 def test_ip_variants():
     v = dict(SS.ip_variants("127.0.0.1"))
     assert v["desimal"] == "2130706433" and v["heksadesimal"] == "0x7f000001"
@@ -28,7 +28,7 @@ def test_ip_variants():
     assert SS.ip_variants("contoh.example") == [] and SS.ip_variants("::1") == []
 
 
-def test_build_variants_lengkap_dan_tanpa_varian():
+def test_build_variants_full_and_without_variants():
     full = dict(SS.build_variants("http://10.0.0.5:18999", "TKN", True))
     assert full["langsung"] == "http://10.0.0.5:18999/TKN"
     assert full["IP desimal"] == "http://167772165:18999/TKN"
@@ -37,22 +37,22 @@ def test_build_variants_lengkap_dan_tanpa_varian():
     only = SS.build_variants("http://10.0.0.5:18999", "TKN", False)
     assert [n for n, _ in only] == ["langsung"]
     hostname = [n for n, _ in SS.build_variants("http://host.docker.internal:18999", "T", True)]
-    assert hostname == ["langsung", "userinfo (@)", "redirect"]          # bukan IPv4 -> tanpa varian IP
+    assert hostname == ["langsung", "userinfo (@)", "redirect"]          # not IPv4 -> no IP variants
 
 
-# ── evaluasi ────────────────────────────────────────────────────────────────
-def test_evaluate_tanpa_hit_lolos():
+# evaluation
+def test_evaluate_without_hit_passes():
     r = SS.evaluate("fetch", "langsung", "u", "T", [], WHERE)
     assert r["ok"] is True and r["kind"] == "ssrf"
 
 
-def test_evaluate_hit_langsung_gagal():
+def test_evaluate_direct_hit_fails():
     r = SS.evaluate("fetch", "langsung", "u", "T",
                     [{"path": "/T", "ua": "Guzzle/7", "from": "10.0.0.9"}], WHERE)
     assert r["ok"] is False and "SSRF terkonfirmasi" in r["note"] and "Guzzle/7" in r["note"]
 
 
-def test_evaluate_redirect_hop2_dan_hop1_saja():
+def test_evaluate_redirect_hop2_and_hop1_only():
     both = SS.evaluate("f", "redirect", "u", "T", [{"path": "/redir/T"}, {"path": "/hop2/T"}], WHERE)
     assert both["ok"] is False and "hop kedua" in both["note"]
     only1 = SS.evaluate("f", "redirect", "u", "T", [{"path": "/redir/T"}], WHERE)
@@ -60,8 +60,8 @@ def test_evaluate_redirect_hop2_dan_hop1_saja():
     assert SS.evaluate("f", "redirect", "u", "T", [], WHERE)["ok"] is True
 
 
-# ── canary asli ─────────────────────────────────────────────────────────────
-def test_canary_mencatat_hit_dan_redirect():
+# real canary
+def test_canary_records_hit_and_redirect():
     c = SS.Canary("127.0.0.1", 0).start()
     try:
         urllib.request.urlopen(f"http://127.0.0.1:{c.port}/tokenA", timeout=5).read()
@@ -73,9 +73,9 @@ def test_canary_mencatat_hit_dan_redirect():
         c.stop()
 
 
-# ── run end-to-end dengan target palsu ──────────────────────────────────────
+# end-to-end run with a fake target
 class FakeTarget:
-    """Meniru endpoint 'ambil URL': mode vuln menembak URL; mode aman memblokir alamat privat."""
+    """Fake 'fetch URL' endpoint: vuln mode requests the URL; secure mode blocks private addresses."""
 
     def __init__(self, mode):
         self.mode, self.verify, self.headers, self.cookies = mode, True, {}, {}
@@ -83,7 +83,7 @@ class FakeTarget:
 
     @staticmethod
     def _client_url(target):
-        """Meniru klien HTTP nyata: buang userinfo ('user@') lalu hubungi host sebenarnya."""
+        """Mimics a real HTTP client: strips userinfo ('user@'), then contacts the actual host."""
         from urllib.parse import urlparse
         u = urlparse(target)
         host = f"[{u.hostname}]" if ":" in (u.hostname or "") else u.hostname
@@ -97,7 +97,7 @@ class FakeTarget:
             status_code = 200
         if self.mode == "vuln" and target:
             try:
-                urllib.request.urlopen(self._client_url(target), timeout=3).read()   # menembak URL
+                urllib.request.urlopen(self._client_url(target), timeout=3).read()   # fetches the URL
             except Exception:  # noqa: BLE001
                 pass
         elif self.mode == "vuln-no-redirect" and target:
@@ -116,7 +116,7 @@ CFG = {"base_url": "http://t", "variants": True,
        "targets": [{"name": "fetch", "method": "GET", "path": "/api/fetch", "param": "url"}]}
 
 
-def test_run_server_rentan_terdeteksi():
+def test_run_vulnerable_server_is_detected():
     rows = SS.run(CFG, sess=FakeTarget("vuln"))
     by = {r["check"]: r for r in rows}
     assert by["ssrf: fetch — langsung"]["ok"] is False
@@ -125,19 +125,19 @@ def test_run_server_rentan_terdeteksi():
     assert all(r["status"] == 200 for r in rows)
 
 
-def test_run_server_aman_tidak_menembak():
+def test_run_secure_server_does_not_fetch():
     rows = SS.run(CFG, sess=FakeTarget("secure"))
     assert rows and all(r["ok"] for r in rows)
 
 
-def test_run_server_rentan_tapi_tak_ikut_redirect():
+def test_run_vulnerable_server_that_does_not_follow_redirect():
     rows = SS.run(CFG, sess=FakeTarget("vuln-no-redirect"))
     by = {r["check"]: r for r in rows}
     assert by["ssrf: fetch — langsung"]["ok"] is False
     assert "redirect tidak diikuti" in by["ssrf: fetch — redirect"]["note"]
 
 
-def test_send_payload_lokasi_query_json_form():
+def test_send_payload_location_query_json_form():
     s = FakeTarget("secure")
     for loc in ("query", "json", "form"):
         SS.send_payload(s, "http://t", {"path": "/p", "param": "url", "location": loc,
@@ -145,7 +145,7 @@ def test_send_payload_lokasi_query_json_form():
     assert [c[2] for c in s.calls] == ["http://x/y"] * 3
 
 
-def test_endpoint_tak_merespons_di_skip():
+def test_unresponsive_endpoint_is_skipped():
     class Down:
         verify, headers, cookies = True, {}, {}
 
@@ -155,8 +155,8 @@ def test_endpoint_tak_merespons_di_skip():
     assert len(rows) == 1 and rows[0]["ok"] is True and "skip" in rows[0]["note"]
 
 
-# ── integrasi report ────────────────────────────────────────────────────────
-def test_report_memuat_ssrf(tmp_path):
+# report integration
+def test_report_includes_ssrf(tmp_path):
     rows = [SS.evaluate("fetch", "langsung", "u", "T", [{"path": "/T", "ua": "x", "from": "1.2.3.4"}],
                         WHERE)]
     (tmp_path / "ssrf.json").write_text(json.dumps(
