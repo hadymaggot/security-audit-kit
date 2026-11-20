@@ -34,7 +34,7 @@ ROUTES = {
     "/api/public": "public, max-age=600",
     "/api/nostore": "no-store",
     "/api/pnc": "private, no-cache",  # lolos cek header, tapi tetap disimpan browser
-    "/api/kosong": None,  # tanpa header + Last-Modified → cache heuristik
+    "/api/empty": None,  # tanpa header + Last-Modified → cache heuristik
 }
 
 
@@ -85,13 +85,13 @@ def test_report_maps_browser_cache_to_client_cache(tmp_path):
 def test_real_browser_cache(server):
     pytest.importorskip("playwright.sync_api")
     res = CL.check_browser_cache({"browser_cache": {"enabled": True}}, server,
-                                 ["/api/public", "/api/nostore", "/api/pnc", "/api/kosong"])
+                                 ["/api/public", "/api/nostore", "/api/pnc", "/api/empty"])
     if len(res) == 1 and res[0]["note"].startswith("skip:"):
         pytest.skip(res[0]["note"])  # Chromium belum di-install
     by = {r["label"]: r for r in res}
     assert not by["cache browser /api/public"]["ok"]   # public → tersimpan
     assert by["cache browser /api/nostore"]["ok"]      # no-store → tidak tersimpan
-    assert not by["cache browser /api/kosong"]["ok"]   # tanpa header → cache heuristik
+    assert not by["cache browser /api/empty"]["ok"]   # tanpa header → cache heuristik
     # no-cache cuma memaksa revalidasi; isinya tetap tersimpan di disk browser.
     assert not by["cache browser /api/pnc"]["ok"]
     assert "public, max-age=600" in by["cache browser /api/public"]["note"]

@@ -167,7 +167,7 @@ def _keep_case(src: str, dst: str) -> str:
     return dst[:1].upper() + dst[1:] if src[:1].isupper() else dst
 
 
-def padankan(text: str, lang: str | None = None, project: Path | None = None) -> str:
+def canonicalize(text: str, lang: str | None = None, project: Path | None = None) -> str:
     """Rewrite words to their canonical terms: ordered `frasa` first, then whole-word `padanan`."""
     g = load(lang, project)
     for pat, rep in g["phrases"]:

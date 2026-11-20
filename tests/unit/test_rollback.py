@@ -50,7 +50,7 @@ def test_replay_marks_done_and_writes_log(tmp_path):
     # 'a' done, 'b' masih pending (gagal dipulihkan).
     assert [e["label"] for e in RB.pending(tmp_path)] == ["b"]
     log = json.loads((tmp_path / RB.LOG).read_text(encoding="utf-8"))
-    assert log["dipulihkan"] == 1 and log["gagal"] == 1
+    assert log["restored"] == 1 and log["failed"] == 1
 
 
 def test_replay_skips_already_done(tmp_path):

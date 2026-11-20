@@ -125,7 +125,7 @@ def test_missing_binaries_graceful():
 # ── failures hanya menghitung temuan nyata (bukan info) ──────────────────────
 def test_failures_excludes_info():
     rows = [{"ok": False, "severity": "info"}, {"ok": False, "severity": "high"},
-            {"ok": True, "severity": "lulus"}, {"ok": False, "severity": "medium"}]
+            {"ok": True, "severity": "passed"}, {"ok": False, "severity": "medium"}]
     assert RC._failures(rows) == 2
 
 

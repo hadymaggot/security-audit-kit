@@ -183,11 +183,11 @@ def main():
             continue
         if found:
             failures += 1
-            teknik = ", ".join(f"{k}" for k, _, _ in found)
+            technique = ", ".join(f"{k}" for k, _, _ in found)
             detail = "; ".join(d for _, d, _ in found)
             results.append({"check": name, "status": found[0][2], "ok": False,
-                            "note": f"SQLi ({teknik}): {detail}", "url": ev_url})
-            print(f"{name[:44]:<44} {C.bad(f'XX SQLi: {teknik}')}")
+                            "note": f"SQLi ({technique}): {detail}", "url": ev_url})
+            print(f"{name[:44]:<44} {C.bad(f'XX SQLi: {technique}')}")
         else:
             results.append({"check": name, "status": 200, "ok": True, "note": "", "url": ev_url})
             print(f"{name[:44]:<44} {C.good('ok')}")

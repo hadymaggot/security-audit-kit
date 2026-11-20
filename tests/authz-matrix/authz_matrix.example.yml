@@ -29,7 +29,7 @@ auth:
     admin:
       username: "${AUTHZ_ADMIN_USER}"
       password: "${AUTHZ_ADMIN_PASS}"
-    user_biasa:
+    regular_user:
       username: "${AUTHZ_USER_USER}"
       password: "${AUTHZ_USER_PASS}"
     # Peran semu "anon" tak login — untuk menguji route yang harus menolak tanpa auth.
@@ -44,7 +44,7 @@ endpoints:
     path: "/api/users"
     expect:
       admin: allow
-      user_biasa: deny
+      regular_user: deny
       anon: deny
 
   - name: "Ubah peran pengguna (admin only)"
@@ -53,15 +53,15 @@ endpoints:
     body: { role: "viewer" }
     expect:
       admin: allow
-      user_biasa: deny
+      regular_user: deny
       anon: deny
 
-  # IDOR: user_biasa mengakses objek dengan id milik akun lain harus ditolak.
+  # IDOR: regular_user mengakses objek dengan id milik akun lain harus ditolak.
   - name: "IDOR — detail akun lain"
     method: GET
     path: "/api/accounts/999"
     expect:
-      user_biasa: deny
+      regular_user: deny
 
   # Business-logic / lompat status: ditulis per-kasus sesuai alur aplikasi.
   - name: "Lompat status tanpa peran berwenang"
@@ -69,14 +69,14 @@ endpoints:
     path: "/api/documents/1/status"
     body: { status: "approved" }
     expect:
-      user_biasa: deny
+      regular_user: deny
 
 # Uji opsional: klien menyuntik header otorisasi palsu, gateway harus menimpanya.
 # Berguna bila arsitektur mengandalkan reverse proxy menyetel X-Auth-* internal.
 forged_headers:
   enabled: true
   # Login sebagai peran rendah ini, lalu suntik header di bawah; endpoint harus tetap menolak.
-  as_role: user_biasa
+  as_role: regular_user
   inject:
     X-Auth-Roles: "admin"
     X-Auth-User-Id: "1"

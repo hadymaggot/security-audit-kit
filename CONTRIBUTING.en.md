@@ -31,9 +31,9 @@ One check = one runner at `tests/<name>/run_<name>.py` + an entry in `remediatio
 1. **Runner.** Read config via `--config`, support `--json <out>`. Output pattern per
    item: `{"label", "status", "ok": bool, "note"}`. See `tests/cors/run_cors.py`
    as the most compact example. Include `<name>.example.yml`.
-2. **Remediation (mandatory).** Add a `KB` entry in `remediation.py` with `deskripsi`,
-   `dampak`, `severity`, `severity_dasar`, `rekomendasi` (a list, may include an
-   example fix/code), and `referensi` (OWASP/BSSN). Map it in `classify()`.
+2. **Remediation (mandatory).** Add a `KB` entry in `remediation.py` with `description`,
+   `impact`, `severity`, `severity_basis`, `recommendation` (a list, may include an
+   example fix/code), and `references` (OWASP/BSSN). Map it in `classify()`.
 3. **report.py.** Register its JSON file in `collect()` so it is included in the combined report.
 4. **audit.py.** Register the module so `python audit.py <name>` works.
 5. **Test.** Add a unit test in `tests/unit/` — the runner logic is tested without the

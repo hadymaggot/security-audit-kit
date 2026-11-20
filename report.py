@@ -48,14 +48,14 @@ def plain_text(s, limit=None):
     return t[:limit] if limit else t
 
 
-SEV_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4, "lulus": 5}
+SEV_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4, "passed": 5}
 SEV_COLOR = {"critical": "#c0392b", "high": "#e8710a", "medium": "#d4a017",
-             "low": "#2f6feb", "info": "#6b7280", "lulus": "#1f9d57"}
+             "low": "#2f6feb", "info": "#6b7280", "passed": "#1f9d57"}
 SEV_EMOJI = {"critical": "🔴", "high": "🟠", "medium": "🟡",
-             "low": "🔵", "info": "⚪", "lulus": "🟢"}
+             "low": "🔵", "info": "⚪", "passed": "🟢"}
 # Label severity yang ditampilkan ke pembaca (kontrol lolos = PASS).
 SEV_LABEL = {"critical": "CRITICAL", "high": "HIGH", "medium": "MEDIUM",
-             "low": "LOW", "info": "INFO", "lulus": "PASS"}
+             "low": "LOW", "info": "INFO", "passed": "PASS"}
 def sev_label(s):
     return SEV_LABEL.get(s, str(s).upper())
 
@@ -72,13 +72,13 @@ CLIENT_LEAK_KIND = {"cache": "client-cache", "browser-cache": "client-cache", "j
                     "html": "info-exposure", "file": "info-exposure"}
 
 
-def norm(modul, judul, status, evidence, lulus, override_sev=None, cve=None,
+def norm(module, title, status, evidence, passed, override_sev=None, cve=None,
          kind_hint=None, url=None, screenshot=None):
-    kind = kind_hint or R.classify(modul, judul)
+    kind = kind_hint or R.classify(module, title)
     kb = R.lookup(kind)
-    sev = "lulus" if lulus else (override_sev or kb["severity"]).lower()
+    sev = "passed" if passed else (override_sev or kb["severity"]).lower()
     return {
-        "modul": modul, "judul": judul, "kind": kind, "lulus": lulus,
+        "module": module, "title": title, "kind": kind, "passed": passed,
         "severity": sev, "status": status, "evidence": evidence,
         "url": url or "", "screenshot": screenshot or "", "cve": cve or [], "kb": kb,
     }
@@ -88,7 +88,7 @@ def collect(d: Path):
     findings = []
 
     # --- runner kit ---
-    for name, modul in (("authz.json", "authz-matrix"),
+    for name, module in (("authz.json", "authz-matrix"),
                         ("upload.json", "upload-safety"),
                         ("mass_assignment.json", "mass-assignment"),
                         ("auth_policy.json", "auth-policy"),
@@ -119,14 +119,14 @@ def collect(d: Path):
             if r.get("status") not in (None, ""):
                 ev = (f"Role '{role}', " if role else "") + f"response HTTP {r.get('status')}. " + ev
             hint = None
-            if modul == "client-leak":
+            if module == "client-leak":
                 hint = CLIENT_LEAK_KIND.get(r.get("kind"))
-            elif modul in ("response-leak", "openapi-coverage", "ratelimit", "session-mgmt",
+            elif module in ("response-leak", "openapi-coverage", "ratelimit", "session-mgmt",
                            "captcha", "jwt", "ssrf"):
                 hint = r.get("kind")
-            elif modul == "headers":
+            elif module == "headers":
                 hint = "missing-header"
-            findings.append(norm(modul, label, r.get("status"), ev.strip(), ok,
+            findings.append(norm(module, label, r.get("status"), ev.strip(), ok,
                                  kind_hint=hint, url=r.get("url"),
                                  screenshot=r.get("screenshot")))
 
@@ -143,7 +143,7 @@ def collect(d: Path):
                 cwe = alert.get("cweid")
                 uri = inst[0].get("uri") if inst and isinstance(inst[0], dict) else None
                 findings.append(norm("zap", plain_text(alert.get("alert", "?")), None, ev,
-                                     lulus=False,
+                                     passed=False,
                                      override_sev=risk if risk in SEV_ORDER else "info",
                                      cve=[f"CWE-{cwe}"] if cwe and cwe != "-1" else [],
                                      url=uri))
@@ -161,7 +161,7 @@ def collect(d: Path):
                 ev = (f"Paket {pkg} {v.get('InstalledVersion','?')} di {tgt}. "
                       f"Perbaikan: {fixed}. {plain_text(v.get('Title',''), 200)}")
                 findings.append(norm("trivy-cve", f"{v.get('VulnerabilityID')} — {pkg}",
-                                     None, ev, lulus=False, override_sev=sev,
+                                     None, ev, passed=False, override_sev=sev,
                                      cve=[v.get("VulnerabilityID")]))
 
     # --- gitleaks (secret di kode/riwayat git; nilai sudah di-redact oleh gitleaks) ---
@@ -173,7 +173,7 @@ def collect(d: Path):
                   + (f" (commit {str(g.get('Commit'))[:8]})" if g.get("Commit") else "") + ". "
                   + plain_text(g.get("Description", ""), 160) + " Nilai secret tidak dicantumkan.")
             findings.append(norm("gitleaks", f"{g.get('RuleID', 'secret')} — {where}", None, ev,
-                                 lulus=False, override_sev="high", kind_hint="leaked-secret",
+                                 passed=False, override_sev="high", kind_hint="leaked-secret",
                                  url=where))
 
     # --- semgrep (SAST) ---
@@ -188,7 +188,7 @@ def collect(d: Path):
             cwe = [cwe] if isinstance(cwe, str) else list(cwe or [])
             cwe = [re.match(r"CWE-\d+", c).group(0) for c in cwe if re.match(r"CWE-\d+", str(c))]
             findings.append(norm("semgrep", f"{short} — {where}", None,
-                                 plain_text(ex.get("message", ""), 300), lulus=False,
+                                 plain_text(ex.get("message", ""), 300), passed=False,
                                  override_sev=sev_map.get(str(ex.get("severity", "")).upper(), "medium"),
                                  cve=cwe, kind_hint="sast-finding", url=where))
 
@@ -202,7 +202,7 @@ def collect(d: Path):
             cve = item.get("cve") or ""
             findings.append(norm("testssl", item.get("id", "TLS"), None,
                                  plain_text(item.get("finding", ""), 200),
-                                 lulus=False, override_sev=sev,
+                                 passed=False, override_sev=sev,
                                  cve=[c for c in cve.split() if c.startswith("CVE")]))
 
     # --- recon (OSINT/infra/vuln; severity dibawa per-baris) ---
@@ -227,14 +227,14 @@ def summarize(findings):
     return c
 
 
-METODOLOGI = (
+METHODOLOGY = (
     "Pengujian dijalankan secara otomatis dan non-destruktif terhadap target yang "
     "berwenang diuji. Acuannya OWASP Top 10 2021, OWASP ASVS, dan OWASP Risk Rating "
     "Methodology (severity = Likelihood x Impact). Tooling yang digunakan OWASP ZAP, "
     "Trivy, dan testssl.sh, ditambah rangkaian regression test untuk access control, "
     "upload, dan password policy."
 )
-BATASAN = (
+LIMITATIONS = (
     "Laporan ini merupakan hasil automation, bukan pengganti pentest manual. Temuan "
     "scanner (misalnya ZAP) dapat berupa false positive dan wajib diverifikasi sebelum "
     "severity final ditetapkan. Celah logika bisnis hanya terdeteksi apabila test-nya "
@@ -308,41 +308,41 @@ KIND_LABEL = {
 }
 
 
-def _confidence(moduls):
+def _confidence(modules):
     """Keyakinan: pemeriksaan deterministik (request/response langsung) = Tinggi;
     temuan pemindai pasif (ZAP) = Sedang (perlu verifikasi manual)."""
-    return "Sedang" if moduls == {"zap"} else "Tinggi"
+    return "Sedang" if modules == {"zap"} else "Tinggi"
 
 
-def group_alerts(gagal):
+def group_alerts(failed):
     """Kelompokkan temuan per 'kind' jadi alert ala ZAP (satu alert, banyak instance).
 
     Urut dari severity tertinggi; dalam satu severity, alert dengan instance terbanyak
     didahulukan. Tiap alert: {kind, nama, kb, severity, keyakinan, instances, cve, moduls}.
     """
     groups = {}
-    for f in gagal:
+    for f in failed:
         groups.setdefault(f["kind"], []).append(f)
     alerts = []
     for kind, items in groups.items():
         sev = min((i["severity"] for i in items), key=lambda s: SEV_ORDER.get(s, 9))
-        moduls = {i["modul"] for i in items}
+        modules = {i["module"] for i in items}
         cve = []
         for i in items:
             for c in i["cve"]:
                 if c and c not in cve:
                     cve.append(c)
-        nama = KIND_LABEL.get(kind) or (items[0]["judul"] if len(items) == 1 else kind)
+        name = KIND_LABEL.get(kind) or (items[0]["title"] if len(items) == 1 else kind)
         alerts.append({
-            "kind": kind, "nama": nama, "kb": R.lookup(kind), "severity": sev,
-            "keyakinan": _confidence(moduls), "instances": items,
-            "cve": cve, "moduls": sorted(moduls),
+            "kind": kind, "name": name, "kb": R.lookup(kind), "severity": sev,
+            "confidence": _confidence(modules), "instances": items,
+            "cve": cve, "modules": sorted(modules),
         })
     alerts.sort(key=lambda a: (SEV_ORDER.get(a["severity"], 9), -len(a["instances"])))
     return alerts
 
 
-KLASIFIKASI = "RAHASIA / CONFIDENTIAL"
+CLASSIFICATION = "RAHASIA / CONFIDENTIAL"
 TOOLS = ["OWASP ZAP (DAST)", "Trivy (SCA/CVE)", "semgrep (SAST)", "gitleaks (secret)",
          "testssl.sh (TLS)",
          "runner internal Security Audit Kit (authz, mass-assignment, upload, auth-policy, "
@@ -398,7 +398,7 @@ CVSS_REP = {"critical": (9.8, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"),
             "high": (8.1, "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N"),
             "medium": (5.3, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"),
             "low": (3.7, "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N"),
-            "info": (0.0, "-"), "lulus": (0.0, "-")}
+            "info": (0.0, "-"), "passed": (0.0, "-")}
 
 
 def cvss_for(kind, severity):
@@ -413,8 +413,8 @@ def cvss_score(kind, severity):
 
 
 def cvss_full(kind, severity):
-    skor, vek = cvss_for(kind, severity)
-    return f"{skor:.1f} — {vek}" if vek and vek != "-" else f"{skor:.1f}"
+    score, vector = cvss_for(kind, severity)
+    return f"{score:.1f} — {vector}" if vector and vector != "-" else f"{score:.1f}"
 
 
 def finding_id(i):
@@ -479,25 +479,25 @@ def exec_summary(alerts, counts):
                 "Kontrol yang Lolos sebagai bukti cakupan uji.")
     per = ", ".join(f"{counts[s]} {s.capitalize()}" for s in
                     ("critical", "high", "medium", "low", "info") if counts[s])
-    top = "; ".join(a["nama"] for a in alerts[:3])
-    prioritas = ("Critical dan High" if (counts["critical"] or counts["high"])
+    top = "; ".join(a["name"] for a in alerts[:3])
+    priority = ("Critical dan High" if (counts["critical"] or counts["high"])
                  else "Medium dan Low")
     return (f"Pengujian menemukan {total} instance temuan ({per}) yang tergolong dalam "
             f"{len(alerts)} jenis alert. Temuan berisiko tertinggi: {top}. Perbaikan "
-            f"disarankan memprioritaskan temuan {prioritas} terlebih dahulu. Rincian teknis, "
+            f"disarankan memprioritaskan temuan {priority} terlebih dahulu. Rincian teknis, "
             "bukti endpoint, dan rekomendasi tersedia pada bagian Rincian Temuan.")
 
 
 def write_md(path, findings, counts, when, cves):
     I = glossary.italic_md  # technical terms in *italics*; see glosarium.yml
-    gagal = [f for f in findings if not f["lulus"]]
-    alerts = group_alerts(gagal)
+    failed = [f for f in findings if not f["passed"]]
+    alerts = group_alerts(failed)
     tgt_name, tgt_url = read_target()
     meta = report_meta()
-    moduls = sorted({f["modul"] for f in findings})
+    modules = sorted({f["module"] for f in findings})
     L = [
         "# Laporan Hasil Uji Keamanan",
-        "", f"**Klasifikasi:** {KLASIFIKASI}", "",
+        "", f"**Klasifikasi:** {CLASSIFICATION}", "",
         "| | |", "|---|---|",
         f"| Dibuat | {when} |",
         f"| Disusun oleh | {meta['line'] or CREDIT} |",
@@ -511,12 +511,12 @@ def write_md(path, findings, counts, when, cves):
         f"| {SEV_EMOJI['medium']} Medium | {counts['medium']} |",
         f"| {SEV_EMOJI['low']} Low | {counts['low']} |",
         f"| {SEV_EMOJI['info']} Info | {counts['info']} |",
-        f"| {SEV_EMOJI['lulus']} PASS (kontrol lolos) | {counts['lulus']} |",
+        f"| {SEV_EMOJI['passed']} PASS (kontrol lolos) | {counts['passed']} |",
         "", f"Total alert: **{len(alerts)}** · Total CVE: **{len(cves)}**.", "",
         "## 2. Ruang Lingkup & Metodologi", "",
         f"- **Target:** {tgt_name} ({tgt_url}).",
-        f"- **Modul/teknik yang dijalankan:** {', '.join(moduls) if moduls else '-'}.",
-        "- **Metodologi:** " + I(METODOLOGI), "",
+        f"- **Modul/teknik yang dijalankan:** {', '.join(modules) if modules else '-'}.",
+        "- **Metodologi:** " + I(METHODOLOGY), "",
         "## 3. Ringkasan Risiko", "",
     ]
     # Daftar alert (ToC) dengan ID temuan, risiko, CVSS indikatif, keyakinan, instance.
@@ -524,9 +524,9 @@ def write_md(path, findings, counts, when, cves):
         L += ["| ID | Alert | Risiko | CVSS v3.1 | Keyakinan | Instance |",
               "|---|---|---|---|---|---|"]
         for i, a in enumerate(alerts, 1):
-            L.append(f"| {finding_id(i)} | {I(a['nama'])} | {SEV_EMOJI.get(a['severity'], '')} "
+            L.append(f"| {finding_id(i)} | {I(a['name'])} | {SEV_EMOJI.get(a['severity'], '')} "
                      f"{a['severity'].upper()} | {cvss_score(a['kind'], a['severity'])} | "
-                     f"{a['keyakinan']} | {len(a['instances'])} |")
+                     f"{a['confidence']} | {len(a['instances'])} |")
         L.append("")
     else:
         L += ["_Tidak ada temuan — seluruh kontrol yang diuji lolos._", ""]
@@ -535,18 +535,18 @@ def write_md(path, findings, counts, when, cves):
     for i, a in enumerate(alerts, 1):
         kb = a["kb"]
         L += [
-            f"### {finding_id(i)} — {SEV_EMOJI.get(a['severity'], '')} {I(a['nama'])}", "",
+            f"### {finding_id(i)} — {SEV_EMOJI.get(a['severity'], '')} {I(a['name'])}", "",
             f"- **Severity:** {a['severity'].upper()} &nbsp; **CVSS v3.1 (indikatif):** "
-            f"{cvss_full(a['kind'], a['severity'])} &nbsp; **Keyakinan:** {a['keyakinan']} &nbsp; "
+            f"{cvss_full(a['kind'], a['severity'])} &nbsp; **Keyakinan:** {a['confidence']} &nbsp; "
             f"**Status:** Terbuka",
-            f"- **Sumber/plugin:** {', '.join(a['moduls'])} (`{a['kind']}`)",
-            f"- **Deskripsi:** {I(kb['deskripsi'])}",
+            f"- **Sumber/plugin:** {', '.join(a['modules'])} (`{a['kind']}`)",
+            f"- **Deskripsi:** {I(kb['description'])}",
             f"- **Instance yang diuji ({len(a['instances'])}):**", "",
             "  | # | Endpoint diuji | Konteks | HTTP | Bukti |",
             "  |---|---|---|---|---|",
         ]
         for j, inst in enumerate(a["instances"], 1):
-            ctx = I(inst.get("judul", ""))
+            ctx = I(inst.get("title", ""))
             st = inst["status"] if inst["status"] not in (None, "") else "-"
             ev = (inst.get("evidence") or "").replace("|", "\\|").replace("\n", " ")[:160]
             if inst.get("screenshot"):
@@ -556,28 +556,28 @@ def write_md(path, findings, counts, when, cves):
         L += [
             "",
             (f"- **CVE/CWE:** {', '.join(a['cve'])}" if a["cve"] else "- **CVE/CWE:** -"),
-            f"- **Dampak:** {I(kb['dampak'])}",
-            f"- **Justifikasi severity:** {I(kb['severity_dasar'])}",
+            f"- **Dampak:** {I(kb['impact'])}",
+            f"- **Justifikasi severity:** {I(kb['severity_basis'])}",
             "- **Rekomendasi & contoh solusi:**",
         ]
-        for rec in kb["rekomendasi"]:
+        for rec in kb["recommendation"]:
             if "\n" in rec or "    " in rec:
                 L += ["", "  ```", *("  " + ln for ln in rec.splitlines()), "  ```", ""]
             else:
                 L.append(f"  - {I(rec)}")
-        L.append(f"- **Referensi:** {'; '.join(kb['referensi'])}")
+        L.append(f"- **Referensi:** {'; '.join(kb['references'])}")
         L.append("")
 
     # Kontrol yang lolos — bukti cakupan uji.
-    lulus = [f for f in findings if f["lulus"]]
-    if lulus:
-        L += [f"### Kontrol yang Lolos (PASS: {len(lulus)})", "",
+    passed = [f for f in findings if f["passed"]]
+    if passed:
+        L += [f"### Kontrol yang Lolos (PASS: {len(passed)})", "",
               "Pemeriksaan yang diuji dan berperilaku benar (bukan temuan) — bukti cakupan uji.", "",
               "| Pemeriksaan | Modul | Endpoint diuji | HTTP |", "|---|---|---|---|"]
-        for f in lulus:
+        for f in passed:
             url = (f.get("url") or "-").replace("|", "\\|")
             st = f["status"] if f["status"] not in (None, "") else "-"
-            L.append(f"| {I(f['judul'])} | {f['modul']} | `{url}` | {st} |")
+            L.append(f"| {I(f['title'])} | {f['module']} | `{url}` | {st} |")
         L.append("")
     if cves:
         L += ["## 5. Daftar CVE", "", "| CVE | Paket/Lokasi | Severity |", "|---|---|---|"]
@@ -590,7 +590,7 @@ def write_md(path, findings, counts, when, cves):
         "Security Top 10 2023, OWASP ASVS, OWASP Risk Rating Methodology.", "",
         "**Catatan CVSS.** Skor CVSS bersifat indikatif (pemetaan kualitatif dari OWASP Risk "
         "Rating + vektor v3.1 representatif per jenis temuan); skor+vektor final tetap perlu diverifikasi manual per konteks target.", "",
-        "**Batasan & pertanggungjawaban.** " + I(BATASAN), "",
+        "**Batasan & pertanggungjawaban.** " + I(LIMITATIONS), "",
         "---", "", f"_{CREDIT}_", "",
     ]
     path.write_text("\n".join(L), encoding="utf-8")
@@ -603,8 +603,8 @@ def write_html(path, findings, counts, when, cves):
     def rich(x):
         return glossary.italic_html(esc(x))
 
-    gagal = [f for f in findings if not f["lulus"]]
-    alerts = group_alerts(gagal)
+    failed = [f for f in findings if not f["passed"]]
+    alerts = group_alerts(failed)
 
     cards = "".join(
         f"<div class='card{' zero' if not counts[s] else ''}'>"
@@ -612,14 +612,14 @@ def write_html(path, findings, counts, when, cves):
         f"<div class='l'>{sev_label(s)}</div></div>" for s in SEV_ORDER)
 
     tgt_name, tgt_url = read_target()
-    moduls = sorted({f["modul"] for f in findings})
+    modules = sorted({f["module"] for f in findings})
 
     # Daftar alert (ToC): ID temuan, risiko, CVSS indikatif, keyakinan, instance.
     toc_rows = "".join(
-        f"<tr><td><a href='#alert-{i}'>{esc(finding_id(i))}</a></td><td>{rich(a['nama'])}</td>"
+        f"<tr><td><a href='#alert-{i}'>{esc(finding_id(i))}</a></td><td>{rich(a['name'])}</td>"
         f"<td><span class='badge' style='background:{SEV_COLOR[a['severity']]}'>"
         f"{esc(a['severity'].upper())}</span></td><td>{esc(cvss_score(a['kind'], a['severity']))}</td>"
-        f"<td>{esc(a['keyakinan'])}</td><td>{len(a['instances'])}</td></tr>"
+        f"<td>{esc(a['confidence'])}</td><td>{len(a['instances'])}</td></tr>"
         for i, a in enumerate(alerts, 1)) or \
         "<tr><td colspan='6'>Tidak ada temuan — semua kontrol yang diuji lolos.</td></tr>"
 
@@ -627,7 +627,7 @@ def write_html(path, findings, counts, when, cves):
     for i, a in enumerate(alerts, 1):
         kb = a["kb"]
         recs = ""
-        for rec in kb["rekomendasi"]:
+        for rec in kb["recommendation"]:
             recs += (f"<pre>{esc(rec)}</pre>" if ("\n" in rec or "    " in rec)
                      else f"<li>{rich(rec)}</li>")
         def _cell(inst):
@@ -639,7 +639,7 @@ def write_html(path, findings, counts, when, cves):
             return cell
         inst_rows = "".join(
             f"<tr><td>{j}</td><td><code>{esc(inst.get('url') or '-')}</code></td>"
-            f"<td>{rich(inst.get('judul', ''))}</td>"
+            f"<td>{rich(inst.get('title', ''))}</td>"
             f"<td>{esc(inst['status'] if inst['status'] not in (None, '') else '-')}</td>"
             f"<td>{_cell(inst)}</td></tr>"
             for j, inst in enumerate(a["instances"], 1))
@@ -648,38 +648,38 @@ def write_html(path, findings, counts, when, cves):
         blocks += f"""
         <div class="finding" id="alert-{i}">
           <h3><span class="badge" style="background:{col}">{esc(a['severity'].upper())}</span>
-              {esc(finding_id(i))} — {rich(a['nama'])}</h3>
+              {esc(finding_id(i))} — {rich(a['name'])}</h3>
           <p><b>Severity:</b> {esc(a['severity'].upper())} &nbsp;·&nbsp;
              <b>CVSS v3.1 (indikatif):</b> {esc(cvss_full(a['kind'], a['severity']))} &nbsp;·&nbsp;
-             <b>Keyakinan:</b> {esc(a['keyakinan'])} &nbsp;·&nbsp;
+             <b>Keyakinan:</b> {esc(a['confidence'])} &nbsp;·&nbsp;
              <b>Status:</b> Terbuka</p>
-          <p><b>Sumber/plugin:</b> {esc(', '.join(a['moduls']))} (<code>{esc(a['kind'])}</code>)
+          <p><b>Sumber/plugin:</b> {esc(', '.join(a['modules']))} (<code>{esc(a['kind'])}</code>)
              &nbsp;·&nbsp; <b>CVE/CWE:</b> {esc(cve)}</p>
-          <p><b>Deskripsi.</b> {rich(kb['deskripsi'])}</p>
+          <p><b>Deskripsi.</b> {rich(kb['description'])}</p>
           <p><b>Instance yang diuji ({len(a['instances'])}):</b></p>
           <table class="inst"><thead><tr><th>#</th><th>Endpoint diuji (bukti)</th>
             <th>Konteks</th><th>HTTP</th><th>Catatan</th></tr></thead>
             <tbody>{inst_rows}</tbody></table>
-          <p><b>Dampak.</b> {rich(kb['dampak'])}</p>
-          <p><b>Justifikasi severity.</b> {rich(kb['severity_dasar'])}</p>
+          <p><b>Dampak.</b> {rich(kb['impact'])}</p>
+          <p><b>Justifikasi severity.</b> {rich(kb['severity_basis'])}</p>
           <p><b>Rekomendasi & contoh solusi.</b></p><ul>{recs}</ul>
-          <p class="ref"><b>Referensi:</b> {esc('; '.join(kb['referensi']))}</p>
+          <p class="ref"><b>Referensi:</b> {esc('; '.join(kb['references']))}</p>
         </div>"""
     if not alerts:
         blocks = "<p>Tidak ada temuan — semua kontrol yang diuji lolos.</p>"
 
-    lulus = [f for f in findings if f["lulus"]]
-    lulus_rows = "".join(
-        f"<tr><td>{rich(f['judul'])}</td><td>{esc(f['modul'])}</td>"
+    passed = [f for f in findings if f["passed"]]
+    passed_rows = "".join(
+        f"<tr><td>{rich(f['title'])}</td><td>{esc(f['module'])}</td>"
         f"<td><code>{esc(f.get('url') or '-')}</code></td>"
         f"<td>{esc(f['status'] if f['status'] not in (None, '') else '-')}</td></tr>"
-        for f in lulus)
-    lulus_section = (
-        f"<h2>Kontrol yang Lolos (PASS: {len(lulus)})</h2>"
+        for f in passed)
+    passed_section = (
+        f"<h2>Kontrol yang Lolos (PASS: {len(passed)})</h2>"
         f"<p>Pemeriksaan yang diuji dan berperilaku benar — bukan temuan; bukti cakupan uji.</p>"
         f"<table><thead><tr><th>Pemeriksaan</th><th>Modul</th>"
-        f"<th>Endpoint diuji</th><th>HTTP</th></tr></thead><tbody>{lulus_rows}</tbody></table>"
-    ) if lulus else ""
+        f"<th>Endpoint diuji</th><th>HTTP</th></tr></thead><tbody>{passed_rows}</tbody></table>"
+    ) if passed else ""
 
     cve_rows = "".join(
         f"<tr><td><a href='https://nvd.nist.gov/vuln/detail/{esc(c['id'])}' "
@@ -726,7 +726,7 @@ def write_html(path, findings, counts, when, cves):
 </style>
 <header><h1>Laporan Hasil Uji Keamanan</h1>
 <div class="sub">{(esc(meta['org']) + ' · ') if meta['org'] else ''}Dibuat {esc(when)}</div>
-<div class="klas">{esc(KLASIFIKASI)}</div></header>
+<div class="klas">{esc(CLASSIFICATION)}</div></header>
 <main>
 <table class="meta"><tbody>
 {author_rows}
@@ -739,19 +739,19 @@ def write_html(path, findings, counts, when, cves):
 <p>Total alert: <b>{len(alerts)}</b> · Total CVE: <b>{len(cves)}</b>.</p>
 <h2>2. Ruang Lingkup &amp; Metodologi</h2>
 <div class="note"><p><b>Target.</b> {esc(tgt_name)} (<code>{esc(tgt_url)}</code>)</p>
-<p><b>Modul/teknik.</b> {esc(', '.join(moduls) if moduls else '-')}</p>
-<p><b>Metodologi.</b> {glossary.italic_html(html.escape(METODOLOGI))}</p></div>
+<p><b>Modul/teknik.</b> {esc(', '.join(modules) if modules else '-')}</p>
+<p><b>Metodologi.</b> {glossary.italic_html(html.escape(METHODOLOGY))}</p></div>
 <h2>3. Ringkasan Risiko</h2>
 <table><thead><tr><th>ID</th><th>Alert</th><th>Risiko</th><th>CVSS v3.1</th><th>Keyakinan</th><th>Instance</th></tr></thead>
 <tbody>{toc_rows}</tbody></table>
 <h2>4. Rincian Temuan</h2>{blocks}
-{lulus_section}
+{passed_section}
 <h2>5. Daftar CVE</h2>
 <table><thead><tr><th>CVE</th><th>Paket/Lokasi</th><th>Severity</th></tr></thead><tbody>{cve_rows}</tbody></table>
 <h2>6. Lampiran</h2>
 <div class="note"><p><b>Tooling &amp; acuan.</b> {esc('; '.join(TOOLS))}. Acuan: OWASP Top 10 2021, OWASP API Security Top 10 2023, OWASP ASVS, OWASP Risk Rating Methodology.</p>
 <p><b>Catatan CVSS.</b> Skor CVSS bersifat indikatif (pemetaan kualitatif dari OWASP Risk Rating + vektor v3.1 representatif per jenis temuan); skor+vektor final tetap perlu diverifikasi manual per konteks target.</p>
-<p><b>Batasan &amp; pertanggungjawaban.</b> {glossary.italic_html(html.escape(BATASAN))}</p></div>
+<p><b>Batasan &amp; pertanggungjawaban.</b> {glossary.italic_html(html.escape(LIMITATIONS))}</p></div>
 </main>
 <footer>{credit_html}</footer>
 </html>"""
@@ -770,14 +770,14 @@ def write_slides(path, findings, counts, when, cves):
     def rich(x):
         return glossary.italic_html(esc(x))
 
-    alerts = group_alerts([f for f in findings if not f["lulus"]])
+    alerts = group_alerts([f for f in findings if not f["passed"]])
     tgt_name, tgt_url = read_target()
     meta = report_meta()
     by_html = f"<p class='meta'>Disusun oleh {esc(meta['line'])}</p>" if meta["custom"] else ""
     total = sum(counts[s] for s in ("critical", "high", "medium", "low", "info"))
 
     slides = [f"""<section class="slide cover">
-      <div class="klas">{esc(KLASIFIKASI)}</div>
+      <div class="klas">{esc(CLASSIFICATION)}</div>
       <h1>Laporan Hasil Uji Keamanan</h1>
       <p class="tgt">{esc(tgt_name)} <span class="u">{esc(tgt_url)}</span></p>
       <p class="meta">{esc(when)}</p>{by_html}
@@ -790,14 +790,14 @@ def write_slides(path, findings, counts, when, cves):
         for s in ("critical", "high", "medium", "low", "info"))
     slides.append(f"""<section class="slide"><h2>Ringkasan Risiko</h2>
       <div class="scards">{cards}</div>
-      <p class="big">{total} instance temuan · {len(alerts)} alert · {len(cves)} CVE · {counts['lulus']} kontrol lolos</p></section>""")
+      <p class="big">{total} instance temuan · {len(alerts)} alert · {len(cves)} CVE · {counts['passed']} kontrol lolos</p></section>""")
 
     slides.append(f"""<section class="slide"><h2>Ringkasan Eksekutif</h2>
       <p class="exec">{rich(exec_summary(alerts, counts))}</p></section>""")
 
     for i, a in enumerate(alerts, 1):
         kb = a["kb"]
-        rec1 = rich(kb["rekomendasi"][0]) if kb.get("rekomendasi") else ""
+        rec1 = rich(kb["recommendation"][0]) if kb.get("recommendation") else ""
         col = SEV_COLOR[a["severity"]]
         shot = next((inst["screenshot"] for inst in a["instances"]
                      if inst.get("screenshot")), "")
@@ -808,12 +808,12 @@ def write_slides(path, findings, counts, when, cves):
             <span class="badge" style="background:{col}">{esc(a['severity'].upper())}</span>
             &nbsp;·&nbsp; CVSS {esc(cvss_score(a['kind'], a['severity']))} &nbsp;·&nbsp;
             {len(a['instances'])} instance</div>
-          <h2>{rich(a['nama'])}</h2>
-          <p><b>Dampak.</b> {rich(kb['dampak'])}</p>
+          <h2>{rich(a['name'])}</h2>
+          <p><b>Dampak.</b> {rich(kb['impact'])}</p>
           <p><b>Rekomendasi utama.</b> {rec1}</p>{shot_html}</section>""")
 
     slides.append(f"""<section class="slide cover"><h2>Terima kasih</h2>
-      <p class="meta">Laporan lengkap: <code>laporan.html</code>. Dokumen bersifat {esc(KLASIFIKASI)}.</p>
+      <p class="meta">Laporan lengkap: <code>laporan.html</code>. Dokumen bersifat {esc(CLASSIFICATION)}.</p>
       <p class="credit">{esc(CREDIT)}</p></section>""")
 
     deck = "".join(slides)
@@ -874,21 +874,21 @@ def main():
         for c in f["cve"]:
             if c and c.startswith("CVE") and c not in seen:
                 seen.add(c)
-                cves.append({"id": c, "where": f["judul"], "sev": f["severity"]})
+                cves.append({"id": c, "where": f["title"], "sev": f["severity"]})
 
     write_md(d / "laporan.md", findings, counts, when, cves)
     write_html(d / "laporan.html", findings, counts, when, cves)
     write_slides(d / "laporan-slides.html", findings, counts, when, cves)
 
-    gagal = sum(1 for f in findings if not f["lulus"])
+    failed = sum(1 for f in findings if not f["passed"])
     print(f"Laporan: {d/'laporan.html'} & {d/'laporan.md'} & {d/'laporan-slides.html'}")
-    tindak = C.bad(gagal) if gagal else C.good(gagal)
-    print(f"Total {len(findings)} item, {tindak} perlu tindak lanjut, {len(cves)} CVE.")
+    needs_action = C.bad(failed) if failed else C.good(failed)
+    print(f"Total {len(findings)} item, {needs_action} perlu tindak lanjut, {len(cves)} CVE.")
     # Severity berwarna hanya bila ada temuan; yang nol diredupkan.
-    ringkas = " · ".join(
+    summary_text = " · ".join(
         C.severity(s, f"{s.capitalize()} {counts[s]}") if counts[s] else C.dim(f"{s.capitalize()} {counts[s]}")
         for s in ("critical", "high", "medium", "low", "info"))
-    print(f"  {ringkas}")
+    print(f"  {summary_text}")
     return 0
 
 

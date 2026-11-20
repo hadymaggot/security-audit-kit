@@ -83,8 +83,8 @@ def test_masa_berlaku_cookie_sesi():
     assert r["ok"] is False and "melebihi" in r["note"]
     short = CF.parse_set_cookie("sid=1; HttpOnly; SameSite=lax; Max-Age=3600")
     assert _by(CF.evaluate(short, HTTP, {}))["masa berlaku"]["ok"] is True
-    sesi = CF.parse_set_cookie("sid=1; HttpOnly; SameSite=lax")
-    assert "hilang saat browser" in _by(CF.evaluate(sesi, HTTP, {}))["masa berlaku"]["note"]
+    session_cookie = CF.parse_set_cookie("sid=1; HttpOnly; SameSite=lax")
+    assert "hilang saat browser" in _by(CF.evaluate(session_cookie, HTTP, {}))["masa berlaku"]["note"]
 
 
 def test_evaluate_all_dedup_per_nama():
@@ -146,7 +146,7 @@ def test_report_memuat_cookie_flags(tmp_path):
     (tmp_path / "cookie_flags.json").write_text(json.dumps(
         {"module": "cookie-flags", "failures": 1, "results": rows}), encoding="utf-8")
     f = RP.collect(tmp_path)
-    gagal = [x for x in f if not x["lulus"]]
-    assert gagal and gagal[0]["kind"] == "cookie-flags" and gagal[0]["severity"] == "medium"
+    failed = [x for x in f if not x["passed"]]
+    assert failed and failed[0]["kind"] == "cookie-flags" and failed[0]["severity"] == "medium"
     assert RP.cvss_for("cookie-flags", "medium")[0] == 4.2
     assert "cookie-flags" in RP.KIND_LABEL

@@ -131,7 +131,7 @@ def test_report_memuat_captcha(tmp_path):
     rows = CP.analyze_challenge(_challenge(237, 33))
     (tmp_path / "captcha.json").write_text(json.dumps(
         {"module": "captcha", "failures": 1, "results": rows}), encoding="utf-8")
-    gagal = [x for x in RP.collect(tmp_path) if not x["lulus"]]
-    assert gagal and gagal[0]["kind"] == "captcha-answer-leak" and gagal[0]["severity"] == "medium"
+    failed = [x for x in RP.collect(tmp_path) if not x["passed"]]
+    assert failed and failed[0]["kind"] == "captcha-answer-leak" and failed[0]["severity"] == "medium"
     assert RP.cvss_for("captcha-answer-leak", "medium")[0] == 5.3
     assert "captcha-answer-leak" in RP.KIND_LABEL

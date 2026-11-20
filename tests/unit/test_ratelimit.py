@@ -186,7 +186,7 @@ def test_report_memuat_ratelimit(tmp_path):
     rows += [RL.evaluate_burst("login", URL, [401] * 5, False)]
     (tmp_path / "ratelimit.json").write_text(json.dumps(
         {"module": "ratelimit", "failures": 2, "results": rows}), encoding="utf-8")
-    by = {x["judul"]: x for x in RP.collect(tmp_path)}
+    by = {x["title"]: x for x in RP.collect(tmp_path)}
     assert by["enumerasi akun: response setelah ambang percobaan"]["kind"] == "user-enumeration"
     assert by["enumerasi akun: response setelah ambang percobaan"]["severity"] == "low"
     assert by["laju: login"]["kind"] == "no-rate-limit" and by["laju: login"]["severity"] == "medium"

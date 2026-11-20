@@ -117,8 +117,8 @@ def test_run_checks_endpoint_dan_probe():
     sess = _Sess({"/api/me": (200, json.dumps({"data": {"name": "A", "password": "xx-yy-zz"}}))})
     cfg = {"base_url": "http://t.example", "endpoints": [{"name": "me", "path": "/api/me"}]}
     res = RL.run_checks(cfg, sess=sess, anon=_Sess({}))
-    gagal = [r for r in res if not r["ok"]]
-    assert len(gagal) == 1 and gagal[0]["check"] == "me: kunci sensitif"
+    failed = [r for r in res if not r["ok"]]
+    assert len(failed) == 1 and failed[0]["check"] == "me: kunci sensitif"
     assert any(r["check"].startswith("probe error /") and r["ok"] for r in res)
 
 
@@ -156,7 +156,7 @@ def test_report_memuat_response_leak(tmp_path):
     (tmp_path / "response_leak.json").write_text(json.dumps(
         {"module": "response-leak", "failures": 2, "results": rows}), encoding="utf-8")
     f = RP.collect(tmp_path)
-    by = {x["judul"]: x for x in f}
+    by = {x["title"]: x for x in f}
     assert by["ep: kunci sensitif"]["kind"] == "sensitive-data-exposure"
     assert by["ep: kunci sensitif"]["severity"] == "high"
     assert by["ep: alamat internal"]["kind"] == "internal-info-leak"

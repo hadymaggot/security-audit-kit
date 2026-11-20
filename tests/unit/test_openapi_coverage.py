@@ -169,7 +169,7 @@ def test_report_memuat_openapi_coverage(tmp_path):
     (tmp_path / "openapi_coverage.json").write_text(json.dumps(
         {"module": "openapi-coverage", "failures": 1, "results": rows}), encoding="utf-8")
     f = RP.collect(tmp_path)
-    gagal = [x for x in f if not x["lulus"]]
-    assert gagal and gagal[0]["kind"] == "auth-coverage-gap" and gagal[0]["severity"] == "high"
+    failed = [x for x in f if not x["passed"]]
+    assert failed and failed[0]["kind"] == "auth-coverage-gap" and failed[0]["severity"] == "high"
     assert RP.cvss_for("unauthenticated-endpoint", "medium")[0] == 5.3
     assert {"auth-coverage-gap", "unauthenticated-endpoint", "spec-mismatch"} <= set(RP.KIND_LABEL)

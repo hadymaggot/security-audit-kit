@@ -32,9 +32,9 @@ Ein Check = ein Runner in `tests/<name>/run_<name>.py` + ein Eintrag in `remedia
 1. **Runner.** Config über `--config` lesen, `--json <out>` unterstützen. Ausgabemuster je
    Element: `{"label", "status", "ok": bool, "note"}`. `tests/cors/run_cors.py` als
    kompaktestes Beispiel ansehen. `<name>.example.yml` beilegen.
-2. **Remediation (Pflicht).** Einen `KB`-Eintrag in `remediation.py` mit `deskripsi`,
-   `dampak`, `severity`, `severity_dasar`, `rekomendasi` (Liste, gern mit
-   Lösungs-/Codebeispiel) und `referensi` (OWASP/BSSN) ergänzen. In `classify()` zuordnen.
+2. **Remediation (Pflicht).** Einen `KB`-Eintrag in `remediation.py` mit `description`,
+   `impact`, `severity`, `severity_basis`, `recommendation` (Liste, gern mit
+   Lösungs-/Codebeispiel) und `references` (OWASP/BSSN) ergänzen. In `classify()` zuordnen.
 3. **report.py.** Die JSON-Datei in `collect()` registrieren, damit sie in den Gesamtbericht
    einfließt.
 4. **audit.py.** Das Modul registrieren, damit `python audit.py <name>` funktioniert.

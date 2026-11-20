@@ -79,10 +79,10 @@ def replay(reports_dir, do_restore):
         e["done"] = bool(ok)
         results.append({"label": e.get("label", "?"), "ok": bool(ok), "note": note})
     _write(reports_dir, journal)
-    gagal = sum(1 for r in results if not r["ok"])
+    failed = sum(1 for r in results if not r["ok"])
     _p(reports_dir, LOG).write_text(
-        json.dumps({"module": "rollback", "dipulihkan": len(results) - gagal,
-                    "gagal": gagal, "results": results}, ensure_ascii=False, indent=2),
+        json.dumps({"module": "rollback", "restored": len(results) - failed,
+                    "failed": failed, "results": results}, ensure_ascii=False, indent=2),
         encoding="utf-8")
     return results
 
