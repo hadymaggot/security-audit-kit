@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""Basis pengetahuan remediasi & justifikasi — generik, lintas-proyek.
+"""Remediation and justification knowledge base, generic across projects.
 
-Tiap temuan diklasifikasikan ke sebuah 'kind'. Untuk tiap kind tersedia:
-  deskripsi   : apa celahnya
-  dampak      : akibat bila dibiarkan
-  severity    : tingkat default + dasar penilaiannya (justifikasi)
-  rekomendasi : langkah perbaikan + contoh solusi (kode/konfig, framework-agnostic)
-  referensi   : standar yang dirujuk (OWASP, BSSN Perban 4/2021, dll)
+Each finding is classified into a 'kind'. For every kind the KB holds:
+  description    : what the weakness is
+  impact         : consequence if left unfixed
+  severity       : default level + the basis for it (justification)
+  recommendation : fix steps + sample solution (code/config, framework-agnostic)
+  references     : cited standards (OWASP, BSSN Perban 4/2021, etc.)
 
-Dipakai report.py untuk menyusun laporan yang bisa dipertanggungjawabkan.
+Used by report.py to build a defensible report.
 """
 from __future__ import annotations
 
-# Dasar penilaian severity memakai OWASP Risk Rating (Likelihood x Impact).
+# Severity is rated with the OWASP Risk Rating (Likelihood x Impact).
 KB = {
     "broken-access": {
         "description": "Endpoint sensitif dapat diakses oleh role yang tidak berwenang "
@@ -764,9 +764,9 @@ KB = {
     },
 }
 
-# Pemetaan nama alert ZAP → kind yang lebih spesifik bila dikenali.
+# Map ZAP alert names to a more specific kind when recognized.
 ZAP_KEYWORDS = [
-    ("sql injection", "broken-access"),   # diarahkan ke injeksi via kb khusus bila ada
+    ("sql injection", "broken-access"),   # routed to a dedicated injection KB entry when one exists
     ("cross site scripting", "upload-accepted"),
     ("xss", "upload-accepted"),
     ("content security policy", "missing-header"),

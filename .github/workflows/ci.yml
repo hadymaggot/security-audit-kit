@@ -1,10 +1,10 @@
 name: CI
 
-# Gerbang kode tiap PR & push ke main: compile semua Python + jalanin unit test.
-# Dijalankan di dalam image python resmi lewat Docker, biar nggak bergantung
-# toolchain di self-hosted runner.
-# Catatan: kalau repo ini di-fork & dijalankan di GitHub-hosted, ganti runs-on
-# ke ubuntu-latest dan boleh pakai actions/setup-python langsung.
+# Code gate on every PR and push to main: compile all Python + run unit tests.
+# Runs inside the official python image via Docker so it does not depend on the
+# self-hosted runner's toolchain.
+# Note: if this repo is forked and run on GitHub-hosted runners, change runs-on to
+# ubuntu-latest and actions/setup-python can be used directly.
 
 on:
   pull_request:

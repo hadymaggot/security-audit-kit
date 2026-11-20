@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
-"""Gabungkan hasil semua modul di reports/ menjadi satu laporan yang dapat
-dipertanggungjawabkan: metodologi, bukti, justifikasi severity, rekomendasi +
-contoh solusi per temuan, daftar CVE, dan batasan.
+"""Merge all module results in reports/ into one defensible report.
 
-Menghasilkan reports/laporan.html dan reports/laporan.md. Lintas-platform (stdlib).
+Covers methodology, evidence, severity justification, per-finding recommendation + sample fix,
+CVE list and limitations. Writes reports/laporan.html and reports/laporan.md (cross-platform, stdlib).
 
-Membaca JSON yang ditulis modul:
-  authz.json, upload.json, auth_policy.json   (runner pengujian kit ini)
+Reads the JSON written by the modules:
+  authz.json, upload.json, auth_policy.json   (this kit's test runners)
   zap-baseline.json / zap-api.json / zap-full.json  (OWASP ZAP)
-  trivy.json                                   (CVE dependensi)
-  testssl.json                                 (TLS, sebagian ber-CVE)
+  trivy.json                                   (dependency CVEs)
+  testssl.json                                 (TLS, partly CVE-tagged)
 
-Pakai: python report.py [--dir reports]
+Usage: python report.py [--dir reports]
 """
 from __future__ import annotations
 
@@ -28,17 +27,17 @@ import glossary
 import remediation as R
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "tests"))
-import _color as C  # noqa: E402  (warna ANSI konsol; hanya untuk ringkasan di terminal)
+import _color as C  # noqa: E402  (console ANSI colors; terminal summary only)
 
 _TAG_RE = re.compile(r"</?[A-Za-z][^>]*>")
 
 
 def plain_text(s, limit=None):
-    """Teks polos dari string yang bisa berisi entity/tag HTML (mis. deskripsi alert ZAP
-    '&lt;p&gt;...&lt;/p&gt;'). Unescape -> buang tag -> rapikan spasi, agar tag tidak bocor
-    sebagai teks mentah di laporan Markdown/HTML/slide."""
+    """Plain text from a string that may contain HTML entities/tags (e.g. a ZAP alert description
+    '&lt;p&gt;...&lt;/p&gt;'): unescape, strip tags, collapse whitespace, so raw tags do not leak
+    into the Markdown/HTML/slide report."""
     t = str(s or "")
-    for _ in range(3):                        # entity ganda (&amp;lt;) -> sampai stabil
+    for _ in range(3):                        # double-encoded entities (&amp;lt;) -> repeat until stable
         u = html.unescape(t)
         if u == t:
             break
@@ -53,7 +52,7 @@ SEV_COLOR = {"critical": "#c0392b", "high": "#e8710a", "medium": "#d4a017",
              "low": "#2f6feb", "info": "#6b7280", "passed": "#1f9d57"}
 SEV_EMOJI = {"critical": "🔴", "high": "🟠", "medium": "🟡",
              "low": "🔵", "info": "⚪", "passed": "🟢"}
-# Label severity yang ditampilkan ke pembaca (kontrol lolos = PASS).
+# Severity labels shown to the reader (passed control = PASS).
 SEV_LABEL = {"critical": "CRITICAL", "high": "HIGH", "medium": "MEDIUM",
              "low": "LOW", "info": "INFO", "passed": "PASS"}
 def sev_label(s):
@@ -87,7 +86,7 @@ def norm(module, title, status, evidence, passed, override_sev=None, cve=None,
 def collect(d: Path):
     findings = []
 
-    # --- runner kit ---
+    # --- kit runners ---
     for name, module in (("authz.json", "authz-matrix"),
                         ("upload.json", "upload-safety"),
                         ("mass_assignment.json", "mass-assignment"),
@@ -148,7 +147,7 @@ def collect(d: Path):
                                      cve=[f"CWE-{cwe}"] if cwe and cwe != "-1" else [],
                                      url=uri))
 
-    # --- CVE dependensi (trivy) ---
+    # --- dependency CVEs (trivy) ---
     data = load(d / "trivy.json")
     if data:
         for res in data.get("Results", []) or []:
@@ -164,7 +163,7 @@ def collect(d: Path):
                                      None, ev, passed=False, override_sev=sev,
                                      cve=[v.get("VulnerabilityID")]))
 
-    # --- gitleaks (secret di kode/riwayat git; nilai sudah di-redact oleh gitleaks) ---
+    # --- gitleaks (secrets in code/git history; values are already redacted by gitleaks) ---
     data = load(d / "gitleaks.json")
     if isinstance(data, list):
         for g in data:
@@ -192,7 +191,7 @@ def collect(d: Path):
                                  override_sev=sev_map.get(str(ex.get("severity", "")).upper(), "medium"),
                                  cve=cwe, kind_hint="sast-finding", url=where))
 
-    # --- testssl (sebagian ber-CVE) ---
+    # --- testssl (partly CVE-tagged) ---
     data = load(d / "testssl.json")
     if data and isinstance(data, list):
         for item in data:
@@ -205,7 +204,7 @@ def collect(d: Path):
                                  passed=False, override_sev=sev,
                                  cve=[c for c in cve.split() if c.startswith("CVE")]))
 
-    # --- recon (OSINT/infra/vuln; severity dibawa per-baris) ---
+    # --- recon (OSINT/infra/vuln; severity is carried per row) ---
     data = load(d / "recon.json")
     if data:
         for r in data.get("results", data) if isinstance(data, dict) else data:
@@ -245,22 +244,22 @@ LIMITATIONS = (
     "ada di reports/rollback.json, dan `python audit.py rollback` memulihkan ulang bila perlu."
 )
 
-# Kredit pembuat kit — selalu ikut di SETIAP laporan (baris "Alat" dan footer), apa pun yang
-# memakainya. Tanamkan di sini (bukan di config) supaya tak bisa dihapus lewat konfigurasi.
-# Penyusun laporan (penguji/organisasi) terpisah dan dinamis: lihat report_meta().
+# Kit author credit: included in EVERY report (the "Alat" row and footer) regardless of who uses
+# it. Hardcoded here, not in config, so configuration cannot remove it.
+# The report preparer (tester/organization) is separate and dynamic: see report_meta().
 KIT_NAME = "Security Audit Kit"
 KIT_AUTHOR = "hadymaggot"
 KIT_URL = "https://github.com/hadymaggot/security-audit-kit"
 CREDIT = f"{KIT_NAME} — dibuat oleh {KIT_AUTHOR} · {KIT_URL}"
 
-# Default penyusun, perusahaan, dan kontak penyusun laporan; timpa per project di targets.yml
-# (blok `report:`) atau lewat env SAK_REPORT_AUTHOR / SAK_REPORT_ORG / SAK_REPORT_CONTACT.
-# DEFAULT_CONTACT hanya dipakai bila perusahaannya juga DEFAULT_ORG (kontak milik perusahaan itu).
+# Default report preparer, organization and contact; override per project in targets.yml
+# (`report:` block) or via env SAK_REPORT_AUTHOR / SAK_REPORT_ORG / SAK_REPORT_CONTACT.
+# DEFAULT_CONTACT applies only when the organization is also DEFAULT_ORG (it is that organization's contact).
 DEFAULT_AUTHOR = "Sapto Hadi"
 DEFAULT_ORG = "PT. Wahana Reka Tekindo"
 DEFAULT_CONTACT = "wahanarekatekindo@gmail.com"
 
-# Nama alert yang terbaca manusia per 'kind' (gaya ZAP: satu alert, banyak instance).
+# Human-readable alert name per 'kind' (ZAP style: one alert, many instances).
 KIND_LABEL = {
     "broken-access": "Access control rusak (role rendah membuka area terbatas)",
     "forged-header": "Header identitas (X-Auth-*) dipercaya dari klien",
@@ -309,16 +308,16 @@ KIND_LABEL = {
 
 
 def _confidence(modules):
-    """Keyakinan: pemeriksaan deterministik (request/response langsung) = Tinggi;
-    temuan pemindai pasif (ZAP) = Sedang (perlu verifikasi manual)."""
+    """Confidence: deterministic checks (direct request/response) = Tinggi; passive scanner
+    findings (ZAP) = Sedang (need manual verification)."""
     return "Sedang" if modules == {"zap"} else "Tinggi"
 
 
 def group_alerts(failed):
-    """Kelompokkan temuan per 'kind' jadi alert ala ZAP (satu alert, banyak instance).
+    """Group findings by 'kind' into ZAP-style alerts (one alert, many instances).
 
-    Urut dari severity tertinggi; dalam satu severity, alert dengan instance terbanyak
-    didahulukan. Tiap alert: {kind, nama, kb, severity, keyakinan, instances, cve, moduls}.
+    Sorted by highest severity, then by most instances. Each alert:
+    {kind, nama, kb, severity, keyakinan, instances, cve, moduls}.
     """
     groups = {}
     for f in failed:
@@ -347,8 +346,8 @@ TOOLS = ["OWASP ZAP (DAST)", "Trivy (SCA/CVE)", "semgrep (SAST)", "gitleaks (sec
          "testssl.sh (TLS)",
          "runner internal Security Audit Kit (authz, mass-assignment, upload, auth-policy, "
          "client-leak, cors, open-redirect, webstack, injection)"]
-# CVSS v3.1 indikatif: skor + vektor representatif per jenis temuan (kind). Dipakai
-# sebagai acuan awal; vektor final tetap perlu diverifikasi per konteks target.
+# Indicative CVSS v3.1: representative score + vector per finding kind. A starting point only;
+# the final vector must still be verified in the target's context.
 KIND_CVSS = {
     "broken-access": (9.1, "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:N"),
     "forged-header": (9.1, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:N"),
@@ -393,7 +392,7 @@ KIND_CVSS = {
     "missing-header": (3.7, "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N"),
     "captcha-static": (3.7, "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:L/A:N"),
 }
-# Fallback representatif per severity bila kind tak terdaftar.
+# Representative fallback per severity when the kind is not registered.
 CVSS_REP = {"critical": (9.8, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"),
             "high": (8.1, "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N"),
             "medium": (5.3, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"),
@@ -402,7 +401,7 @@ CVSS_REP = {"critical": (9.8, "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"),
 
 
 def cvss_for(kind, severity):
-    """(skor, vektor) CVSS v3.1 indikatif untuk sebuah temuan."""
+    """Indicative CVSS v3.1 (score, vector) for a finding."""
     if kind in KIND_CVSS:
         return KIND_CVSS[kind]
     return CVSS_REP.get((severity or "info").lower(), (0.0, "-"))
@@ -422,14 +421,14 @@ def finding_id(i):
 
 
 def targets_path():
-    """config/targets.yml milik project aktif (SAK_PROJECT_DIR dari `audit.py --project`),
-    atau milik folder kit bila tak diset."""
+    """config/targets.yml of the active project (SAK_PROJECT_DIR from `audit.py --project`),
+    or of the kit folder when unset."""
     base = os.environ.get("SAK_PROJECT_DIR") or Path(__file__).resolve().parent
     return Path(base) / "config" / "targets.yml"
 
 
 def read_config():
-    """Isi targets.yml (best-effort, {} bila tak ada/rusak)."""
+    """Contents of targets.yml (best-effort; {} if missing or broken)."""
     try:
         import yaml
         p = targets_path()
@@ -440,18 +439,18 @@ def read_config():
 
 
 def read_target():
-    """Baca nama & base_url target dari targets.yml project aktif (best-effort)."""
+    """Target name and base_url from the active project's targets.yml (best-effort)."""
     cfg = read_config()
     return cfg.get("name") or "-", cfg.get("base_url") or "-"
 
 
 def report_meta(cfg=None):
-    """Penyusun & perusahaan penyusun laporan, dinamis per project.
+    """Report preparer and organization, dynamic per project.
 
-    Sumber (prioritas): env SAK_REPORT_AUTHOR / SAK_REPORT_ORG / SAK_REPORT_CONTACT, lalu blok
-    `report:` di targets.yml (prepared_by, organization, contact, version). Perusahaan default
-    DEFAULT_ORG bila tak diset sama sekali; isi string kosong untuk menyembunyikannya. Kontak
-    default DEFAULT_CONTACT hanya bila perusahaan = DEFAULT_ORG dan kontak tak diset."""
+    Sources (by priority): env SAK_REPORT_AUTHOR / SAK_REPORT_ORG / SAK_REPORT_CONTACT, then the
+    `report:` block in targets.yml (prepared_by, organization, contact, version). The organization
+    defaults to DEFAULT_ORG when not set at all; set an empty string to hide it. The contact
+    defaults to DEFAULT_CONTACT only when the organization is DEFAULT_ORG and no contact is set."""
     rc = ((read_config() if cfg is None else cfg) or {}).get("report") or {}
     rc = rc if isinstance(rc, dict) else {}
 
@@ -471,7 +470,7 @@ def report_meta(cfg=None):
 
 
 def exec_summary(alerts, counts):
-    """Ringkasan eksekutif ringkas, bahasa manajemen (non-teknis)."""
+    """Short executive summary in non-technical, management language."""
     total = sum(counts[s] for s in ("critical", "high", "medium", "low", "info"))
     if total == 0:
         return ("Tidak ditemukan temuan pada cakupan yang diuji; seluruh kontrol yang diuji "
@@ -519,7 +518,7 @@ def write_md(path, findings, counts, when, cves):
         "- **Metodologi:** " + I(METHODOLOGY), "",
         "## 3. Ringkasan Risiko", "",
     ]
-    # Daftar alert (ToC) dengan ID temuan, risiko, CVSS indikatif, keyakinan, instance.
+    # Alert list (ToC): finding ID, risk, indicative CVSS, confidence, instances.
     if alerts:
         L += ["| ID | Alert | Risiko | CVSS v3.1 | Keyakinan | Instance |",
               "|---|---|---|---|---|---|"]
@@ -568,7 +567,7 @@ def write_md(path, findings, counts, when, cves):
         L.append(f"- **Referensi:** {'; '.join(kb['references'])}")
         L.append("")
 
-    # Kontrol yang lolos — bukti cakupan uji.
+    # Passed controls: evidence of test coverage.
     passed = [f for f in findings if f["passed"]]
     if passed:
         L += [f"### Kontrol yang Lolos (PASS: {len(passed)})", "",
@@ -614,7 +613,7 @@ def write_html(path, findings, counts, when, cves):
     tgt_name, tgt_url = read_target()
     modules = sorted({f["module"] for f in findings})
 
-    # Daftar alert (ToC): ID temuan, risiko, CVSS indikatif, keyakinan, instance.
+    # Alert list (ToC): finding ID, risk, indicative CVSS, confidence, instances.
     toc_rows = "".join(
         f"<tr><td><a href='#alert-{i}'>{esc(finding_id(i))}</a></td><td>{rich(a['name'])}</td>"
         f"<td><span class='badge' style='background:{SEV_COLOR[a['severity']]}'>"
@@ -759,10 +758,10 @@ def write_html(path, findings, counts, when, cves):
 
 
 def write_slides(path, findings, counts, when, cves):
-    """Varian laporan sebagai slide deck mandiri (HTML+CSS+JS inline, tanpa dependency).
+    """Report variant as a standalone slide deck (inline HTML+CSS+JS, no dependencies).
 
-    Navigasi: panah kiri/kanan atau klik. Cocok untuk presentasi ringkas ke stakeholder;
-    laporan lengkap tetap di laporan.html.
+    Navigate with the left/right arrows or by clicking. Meant for a short stakeholder
+    presentation; the full report stays in laporan.html.
     """
     def esc(x):
         return html.escape(str(x))
@@ -858,16 +857,16 @@ def main():
     args = ap.parse_args()
     d = Path(args.dir)
     d.mkdir(parents=True, exist_ok=True)
-    # Sertakan zona waktu (offset UTC) agar waktu laporan tak ambigu lintas-wilayah.
+    # Include the UTC offset so the report time is unambiguous across regions.
     now = dt.datetime.now().astimezone()
-    off = now.strftime("%z")                     # mis. +0700
+    off = now.strftime("%z")                     # e.g. +0700
     off_fmt = f"UTC{off[:3]}:{off[3:]}" if off else "UTC"
     tzname = now.strftime("%Z")
     when = now.strftime("%Y-%m-%d %H:%M") + f" ({off_fmt}" + (f" {tzname}" if tzname else "") + ")"
 
     findings = collect(d)
     counts = summarize(findings)
-    # Kumpulan CVE unik untuk tabel.
+    # Unique CVEs for the table.
     cves = []
     seen = set()
     for f in findings:
@@ -884,7 +883,7 @@ def main():
     print(f"Laporan: {d/'laporan.html'} & {d/'laporan.md'} & {d/'laporan-slides.html'}")
     needs_action = C.bad(failed) if failed else C.good(failed)
     print(f"Total {len(findings)} item, {needs_action} perlu tindak lanjut, {len(cves)} CVE.")
-    # Severity berwarna hanya bila ada temuan; yang nol diredupkan.
+    # Color a severity only when it has findings; dim the zero ones.
     summary_text = " · ".join(
         C.severity(s, f"{s.capitalize()} {counts[s]}") if counts[s] else C.dim(f"{s.capitalize()} {counts[s]}")
         for s in ("critical", "high", "medium", "low", "info"))

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Pintu masuk lintas-platform untuk Security Audit Kit.
+"""Cross-platform entry point for Security Audit Kit.
 
-Berjalan sama di Windows (PowerShell/cmd) maupun Linux/macOS — semua orkestrasi
-dilakukan di Python, memanggil image Docker resmi; tidak bergantung pada shell.
+All orchestration is in Python and calls official Docker images, so it behaves the same on
+Windows and Linux/macOS and does not depend on the shell.
 
-Pakai:
-    python audit.py all                      # jalankan semua modul dari config/targets.yml
+Usage:
+    python audit.py all                      # run all modules from config/targets.yml
     python audit.py zap baseline
     python audit.py zap api
     python audit.py tls
@@ -15,17 +15,17 @@ Pakai:
     python audit.py upload
     python audit.py auth-policy
 
-Konfigurasi target di config/targets.yml (lihat config/targets.example.yml).
-Kredensial & token diambil dari environment variable, bukan dari file.
+Target config lives in config/targets.yml (see config/targets.example.yml).
+Credentials and tokens come from environment variables, never from files.
 
-Multi-project (paralel): satu instalasi kit, banyak folder project. Tiap project punya
-config/targets.yml, tests/<modul>/<modul>.yml, dan reports/ sendiri, sehingga beberapa
-project bisa diaudit bersamaan dari terminal berbeda tanpa saling menimpa:
-    python audit.py --project my-app init authz,upload   # buat projects/my-app/
+Multi-project (parallel): one kit install, many project folders. Each project has its own
+config/targets.yml, tests/<module>/<module>.yml and reports/, so several projects can be
+audited at once from different terminals without overwriting each other:
+    python audit.py --project my-app init authz,upload   # create projects/my-app/
     python audit.py --project my-app all
-    python audit.py --project D:/audit/client-b headers          # folder di mana saja
-    SAK_PROJECT_DIR=... python audit.py all                    # setara --project
-Tanpa --project / SAK_PROJECT_DIR, folder kit itu sendiri dipakai (perilaku lama).
+    python audit.py --project D:/audit/client-b headers          # any folder
+    SAK_PROJECT_DIR=... python audit.py all                    # same as --project
+Without --project / SAK_PROJECT_DIR the kit folder itself is used (legacy behavior).
 """
 from __future__ import annotations
 
@@ -43,8 +43,8 @@ except ImportError:  # pragma: no cover
     print("Butuh PyYAML: pip install -r requirements.txt", file=sys.stderr)
     sys.exit(2)
 
-ROOT = Path(__file__).resolve().parent      # kode kit (runner, report.py, contoh config)
-PROJECT = ROOT                              # data project: config/, tests/<modul>/*.yml, reports/
+ROOT = Path(__file__).resolve().parent      # kit code (runners, report.py, example config)
+PROJECT = ROOT                              # project data: config/, tests/<module>/*.yml, reports/
 sys.path.insert(0, str(ROOT / "tests"))
 import _color as C  # noqa: E402  (ANSI colors; auto-off for pipes/CI, honors NO_COLOR)
 import glossary  # noqa: E402  (per-language technical glossary)
@@ -62,12 +62,12 @@ def expand(v):
 
 
 def resolve_project(value: str | None) -> Path:
-    """Folder project dari --project / SAK_PROJECT_DIR.
+    """Resolve the project folder from --project / SAK_PROJECT_DIR.
 
-    - kosong            -> folder kit (perilaku lama, satu project)
-    - nama saja (tanpa pemisah path, mis. "my-app") -> <kit>/projects/<nama>
-    - path (absolut/relatif) -> path tsb; relatif terhadap SAK_CALLER_CWD bila diset oleh
-      wrapper (audit.ps1 berpindah ke folder kit), selain itu terhadap direktori kerja."""
+    - empty        -> the kit folder (legacy single-project behavior)
+    - bare name (no path separator, e.g. "my-app") -> <kit>/projects/<name>
+    - path         -> that path; relative paths resolve against SAK_CALLER_CWD (set by the
+      audit.ps1 wrapper, which changes into the kit folder), else the working directory."""
     if not value or not str(value).strip():
         return ROOT
     v = str(value).strip()
@@ -80,7 +80,7 @@ def resolve_project(value: str | None) -> Path:
 
 
 def set_project(path: Path) -> Path:
-    """Tetapkan project aktif dan wariskan ke subproses (runner, report.py) lewat env."""
+    """Set the active project and pass it to subprocesses (runners, report.py) via env."""
     global PROJECT
     PROJECT = Path(path)
     os.environ["SAK_PROJECT_DIR"] = str(PROJECT)
@@ -88,8 +88,8 @@ def set_project(path: Path) -> Path:
 
 
 def pop_project_arg(argv: list[str]) -> tuple[str | None, list[str]]:
-    """Ambil `--project X` / `--project=X` dari argv (posisi mana pun) sebelum argparse
-    dan sebelum intersepsi 'recon' yang meneruskan argumen bebas."""
+    """Pull `--project X` / `--project=X` out of argv (any position), before argparse and
+    the 'recon' interception that forwards free-form args."""
     out, val, i = [], None, 0
     while i < len(argv):
         a = argv[i]
@@ -108,8 +108,9 @@ COLOR_MODES = ("auto", "always", "never")
 
 
 def pop_color_arg(argv: list[str]) -> tuple[str | None, list[str]]:
-    """Ambil `--color [auto|always|never]` / `--color=...` / `--no-color` dari argv (posisi mana
-    pun). Nilai tak valid -> keluar dengan kode 2. `--color` tanpa nilai berarti `always`."""
+    """Pull `--color [auto|always|never]` / `--color=...` / `--no-color` out of argv (any position).
+
+    Invalid value -> exit 2. A bare `--color` means `always`."""
     out, val, i = [], None, 0
     while i < len(argv):
         a = argv[i]
@@ -171,15 +172,15 @@ def load_targets():
 
 
 def docker_net_args(tgt):
-    """Argumen `--network` untuk `docker run` dari 'docker_network' di targets.yml.
+    """`--network` args for `docker run`, from 'docker_network' in targets.yml.
 
-    Berguna saat target hanya terjangkau dari jaringan Docker tertentu — mis. target
-    `localhost` (yang di dalam container menunjuk ke container itu sendiri). Nilai:
-      "host"                  -> jaringan host
-      "<nama-jaringan>"       -> bergabung ke jaringan Docker tsb (mis. compose)
-      "container:<nama>"      -> berbagi network namespace container lain (mis. gateway/
-                                 reverse proxy) sehingga `localhost` = container itu.
-    Kosong/tidak diset -> tanpa --network (perilaku bawaan)."""
+    Needed when the target is only reachable from a specific Docker network, e.g. a `localhost`
+    target (which inside a container points at the container itself). Values:
+      "host"              -> host network
+      "<network-name>"    -> join that Docker network (e.g. compose)
+      "container:<name>"  -> share another container's network namespace (e.g. a gateway/reverse
+                             proxy) so `localhost` is that container.
+    Empty/unset -> no --network (default behavior)."""
     net = str((tgt or {}).get("docker_network") or "").strip()
     return ["--network", net] if net else []
 
@@ -192,15 +193,15 @@ def have_docker():
 
 
 def dockervol(host_path: Path) -> str:
-    """Path volume Docker yang diterima baik di Windows (Docker Desktop) maupun Linux."""
+    """Volume path accepted by Docker on both Windows (Docker Desktop) and Linux."""
     p = host_path.resolve()
-    # Docker Desktop di Windows menerima path gaya 'C:\dir' maupun 'C:/dir'.
+    # Docker Desktop on Windows accepts both 'C:\dir' and 'C:/dir' styles.
     return str(p).replace("\\", "/")
 
 
 def run(cmd: list[str]) -> int:
     print(C.dim("+ " + " ".join(cmd)))
-    # shell=False → aman & identik di semua OS; tanpa ekspansi shell.
+    # shell=False: safe and identical on every OS, no shell expansion.
     return subprocess.call(cmd)
 
 
@@ -210,7 +211,7 @@ def reports_dir() -> Path:
     return d
 
 
-# ---- modul scanner (Docker) ----
+# ---- scanner modules (Docker) ----
 
 def mod_zap(tgt, sub="baseline"):
     if not have_docker():
@@ -220,7 +221,7 @@ def mod_zap(tgt, sub="baseline"):
     base = (["docker", "run", "--rm"] + docker_net_args(tgt)
             + ["-v", f"{out}:/zap/wrk:rw", image])
     extra = []
-    hdr = os.environ.get("ZAP_AUTH_HEADER")  # mis. "Authorization: Bearer xxx"
+    hdr = os.environ.get("ZAP_AUTH_HEADER")  # e.g. "Authorization: Bearer xxx"
     if hdr:
         name, _, val = hdr.partition(":")
         val = val.strip()
@@ -235,7 +236,7 @@ def mod_zap(tgt, sub="baseline"):
         return run(base + ["zap-baseline.py", "-t", tgt["base_url"],
                            "-r", "zap-baseline.html", "-J", "zap-baseline.json", "-I"] + extra)
     if sub in ("api", "full"):
-        # Scan AKTIF menulis ke target secara acak -> wajib dibungkus snapshot data bila dikonfigurasi.
+        # An active scan writes to the target at random: wrap it in a data snapshot when configured.
         if sub == "api" and not tgt.get("openapi"):
             print("targets.yml belum punya 'openapi' untuk ZAP API scan.", file=sys.stderr)
             return 2
@@ -257,7 +258,7 @@ def mod_zap(tgt, sub="baseline"):
 
 
 def zap_scan_cmd(tgt, sub):
-    """Argumen skrip ZAP untuk scan aktif (full/api)."""
+    """ZAP script args for an active scan (full/api)."""
     if sub == "api":
         return ["zap-api-scan.py", "-t", tgt["openapi"], "-f", "openapi",
                 "-r", "zap-api.html", "-J", "zap-api.json", "-I"]
@@ -266,8 +267,8 @@ def zap_scan_cmd(tgt, sub):
 
 
 def zap_scan_opts(tgt):
-    """Opsi tambahan scan aktif dari targets.yml: zap_exclude (regex URL yang dilewati, mis. logout/hapus),
-    zap_spider_minutes (-m), dan zap_timeout_minutes (-T)."""
+    """Extra active-scan options from targets.yml: zap_exclude (URL regexes to skip, e.g. logout/delete),
+    zap_spider_minutes (-m) and zap_timeout_minutes (-T)."""
     opts = []
     if tgt.get("zap_spider_minutes"):
         opts += ["-m", str(int(tgt["zap_spider_minutes"]))]
@@ -295,7 +296,7 @@ def mod_tls(tgt):
 
 
 def mod_headers(tgt):
-    # Murni Python — tak perlu Docker, jalan di mana saja.
+    # Pure Python: no Docker needed.
     import urllib.request
     import ssl
     url = tgt["base_url"].rstrip("/") + tgt.get("header_probe_path", "/")
@@ -308,7 +309,7 @@ def mod_headers(tgt):
         with urllib.request.urlopen(req, context=ctx, timeout=20) as r:
             headers = {k.lower(): v for k, v in r.headers.items()}
     except Exception as exc:  # noqa: BLE001
-        # Header tetap bisa dibaca dari respons error.
+        # Headers can still be read from an error response.
         if hasattr(exc, "headers") and exc.headers:
             headers = {k.lower(): v for k, v in exc.headers.items()}
         else:
@@ -350,12 +351,12 @@ DEPS_TOOLS = ("gitleaks", "semgrep", "trivy")
 
 
 def semgrep_cmd(tgt, repo, out, name):
-    """Perintah docker semgrep. targets.yml (opsional): semgrep_paths (subdirektori sumber yang
-    dipindai; default seluruh repo), semgrep_exclude (pola tambahan).
+    """Docker command for semgrep. Optional targets.yml keys: semgrep_paths (source subdirectories
+    to scan; default the whole repo) and semgrep_exclude (extra patterns).
 
-    Sumber yang dipilih DISALIN (tar) ke filesystem container lalu dipindai di sana: memindai langsung
-    dari akar repo pada bind mount Windows sangat lambat (menit sampai tak selesai), sedangkan salin +
-    pindai satu direktori PHP ber-104 berkas hanya beberapa detik."""
+    The selected sources are COPIED (tar) into the container filesystem and scanned there: scanning
+    the repo root through a Windows bind mount is extremely slow (minutes to never finishing), while
+    copy + scan of a 104-file PHP directory takes only seconds."""
     import shlex
     excl = ["vendor", "node_modules", "dist", "build", "docs"] + list(tgt.get("semgrep_exclude", []))
     paths = list(tgt.get("semgrep_paths") or ["."])
@@ -371,8 +372,9 @@ def semgrep_cmd(tgt, repo, out, name):
 
 
 def run_semgrep(tgt, repo, out, runner=None):
-    """Jalankan semgrep dengan batas waktu dinding (semgrep_timeout_minutes, default 25): bila lewat,
-    container dihentikan dan hasil dilaporkan sebagai tidak lengkap (rc 1) — tidak menggantung."""
+    """Run semgrep under a wall-clock limit (semgrep_timeout_minutes, default 25).
+
+    On timeout the container is killed and the result is reported as incomplete (rc 1), never hanging."""
     import subprocess
     name = f"sak-semgrep-{os.getpid()}"
     cmd = semgrep_cmd(tgt, repo, out, name)
@@ -388,13 +390,13 @@ def run_semgrep(tgt, repo, out, runner=None):
 
 
 def deps_selection(sub):
-    """Tool yang dijalankan: satu tool bila `sub` salah satunya, selain itu semua (urutan ringan->berat)."""
+    """Tools to run: just `sub` if it names one, otherwise all (light -> heavy order)."""
     return (sub,) if sub in DEPS_TOOLS else DEPS_TOOLS
 
 
 def mod_deps(tgt, sub="all"):
-    """Scanner kode/dependensi. `python audit.py deps [gitleaks|semgrep|trivy]` — satu tool per
-    jalan (hemat memori); tanpa argumen menjalankan ketiganya berurutan."""
+    """Code/dependency scanners. `python audit.py deps [gitleaks|semgrep|trivy]` runs one tool
+    per invocation (saves memory); with no argument all three run in sequence."""
     if not have_docker():
         return 2
     repo = dockervol(Path(tgt.get("code_path", ".")))
@@ -414,24 +416,24 @@ def mod_deps(tgt, sub="all"):
         print("== trivy (CVE dependency & rahasia) ==")
         cache_dir = trivy_cache_dir(tgt)
         cache = dockervol(cache_dir)
-        # Cache DB trivy dipakai bersama antar-project (hemat ratusan MB); trivy sendiri tak
-        # mengizinkan dua proses memakai cache yang sama, jadi run paralel diantrekan di sini.
+        # The trivy DB cache is shared across projects (saves hundreds of MB); trivy itself does not
+        # allow two processes on the same cache, so parallel runs are queued here.
         with file_lock(cache_dir / ".sak-trivy.lock", "trivy project lain"):
-            # Tabel ke konsol untuk dibaca langsung.
+            # Table to the console for direct reading.
             rc |= run(["docker", "run", "--rm", "-v", f"{repo}:/repo:ro",
                        "-v", f"{cache}:/root/.cache/trivy", "aquasec/trivy:latest",
                        "fs", "/repo", "--scanners", "vuln,secret",
                        "--severity", "HIGH,CRITICAL", "--ignore-unfixed"])
-            # JSON lengkap (semua severity) untuk laporan CVE.
+            # Full JSON (all severities) for the CVE report.
             run(["docker", "run", "--rm", "-v", f"{repo}:/repo:ro",
                  "-v", f"{cache}:/root/.cache/trivy", "-v", f"{out}:/out",
                  "aquasec/trivy:latest", "fs", "/repo", "--scanners", "vuln",
                  "--format", "json", "--output", "/out/trivy.json"])
-    return 0  # informatif; tak menggagalkan
+    return 0  # informational; never fails the run
 
 
 def trivy_cache_dir(tgt) -> Path:
-    """Folder cache trivy: 'trivy_cache_dir' di targets.yml, default ~/.cache/sak-trivy (bersama)."""
+    """Trivy cache folder: 'trivy_cache_dir' in targets.yml, default ~/.cache/sak-trivy (shared)."""
     raw = (tgt or {}).get("trivy_cache_dir") or (Path.home() / ".cache" / "sak-trivy")
     d = Path(str(raw)).expanduser()
     d.mkdir(parents=True, exist_ok=True)
@@ -439,9 +441,9 @@ def trivy_cache_dir(tgt) -> Path:
 
 
 class file_lock:
-    """Kunci eksklusif antar-proses berbasis berkas (Windows: msvcrt, POSIX: fcntl).
+    """Exclusive cross-process file lock (Windows: msvcrt, POSIX: fcntl).
 
-    Blok sampai kunci didapat; mencetak pesan sekali bila harus menunggu proses lain."""
+    Blocks until acquired; prints a message once if it has to wait for another process."""
 
     def __init__(self, path: Path, holder: str = "proses lain", poll: float = 2.0):
         self.path, self.holder, self.poll, self.fh = Path(path), holder, poll, None
@@ -490,8 +492,9 @@ def mod_py(script: Path, config: Path, json_name: str | None = None):
 
 
 def mod_recon(extra):
-    """Recon orchestrator. Meneruskan argumen bebas (target, -d, -m, --active) ke
-    runner. Config opsional: tests/recon/recon.yml (salin dari .example-nya)."""
+    """Recon orchestrator. Forwards free-form args (target, -d, -m, --active) to the runner.
+
+    Optional config: tests/recon/recon.yml (copy from its .example)."""
     script = ROOT / "tests" / "recon" / "run_recon.py"
     cfg = project_cfg("tests", "recon", "recon.yml")
     cmd = [sys.executable, str(script), "--json", str(reports_dir() / "recon.json")]
@@ -504,16 +507,15 @@ def mod_recon(extra):
 
 
 def mod_report():
-    """Gabungkan semua JSON di reports/ jadi satu laporan HTML + Markdown."""
+    """Merge all JSON in reports/ into one HTML + Markdown report."""
     return run([sys.executable, str(ROOT / "report.py"), "--dir", str(reports_dir())])
 
 
 def mod_rollback():
-    """Pulihkan otomatis semua aksi destruktif yang tercatat di jurnal rollback.
+    """Automatically undo every destructive action recorded in the rollback journal.
 
-    Dijalankan sebagai fase TERAKHIR (setelah laporan) supaya target kembali ke
-    keadaan semula — 'rasa non-destruktif'. Juga bisa dipanggil manual:
-    `python audit.py rollback`.
+    Runs as the LAST phase (after the report) so the target returns to its original state.
+    Can also be invoked manually: `python audit.py rollback`.
     """
     import importlib.util
 
@@ -529,7 +531,7 @@ def mod_rollback():
     ctx = {}
 
     def ma_ctx():
-        """Sesi auth dari config mass-assignment (dibuat malas — hanya bila entri butuh)."""
+        """Auth session from the mass-assignment config (built lazily, only when an entry needs it)."""
         if ctx:
             return ctx
         cfg_path = project_cfg("tests", "mass-assignment", "mass_assignment.yml")
@@ -549,9 +551,9 @@ def mod_rollback():
 
     def do_restore(entry):
         a = entry["action"]
-        if a.get("fixture_config"):               # akun uji sekali pakai -> hapus pakai sesi admin
+        if a.get("fixture_config"):               # throwaway test account -> delete via the admin session
             return _fixture.restore_entry(entry)
-        if a.get("snapshot_manifest"):            # snapshot data (scan aktif) -> pulihkan dari berkas
+        if a.get("snapshot_manifest"):            # data snapshot (active scan) -> restore from file
             return _snapshot.restore_entry(entry)
         c = ma_ctx()
         url = (a.get("base_url") or c["base"]).rstrip("/") + a["path"]
@@ -571,9 +573,9 @@ def mod_rollback():
     return 1 if failed else 0
 
 
-# Modul pengujian berbasis runner Python: nama CLI -> (folder di tests/, runner, config, json).
-# Runner & contoh config ada di kit (ROOT); config live per project ada di PROJECT.
-# Urutan dict = urutan eksekusi pada `all` (modul hanya jalan bila config-nya ada).
+# Python-runner test modules: CLI name -> (folder under tests/, runner, config, json).
+# Runners and example configs live in the kit (ROOT); live per-project configs live in PROJECT.
+# Dict order = execution order for `all` (a module runs only if its config exists).
 PY_MODULES = {
     "authz": ("authz-matrix", "run_authz_matrix.py", "authz_matrix.yml", "authz.json"),
     "upload": ("upload-safety", "run_upload_safety.py", "upload_safety.yml", "upload.json"),
@@ -595,7 +597,7 @@ PY_MODULES = {
     "mass-assignment": ("mass-assignment", "run_mass_assignment.py", "mass_assignment.yml",
                         "mass_assignment.json"),
 }
-# Modul yang membuat/mengubah data: jalankan rollback setelahnya (bersihkan sisa bila terputus).
+# Modules that create/modify data: roll back afterwards (cleans leftovers if interrupted).
 ROLLBACK_AFTER = {"ratelimit", "session-mgmt", "mass-assignment"}
 
 
@@ -610,8 +612,8 @@ def run_py_module(name):
 
 
 def mod_init(modules_csv: str):
-    """Siapkan folder project: config/targets.yml (dari contoh), reports/, dan config modul
-    yang diminta (mis. "authz,upload"). Berkas yang sudah ada tidak ditimpa."""
+    """Set up the project folder: config/targets.yml (from the example), reports/ and the config
+    of the requested modules (e.g. "authz,upload"). Existing files are never overwritten."""
     if PROJECT == ROOT and not os.environ.get("SAK_ALLOW_INIT_ROOT"):
         print("Pakai `--project <nama|folder>` untuk init (mis. `python audit.py --project "
               "my-app init authz,upload`).", file=sys.stderr)
@@ -644,7 +646,7 @@ def mod_init(modules_csv: str):
 
 
 def mod_clean():
-    """Hapus berkas di reports/ project aktif (subfolder seperti evidence/ & snapshots/ dibiarkan)."""
+    """Delete files in the active project's reports/ (subfolders such as evidence/ and snapshots/ are kept)."""
     d = reports_dir()
     n = 0
     for f in d.iterdir():
@@ -667,8 +669,8 @@ def main(argv=None):
     set_project(resolve_project(project or os.environ.get("SAK_PROJECT_DIR")))
     if PROJECT != ROOT:
         print(C.dim(f"[project] {PROJECT}"))
-    # 'recon' meneruskan argumen bebas (target, -d, -m, --active) ke runner-nya,
-    # jadi di-intercept sebelum argparse yang ketat.
+    # 'recon' forwards free-form args (target, -d, -m, --active) to its runner,
+    # so it is intercepted before the strict argparse.
     if argv and argv[0] == "recon":
         return mod_recon(argv[1:])
     ap = argparse.ArgumentParser(
@@ -707,14 +709,14 @@ def main(argv=None):
         rc = run_py_module(args.module)
         mod_report()
         if args.module in ROLLBACK_AFTER:
-            mod_rollback()      # fase terakhir: pulihkan keadaan target / sisa akun uji.
+            mod_rollback()      # last phase: restore target state / leftover test accounts
         return rc
     if args.module == "all":
         rc = 0
         rc |= mod_headers(tgt)
         rc |= mod_deps(tgt)
         rc |= mod_zap(tgt, "baseline")
-        # Modul pengujian hanya jalan bila config-nya ada di project.
+        # Test modules run only when their config exists in the project.
         for name in PY_MODULES:
             script, cfg, jn = py_module_paths(name)
             if cfg.exists():
@@ -723,7 +725,7 @@ def main(argv=None):
         if recon_cfg.exists():
             rc |= mod_py(ROOT / "tests" / "recon" / "run_recon.py", recon_cfg, "recon.json")
         mod_report()
-        mod_rollback()          # fase terakhir: pulihkan aksi destruktif ke semula.
+        mod_rollback()          # last phase: undo destructive actions
         return rc
     return 2
 

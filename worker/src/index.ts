@@ -1,28 +1,27 @@
 /**
  * Security Audit Kit — open scanner (Cloudflare Worker).
  *
- * HANYA pemeriksaan PASIF/observasional terhadap respons yang sudah dilayani publik
- * (seperti SSL Labs / securityheaders.com): security headers, cookie flags, CORS
- * misconfig, dan banner Server/X-Powered-By -> CVE yang diketahui. TIDAK ada payload
- * serangan, TIDAK menulis data, TIDAK brute-force. Modul aktif (injection, authz,
- * upload, mass-assignment, auth-policy, dll.) sengaja TIDAK disertakan di sini — itu
- * hanya untuk target milik sendiri via CLI.
+ * ONLY PASSIVE/observational checks on responses already served publicly (like
+ * SSL Labs / securityheaders.com): security headers, cookie flags, CORS misconfig, and
+ * Server/X-Powered-By banners -> known CVEs. NO attack payloads, NO data writes, NO
+ * brute force. Active modules (injection, authz, upload, mass-assignment, auth-policy,
+ * etc.) are deliberately NOT included here; they are for self-owned targets via the CLI only.
  *
- * Pengaman: anti-SSRF (tolak IP privat/loopback/link-local & metadata cloud, hanya
- * http/https port standar), rate limit per IP (KV), cap subrequest, dan timeout.
+ * Safeguards: anti-SSRF (reject private/loopback/link-local IPs and cloud metadata, only
+ * http/https on standard ports), per-IP rate limit (KV), subrequest cap, and timeout.
  */
 
 export interface Env {
-  RL: KVNamespace;            // rate-limit counter (buat: wrangler kv namespace create RL)
-  ALLOW_ORIGIN?: string;      // origin Pages yang boleh memanggil (mis. https://hadymaggot.github.io)
+  RL: KVNamespace;            // rate-limit counter (create with: wrangler kv namespace create RL)
+  ALLOW_ORIGIN?: string;      // Pages origin allowed to call (e.g. https://hadymaggot.github.io)
   RATE_PER_MIN?: string;      // default 10
 }
 
 const PROBE_ORIGIN = "https://sak-cors-probe.example";
 const FETCH_TIMEOUT_MS = 10_000;
 
-// Daftar versi rentan ringkas (banner-based, keyakinan "Sedang"). Selaraskan dengan
-// modul webstack bila perlu.
+// Compact list of vulnerable versions (banner-based, confidence "Sedang"). Keep in sync with
+// the webstack module when needed.
 const KNOWN_VULNERABLE: Array<{
   server: string; min?: string; max?: string; cve: string; note: string;
 }> = [
@@ -216,9 +215,9 @@ async function checkCors(target: string): Promise<Finding[]> {
   }
 }
 
-// Clientleak PASIF: analisa HTML yang SUDAH dilayani publik (tanpa fetch tambahan /
-// probing file) untuk pola rahasia dan referensi source map. Hanya membaca konten yang
-// sama dengan yang dilihat browser mana pun — tidak intrusif.
+// PASSIVE clientleak: analyzes HTML that is ALREADY served publicly (no extra fetches /
+// file probing) for secret patterns and source map references. Reads only what any browser
+// sees, so it is non-intrusive.
 function checkClientleak(body: string): Finding[] {
   const out: Finding[] = [];
   const b = (body || "").slice(0, 500_000);

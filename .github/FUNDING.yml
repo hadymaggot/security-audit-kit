@@ -1,8 +1,8 @@
-# Mengaktifkan tombol "Sponsor" pada repositori ini.
-# Dokumentasi: https://docs.github.com/articles/displaying-a-sponsor-button-in-your-repository
+# Enables the "Sponsor" button on this repository.
+# Docs: https://docs.github.com/articles/displaying-a-sponsor-button-in-your-repository
 github: [hadymaggot]
 
-# Platform lain (hapus tanda komentar dan isi bila diperlukan):
+# Other platforms (uncomment and fill in if needed):
 # patreon: username
 # open_collective: username
 # ko_fi: username
