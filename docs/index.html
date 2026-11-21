@@ -52,7 +52,7 @@
  }
  /* latar: jaringan titik-garis (network) digambar di canvas */
  #net{position:fixed;inset:0;z-index:0;pointer-events:none}
- body::after{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;background:radial-gradient(135% 125% at 50% 45%,transparent 78%,var(--dark) 100%)}
+ body::after{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(135% 125% at 50% 45%,transparent 78%,var(--dark) 100%)}
  a{color:var(--primary);text-decoration:none} a:hover{text-decoration:underline}
  @keyframes cardIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
  @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
@@ -62,13 +62,13 @@
  .topbar a{color:var(--muted)} .topbar a:hover{color:var(--primary);text-decoration:none}
  .topbar .tb-lang{margin-left:auto;display:inline-flex;align-items:center;gap:.5rem} .topbar .tb-lang img{vertical-align:-3px;border-radius:2px;display:block} .topbar .tb-lang a{line-height:0} .topbar .tb-lang a[aria-current]{opacity:1} .topbar .tb-lang a:not([aria-current]){opacity:.55} .topbar .tb-lang a:hover{opacity:1}
 
- .stage{position:relative;z-index:2;flex:1 1 auto;min-height:0;width:100%;max-width:1480px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,0fr);align-items:center;gap:0;padding:0 1.2rem 1.3rem;transition:grid-template-columns .5s cubic-bezier(.4,0,.2,1),gap .5s ease}
+ .stage{position:relative;z-index:2;pointer-events:none;flex:1 1 auto;min-height:0;width:100%;max-width:1480px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,0fr);align-items:center;gap:0;padding:0 1.2rem 1.3rem;transition:grid-template-columns .5s cubic-bezier(.4,0,.2,1),gap .5s ease}
  .stage.scanning{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:1.4rem;align-items:stretch;align-content:center}
  /* saat split: kartu dan terminal sama tinggi, sejajar */
  /* saat split: tinggi kartu mengikuti isi; terminal menyamai (stretch) — kartu tak perlu scroll */
  .stage.scanning .card{max-height:100%}
 
- .card{position:relative;min-width:0;width:100%;max-width:700px;max-height:100%;overflow:auto;justify-self:center;
+ .card{pointer-events:auto;position:relative;min-width:0;width:100%;max-width:700px;max-height:100%;overflow:auto;justify-self:center;
    background:linear-gradient(180deg,rgba(24,28,24,.84),rgba(16,16,16,.86));
    border:1px solid var(--line);border-radius:16px;padding:2.1rem 2.1rem 1.8rem;
    box-shadow:0 20px 60px rgba(0,0,0,.4);animation:cardIn .5s ease backwards;
@@ -163,7 +163,7 @@
  .mapctl svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2}
  .mapattr{position:fixed;right:.9rem;bottom:.35rem;z-index:41;font:.62rem var(--mono);color:#cfe3cf;background:rgba(18,18,18,.65);padding:.1rem .4rem;border-radius:4px}
  .mapattr[hidden]{display:none} .mapattr:hover{color:#fff}
- .mepin{position:fixed;left:0;top:0;z-index:35;width:0;height:0;pointer-events:none;will-change:transform}
+ .mepin{position:fixed;left:0;top:0;z-index:1;width:0;height:0;pointer-events:none;will-change:transform}
  .mepin[hidden]{display:none}
  .mepin .shape{position:absolute;left:-20px;top:-52px;width:40px;height:52px;filter:drop-shadow(0 3px 4px rgba(0,0,0,.55))}
  .mepin .shape svg{display:block;width:40px;height:52px}
