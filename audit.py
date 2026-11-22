@@ -30,6 +30,7 @@ Without --project / SAK_PROJECT_DIR the kit folder itself is used (legacy behavi
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import shutil
@@ -50,6 +51,7 @@ sys.path.insert(0, str(ROOT / "tests"))
 import _color as C  # noqa: E402  (ANSI colors; auto-off for pipes/CI, honors NO_COLOR)
 import glossary  # noqa: E402  (per-language technical glossary)
 import _scope  # noqa: E402  (bug bounty scope guard)
+import _throttle  # noqa: E402  (scope + rate limit enforced at the HTTP transport)
 ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 
 
@@ -222,6 +224,16 @@ def init_scope():
         print(C.dim(f"[bounty] {SCOPE.describe()}"))
 
 
+def guarded(cmd):
+    """In bounty mode run a Python runner through tests/_guarded.py, which enforces the scope on every
+    HTTP request and paces the traffic to max_rps; otherwise return `cmd` unchanged.
+    `cmd` is [python, runner.py, args...]."""
+    if SCOPE is None:
+        return cmd
+    os.environ["SAK_SCOPE_JSON"] = json.dumps(SCOPE.to_dict())
+    return [cmd[0], str(ROOT / "tests" / "_guarded.py"), *cmd[1:]]
+
+
 def mod_scope(tgt, sub):
     """`python audit.py scope [host-or-url]`: show the scope, or check one host against it."""
     if SCOPE is None:
@@ -281,6 +293,7 @@ def mod_zap(tgt, sub="baseline"):
     reason = scope_block(f"zap-{sub}" if sub != "baseline" else "zap", tgt.get("base_url"))
     if reason:
         return refuse(reason)
+    warn_unthrottled("ZAP")
     if not have_docker():
         return 2
     image = os.environ.get("ZAP_IMAGE", "ghcr.io/zaproxy/zaproxy:stable")
@@ -351,10 +364,18 @@ def zap_scan_opts(tgt):
     return opts
 
 
+def warn_unthrottled(tool):
+    """Docker scanners run outside this process, so the rate limit cannot be enforced on them."""
+    if SCOPE is not None:
+        print(C.dim(f"[bounty] {tool} berjalan di Docker: scope dicek, tetapi max_rps tidak dapat "
+                    "dipaksakan pada tool ini."), file=sys.stderr)
+
+
 def mod_tls(tgt):
     reason = scope_block("tls", tgt.get("tls_host"))
     if reason:
         return refuse(reason)
+    warn_unthrottled("testssl")
     if not have_docker():
         return 2
     out = dockervol(reports_dir())
@@ -561,7 +582,7 @@ def mod_py(script: Path, config: Path, json_name: str | None = None):
     cmd = [sys.executable, str(script), "--config", str(config)]
     if json_name:
         cmd += ["--json", str(reports_dir() / json_name)]
-    return run(cmd)
+    return run(guarded(cmd))
 
 
 def mod_recon(extra):
@@ -748,6 +769,8 @@ def main(argv=None):
     if PROJECT != ROOT:
         print(C.dim(f"[project] {PROJECT}"))
     init_scope()
+    if SCOPE is not None:
+        _throttle.install(SCOPE)    # this process too (headers, rollback): same scope + rate limit
     # 'recon' forwards free-form args (target, -d, -m, --active) to its runner,
     # so it is intercepted before the strict argparse.
     if argv and argv[0] == "recon":

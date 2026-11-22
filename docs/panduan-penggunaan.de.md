@@ -273,7 +273,9 @@ bounty:
 - `in_scope` verwendet Hostnamen. `*.example.com` passt nur auf Subdomains, nicht auf die Apex-Domain; diese separat eintragen. `out_of_scope` gewinnt immer.
 - Jedes Modul lehnt Hosts außerhalb des Scopes ab, auch die `base_url` in der Modulkonfiguration.
 - Module mit aktivem Datenverkehr werden abgelehnt: `injection`, `ratelimit`, `session-mgmt`, `mass-assignment`, `upload`, `ssrf`, `auth-policy`, `jwt`, `zap api`/`zap full` sowie Portscan, nuclei, Crawl und Fuzzing in `recon`. Den Namen nur dann in `allow_active` eintragen (`recon-active`, `zap-api`, `zap-full` für die Nicht-Python-Fälle), wenn die Programmregeln es erlauben.
-- `recon` verwirft Subdomains außerhalb des Scopes vor dem Probing und übergibt `max_rps` an httpx (`-rl`). Python-Module drosseln sich nicht selbst; Konfigurationen klein halten.
+- `recon` verwirft Subdomains außerhalb des Scopes vor dem Probing und übergibt `max_rps` an httpx (`-rl`).
+- Alle Python-Module werden automatisch begrenzt, ohne Konfiguration je Modul: Jede Anfrage (auch jeder Redirect und Retry) wird gegen den Scope geprüft und so getaktet, dass die Gesamtrate `max_rps` nie überschreitet, gleichmäßig verteilt ohne Spitzen. Ein Redirect auf einen Host außerhalb des Scopes wird vor dem Senden blockiert. Lässt sich der Scope nicht laden, läuft das Modul gar nicht erst.
+- Ausnahmen: Docker-Tools (`zap` baseline und `tls`) erhalten nur die Scope-Prüfung, da `max_rps` für einen Prozess außerhalb von Python nicht erzwingbar ist. Die Browser-Cache-Prüfung in `clientleak` ist im Bounty-Modus deaktiviert, weil Chromium sich nicht beschränken lässt, ohne den Cache abzuschalten; Beweis-Screenshots in `authz` laufen weiterhin über den Guard.
 
 Empfohlener Ablauf:
 

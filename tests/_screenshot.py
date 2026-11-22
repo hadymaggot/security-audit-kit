@@ -17,6 +17,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import _throttle
+
 
 def _slug(name, prefix):
     base = re.sub(r"[^A-Za-z0-9]+", "_", name or "").strip("_")[:48] or "root"
@@ -64,6 +66,7 @@ def capture_url(url, reports_dir, name, prefix="shot", headers=None, cookies=Non
             browser = pw.chromium.launch()
             try:
                 ctx = browser.new_context(extra_http_headers=headers or {})
+                _throttle.guard_context(ctx)       # bounty mode: scope check + rate limit per request
                 if cookies:
                     ctx.add_cookies(cookies)
                 page = ctx.new_page()

@@ -273,7 +273,9 @@ bounty:
 - `in_scope` memakai nama host. `*.example.com` hanya cocok untuk *subdomain*, bukan apex; tulis apex secara terpisah. `out_of_scope` selalu menang.
 - Semua modul menolak host di luar scope, termasuk `base_url` pada config modul.
 - Modul yang mengirim trafik aktif ditolak: `injection`, `ratelimit`, `session-mgmt`, `mass-assignment`, `upload`, `ssrf`, `auth-policy`, `jwt`, `zap api`/`zap full`, serta port scan, nuclei, crawl, dan fuzz di `recon`. Tambahkan namanya ke `allow_active` (`recon-active`, `zap-api`, `zap-full` untuk yang bukan modul Python) hanya jika aturan program mengizinkan.
-- `recon` membuang *subdomain* di luar scope sebelum probing dan meneruskan `max_rps` ke httpx (`-rl`). Modul Python tidak membatasi laju sendiri; jaga agar config-nya tetap kecil.
+- `recon` membuang *subdomain* di luar scope sebelum probing dan meneruskan `max_rps` ke httpx (`-rl`).
+- Semua modul Python dibatasi otomatis, tanpa konfigurasi per modul: setiap *request* (termasuk tiap *redirect* dan retry) diperiksa terhadap scope dan dijaga agar total lajunya tidak melebihi `max_rps`, dengan jeda merata tanpa lonjakan. *Redirect* ke host di luar scope diblokir sebelum dikirim. Jika scope tidak dapat dimuat, modul tidak dijalankan sama sekali.
+- Pengecualian: tool Docker (`zap` baseline dan `tls`) hanya dicek scope-nya, karena `max_rps` tidak dapat dipaksakan pada proses di luar Python. Cek *cache* browser di `clientleak` dinonaktifkan di mode bounty karena Chromium tidak dapat dibatasi tanpa mematikan *cache*; screenshot bukti pada `authz` tetap berjalan lewat guard.
 
 Alur yang disarankan:
 

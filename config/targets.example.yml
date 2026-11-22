@@ -60,7 +60,8 @@ code_path: "."
 #   - refuses attack-like or state-changing modules: injection, ratelimit, session-mgmt,
 #     mass-assignment, upload, ssrf, auth-policy, jwt, zap api/full, recon port scan/nuclei/crawl/fuzz;
 #   - makes recon drop out-of-scope subdomains before probing, and passes max_rps to httpx (-rl).
-# Python modules do not throttle themselves: keep their own configs small and polite.
+# Python modules are limited automatically: every HTTP request is checked against the scope and paced
+# to max_rps in total (redirects included). Docker tools (zap baseline, tls) only get the scope check.
 # Check a host any time with: python audit.py scope https://app.example.com
 # bounty:
 #   enabled: true

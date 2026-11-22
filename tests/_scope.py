@@ -92,6 +92,18 @@ class Scope:
         """True if `name` is not an active check, or the program rules allow it (allow_active)."""
         return name not in ACTIVE_NAMES or name in self.allow_active
 
+    def to_dict(self) -> dict:
+        """Plain dict (JSON-safe) so the scope can cross a process boundary; see from_dict."""
+        return {"in_scope": list(self.in_scope), "out_of_scope": list(self.out_of_scope),
+                "max_rps": self.max_rps, "allow_active": sorted(self.allow_active)}
+
+    @classmethod
+    def from_dict(cls, data):
+        if not isinstance(data, dict):
+            raise ScopeError("scope bukan objek")
+        return cls(data.get("in_scope") or [], data.get("out_of_scope") or [],
+                   data.get("max_rps"), data.get("allow_active") or [])
+
     def describe(self) -> str:
         return (f"in_scope={self.in_scope} out_of_scope={self.out_of_scope} "
                 f"max_rps={self.max_rps:g} allow_active={sorted(self.allow_active)}")

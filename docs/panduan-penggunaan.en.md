@@ -273,7 +273,9 @@ bounty:
 - `in_scope` uses host names. `*.example.com` matches subdomains only, not the apex; list the apex separately. `out_of_scope` always wins.
 - Every module refuses hosts outside the scope, including the `base_url` in a module config.
 - Modules that send active traffic are refused: `injection`, `ratelimit`, `session-mgmt`, `mass-assignment`, `upload`, `ssrf`, `auth-policy`, `jwt`, `zap api`/`zap full`, and the port scan, nuclei, crawl, and fuzz phases of `recon`. Add the name to `allow_active` (`recon-active`, `zap-api`, `zap-full` for the non-Python ones) only if the program rules allow it.
-- `recon` drops out-of-scope subdomains before probing and passes `max_rps` to httpx (`-rl`). Python modules do not throttle themselves; keep their configs small.
+- `recon` drops out-of-scope subdomains before probing and passes `max_rps` to httpx (`-rl`).
+- All Python modules are limited automatically, with no per-module configuration: every request (including each redirect and retry) is checked against the scope and paced so the total rate never exceeds `max_rps`, evenly spaced with no bursts. A redirect to a host outside the scope is blocked before it is sent. If the scope cannot be loaded, the module does not run at all.
+- Exceptions: Docker tools (`zap` baseline and `tls`) only get the scope check, because `max_rps` cannot be enforced on a process outside Python. The browser cache check in `clientleak` is disabled in bounty mode because Chromium cannot be restricted without turning off the cache; evidence screenshots in `authz` still run through the guard.
 
 Suggested flow:
 
