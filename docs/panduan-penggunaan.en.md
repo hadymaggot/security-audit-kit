@@ -257,6 +257,35 @@ Add line 1 to your PowerShell profile (`notepad $PROFILE`), line 2 to `~/.bashrc
 
 A relative project path is resolved from the folder where you run the command. Keep project folders outside the kit folder so they are not lost when the kit folder is deleted.
 
+### Bug bounty mode
+
+For programs on HackerOne, Bugcrowd, Intigriti, and similar. Copy the scope and rate limit from the program page, then enable the `bounty:` block in the project's `targets.yml`.
+
+```yaml
+bounty:
+  enabled: true
+  in_scope: ["app.example.com", "*.example.com"]
+  out_of_scope: ["admin.example.com"]
+  max_rps: 5
+  allow_active: []
+```
+
+- `in_scope` uses host names. `*.example.com` matches subdomains only, not the apex; list the apex separately. `out_of_scope` always wins.
+- Every module refuses hosts outside the scope, including the `base_url` in a module config.
+- Modules that send active traffic are refused: `injection`, `ratelimit`, `session-mgmt`, `mass-assignment`, `upload`, `ssrf`, `auth-policy`, `jwt`, `zap api`/`zap full`, and the port scan, nuclei, crawl, and fuzz phases of `recon`. Add the name to `allow_active` (`recon-active`, `zap-api`, `zap-full` for the non-Python ones) only if the program rules allow it.
+- `recon` drops out-of-scope subdomains before probing and passes `max_rps` to httpx (`-rl`). Python modules do not throttle themselves; keep their configs small.
+
+Suggested flow:
+
+```
+python audit.py --project acme-h1 init recon,clientleak,cors,open-redirect,cookie-flags,response-leak,webstack
+python audit.py --project acme-h1 scope https://app.example.com
+python audit.py --project acme-h1 recon
+python audit.py --project acme-h1 clientleak
+```
+
+`scope` without an argument prints the active scope; with a host or URL it answers *in scope* or *out of scope* (exit code 1). Scanner output is only a first map: verify manually and write a PoC before reporting, because automated findings are often marked duplicate.
+
 ### Report author and company
 
 The "Disusun oleh" (prepared by) line in the HTML, Markdown, and slide reports comes from the `report:` block in `targets.yml`.

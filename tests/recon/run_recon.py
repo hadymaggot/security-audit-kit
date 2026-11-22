@@ -25,6 +25,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import _color as C  # noqa: E402  (shared ANSI console colors)
+import _scope  # noqa: E402  (bug bounty scope guard)
 
 try:
     import yaml
@@ -127,6 +128,14 @@ def phase_osint(cfg, run_tool, whicher=shutil.which):
         subs |= set(_lines(out))
         used.append("amass")
     subs = sorted(subs)
+    scope = cfg.get("scope_guard")
+    if scope:
+        subs, dropped = scope.partition(subs)
+        if dropped:
+            results.append({"check": f"host di luar scope dibuang ({len(dropped)})", "ok": True,
+                            "severity": "passed", "url": target,
+                            "note": "Tidak diprobe: " + ", ".join(dropped[:10])
+                                    + (" ..." if len(dropped) > 10 else "")})
     if used:
         results.append({"check": f"subdomain enumeration ({len(subs)})", "ok": False,
                         "severity": "info", "kind": "recon-subdomain",
@@ -141,9 +150,10 @@ def phase_osint(cfg, run_tool, whicher=shutil.which):
     alive_urls = []
     hx = _bin(tools, "httpx", whicher)
     if hx:
-        rc, out = run_tool([hx, "-silent", "-json", "-status-code", "-tech-detect",
-                           "-title", "-no-color"], cfg.get("timeout", 600),
-                          stdin="\n".join(subs))
+        hx_args = [hx, "-silent", "-json", "-status-code", "-tech-detect", "-title", "-no-color"]
+        if scope:                                   # bounty mode: respect the program rate limit
+            hx_args += ["-rl", str(max(1, int(scope.max_rps)))]
+        rc, out = run_tool(hx_args, cfg.get("timeout", 600), stdin="\n".join(subs))
         for obj in _jsonl(out):
             url = obj.get("url") or obj.get("input") or ""
             if not url:
@@ -180,6 +190,8 @@ def phase_osint(cfg, run_tool, whicher=shutil.which):
         hused.append("waybackurls")
     if hused:
         hist = sorted(hist)
+        if scope:
+            hist, _ = scope.partition(hist)
         results.append({"check": f"URL historis ({len(hist)})", "ok": False,
                         "severity": "info", "kind": "recon-subdomain",
                         "note": f"[{'+'.join(hused)}] {len(hist)} URL dari arsip; contoh: "
@@ -363,6 +375,9 @@ def orchestrate(cfg, run_tool=default_run_tool, whicher=shutil.which):
         depth = "infra"
     active = cfg.get("active", {}) or {}
     active_on = bool(active.get("enabled"))
+    scope = cfg.get("scope_guard")
+    if scope and not scope.allows_active("recon-active"):
+        depth, active_on = "osint", False           # bounty mode: passive OSINT only
 
     results, alive = phase_osint(cfg, run_tool, whicher)
     results += phase_secrets(cfg, run_tool, whicher)   # passive; only if code_path is set
@@ -424,6 +439,7 @@ def main(argv=None):
     ap.add_argument("target", nargs="?", help="domain/host (override config)")
     ap.add_argument("-d", "--depth", choices=DEPTHS)
     ap.add_argument("-m", "--mode", choices=MODES)
+    ap.add_argument("--scope-file", help="targets.yml dengan blok bounty (membatasi host dan fase)")
     ap.add_argument("--active", action="store_true",
                     help="aktifkan fase intrusif (naabu & nuclei) untuk run ini")
     args = ap.parse_args(argv)
@@ -440,6 +456,21 @@ def main(argv=None):
         print("target tidak diset (argumen, config.target, atau config.base_url).",
               file=sys.stderr)
         return 2
+
+    if args.scope_file:
+        try:
+            scope = _scope.load(expand(yaml.safe_load(Path(args.scope_file).read_text(encoding="utf-8"))))
+        except (OSError, yaml.YAMLError, _scope.ScopeError) as exc:
+            print(f"--scope-file: {exc}", file=sys.stderr)
+            return 2
+        if scope:
+            if not scope.allows_host(cfg["target"]):
+                print(f"DITOLAK mode bounty: target '{cfg['target']}' di luar scope.", file=sys.stderr)
+                return 2
+            if args.active and not scope.allows_active("recon-active"):
+                print("mode bounty: --active diabaikan; tambahkan \"recon-active\" ke bounty.allow_active "
+                      "jika aturan program mengizinkan.", file=sys.stderr)
+            cfg["scope_guard"] = scope
 
     results = orchestrate(cfg)
     failures = _failures(results)

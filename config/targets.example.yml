@@ -53,6 +53,23 @@ code_path: "."
 # Example (target behind Traefik on localhost:8080):
 # docker_network: "container:app-traefik-1"
 
+# ── BUG BOUNTY mode (scope guard) ──────────────────────────────────────────────────────────
+# For programs on HackerOne, Bugcrowd, Intigriti, etc. Copy the scope and rate limit from the
+# program page and stay within its rules. When enabled, the kit:
+#   - refuses any host outside in_scope (and anything in out_of_scope) in every module;
+#   - refuses attack-like or state-changing modules: injection, ratelimit, session-mgmt,
+#     mass-assignment, upload, ssrf, auth-policy, jwt, zap api/full, recon port scan/nuclei/crawl/fuzz;
+#   - makes recon drop out-of-scope subdomains before probing, and passes max_rps to httpx (-rl).
+# Python modules do not throttle themselves: keep their own configs small and polite.
+# Check a host any time with: python audit.py scope https://app.example.com
+# bounty:
+#   enabled: true
+#   in_scope: ["app.example.com", "*.example.com"]   # "*.x" = subdomains only; list the apex separately
+#   out_of_scope: ["admin.example.com"]              # always wins over in_scope
+#   max_rps: 5                                        # program rate limit (requests per second)
+#   allow_active: []                                  # only what the program rules explicitly allow,
+#                                                     # e.g. ["injection"]; see the list above
+
 # ── ACTIVE scan (ZAP full / api) ───────────────────────────────────────────────────────────
 # An active scan writes to the target at random, so it cannot be undone action by action. The realistic
 # rollback is a DATA SNAPSHOT: dump before the scan, restore afterwards (automatic, even if the scan

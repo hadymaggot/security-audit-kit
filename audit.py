@@ -45,9 +45,11 @@ except ImportError:  # pragma: no cover
 
 ROOT = Path(__file__).resolve().parent      # kit code (runners, report.py, example config)
 PROJECT = ROOT                              # project data: config/, tests/<module>/*.yml, reports/
+SCOPE = None                                # _scope.Scope when `bounty.enabled` is set in targets.yml
 sys.path.insert(0, str(ROOT / "tests"))
 import _color as C  # noqa: E402  (ANSI colors; auto-off for pipes/CI, honors NO_COLOR)
 import glossary  # noqa: E402  (per-language technical glossary)
+import _scope  # noqa: E402  (bug bounty scope guard)
 ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 
 
@@ -171,6 +173,68 @@ def load_targets():
         return expand(yaml.safe_load(f))
 
 
+# ---- bug bounty scope gate (active only when targets.yml has `bounty.enabled: true`) ----
+
+def scope_block(name, host=None):
+    """Reason to refuse `name` (module, `zap-api`, ...) or a host in bounty mode; None when allowed."""
+    if SCOPE is None:
+        return None
+    if not SCOPE.allows_active(name):
+        return (f"mode bounty: '{name}' mengirim trafik aktif dan tidak diizinkan. Jalankan hanya jika "
+                f"aturan program mengizinkan, lalu tambahkan \"{name}\" ke bounty.allow_active.")
+    if host is not None and not SCOPE.allows_host(host):
+        return f"mode bounty: host '{_scope.host_of(host) or host}' di luar scope (bounty.in_scope/out_of_scope)."
+    return None
+
+
+def refuse(reason):
+    print(C.bad("DITOLAK ") + reason, file=sys.stderr)
+    return 2
+
+
+def py_module_block(name, cfg_path):
+    """Scope reason for a Python module: the module itself and the base_url in its own config."""
+    if SCOPE is None:
+        return None
+    host = None
+    try:
+        with open(cfg_path, encoding="utf-8") as f:
+            host = (expand(yaml.safe_load(f)) or {}).get("base_url")
+    except (OSError, yaml.YAMLError):
+        pass
+    return scope_block(name, host or None)
+
+
+def init_scope():
+    """Load the bounty scope from the project's targets.yml when it exists; exit 2 if it is invalid."""
+    global SCOPE
+    path = project_cfg("config", "targets.yml")
+    SCOPE = None
+    if not path.exists():
+        return
+    try:
+        with open(path, encoding="utf-8") as f:
+            SCOPE = _scope.load(expand(yaml.safe_load(f)))
+    except (yaml.YAMLError, _scope.ScopeError) as exc:
+        print(f"targets.yml: blok bounty tidak valid: {exc}", file=sys.stderr)
+        sys.exit(2)
+    if SCOPE is not None:
+        print(C.dim(f"[bounty] {SCOPE.describe()}"))
+
+
+def mod_scope(tgt, sub):
+    """`python audit.py scope [host-or-url]`: show the scope, or check one host against it."""
+    if SCOPE is None:
+        print("targets.yml belum punya blok `bounty` dengan enabled: true.", file=sys.stderr)
+        return 2
+    if sub == "baseline":                     # no host given
+        print(SCOPE.describe())
+        return 0
+    ok = SCOPE.allows_host(sub)
+    print(f"{C.good('IN SCOPE') if ok else C.bad('OUT OF SCOPE')}  {sub}")
+    return 0 if ok else 1
+
+
 def docker_net_args(tgt):
     """`--network` args for `docker run`, from 'docker_network' in targets.yml.
 
@@ -214,6 +278,9 @@ def reports_dir() -> Path:
 # ---- scanner modules (Docker) ----
 
 def mod_zap(tgt, sub="baseline"):
+    reason = scope_block(f"zap-{sub}" if sub != "baseline" else "zap", tgt.get("base_url"))
+    if reason:
+        return refuse(reason)
     if not have_docker():
         return 2
     image = os.environ.get("ZAP_IMAGE", "ghcr.io/zaproxy/zaproxy:stable")
@@ -285,6 +352,9 @@ def zap_scan_opts(tgt):
 
 
 def mod_tls(tgt):
+    reason = scope_block("tls", tgt.get("tls_host"))
+    if reason:
+        return refuse(reason)
     if not have_docker():
         return 2
     out = dockervol(reports_dir())
@@ -296,6 +366,9 @@ def mod_tls(tgt):
 
 
 def mod_headers(tgt):
+    reason = scope_block("headers", tgt.get("base_url"))
+    if reason:
+        return refuse(reason)
     # Pure Python: no Docker needed.
     import urllib.request
     import ssl
@@ -500,6 +573,8 @@ def mod_recon(extra):
     cmd = [sys.executable, str(script), "--json", str(reports_dir() / "recon.json")]
     if cfg.exists():
         cmd += ["--config", str(cfg)]
+    if SCOPE is not None:
+        cmd += ["--scope-file", str(project_cfg("config", "targets.yml"))]
     cmd += list(extra)
     rc = run(cmd)
     mod_report()
@@ -608,6 +683,9 @@ def py_module_paths(name):
 
 def run_py_module(name):
     script, cfg, jn = py_module_paths(name)
+    reason = py_module_block(name, cfg)
+    if reason:
+        return refuse(reason)
     return mod_py(script, cfg, jn)
 
 
@@ -669,6 +747,7 @@ def main(argv=None):
     set_project(resolve_project(project or os.environ.get("SAK_PROJECT_DIR")))
     if PROJECT != ROOT:
         print(C.dim(f"[project] {PROJECT}"))
+    init_scope()
     # 'recon' forwards free-form args (target, -d, -m, --active) to its runner,
     # so it is intercepted before the strict argparse.
     if argv and argv[0] == "recon":
@@ -681,7 +760,7 @@ def main(argv=None):
                "warna keluaran; bawaan auto = hanya di terminal interaktif. "
                "--lang id|en|de (atau env SAK_LANG) memilih glosarium istilah teknis; bawaan en.")
     ap.add_argument("module", choices=["all", "init", "zap", "tls", "headers", "deps", *PY_MODULES,
-                                       "recon", "rollback", "report", "clean"])
+                                       "recon", "rollback", "report", "clean", "scope"])
     ap.add_argument("sub", nargs="?", default="baseline",
                     help="subperintah: 'zap' baseline|api|full; 'deps' gitleaks|semgrep|trivy "
                          "(satu tool); 'init' daftar modul dipisah koma (mis. authz,upload)")
@@ -705,6 +784,8 @@ def main(argv=None):
         return mod_headers(tgt)
     if args.module == "deps":
         return mod_deps(tgt, args.sub)
+    if args.module == "scope":
+        return mod_scope(tgt, args.sub)
     if args.module in PY_MODULES:
         rc = run_py_module(args.module)
         mod_report()
@@ -720,10 +801,14 @@ def main(argv=None):
         for name in PY_MODULES:
             script, cfg, jn = py_module_paths(name)
             if cfg.exists():
+                reason = py_module_block(name, cfg)
+                if reason:                      # bounty mode: skip, keep going with the rest
+                    rc |= refuse(reason)
+                    continue
                 rc |= mod_py(script, cfg, jn)
         recon_cfg = project_cfg("tests", "recon", "recon.yml")
         if recon_cfg.exists():
-            rc |= mod_py(ROOT / "tests" / "recon" / "run_recon.py", recon_cfg, "recon.json")
+            rc |= mod_recon([])
         mod_report()
         mod_rollback()          # last phase: undo destructive actions
         return rc

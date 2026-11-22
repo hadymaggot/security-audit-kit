@@ -257,6 +257,35 @@ Baris 1 ditambahkan ke profil PowerShell (`notepad $PROFILE`), baris 2 ke `~/.ba
 
 Path project relatif dihitung dari folder tempat perintah dijalankan. Simpan folder project di luar folder kit agar tidak hilang saat folder kit dihapus.
 
+### Mode bug bounty
+
+Untuk program di HackerOne, Bugcrowd, Intigriti, dan sejenisnya. Salin scope dan batas rate dari halaman program, lalu aktifkan blok `bounty:` di `targets.yml` project.
+
+```yaml
+bounty:
+  enabled: true
+  in_scope: ["app.example.com", "*.example.com"]
+  out_of_scope: ["admin.example.com"]
+  max_rps: 5
+  allow_active: []
+```
+
+- `in_scope` memakai nama host. `*.example.com` hanya cocok untuk *subdomain*, bukan apex; tulis apex secara terpisah. `out_of_scope` selalu menang.
+- Semua modul menolak host di luar scope, termasuk `base_url` pada config modul.
+- Modul yang mengirim trafik aktif ditolak: `injection`, `ratelimit`, `session-mgmt`, `mass-assignment`, `upload`, `ssrf`, `auth-policy`, `jwt`, `zap api`/`zap full`, serta port scan, nuclei, crawl, dan fuzz di `recon`. Tambahkan namanya ke `allow_active` (`recon-active`, `zap-api`, `zap-full` untuk yang bukan modul Python) hanya jika aturan program mengizinkan.
+- `recon` membuang *subdomain* di luar scope sebelum probing dan meneruskan `max_rps` ke httpx (`-rl`). Modul Python tidak membatasi laju sendiri; jaga agar config-nya tetap kecil.
+
+Alur yang disarankan:
+
+```
+python audit.py --project acme-h1 init recon,clientleak,cors,open-redirect,cookie-flags,response-leak,webstack
+python audit.py --project acme-h1 scope https://app.example.com
+python audit.py --project acme-h1 recon
+python audit.py --project acme-h1 clientleak
+```
+
+`scope` tanpa argumen menampilkan scope aktif; dengan host atau URL ia menjawab *in scope* atau *out of scope* (exit code 1). Hasil scanner hanya peta awal: verifikasi manual dan tulis PoC sebelum melapor, karena temuan otomatis sering berstatus duplicate.
+
 ### Penyusun dan perusahaan di laporan
 
 Baris "Disusun oleh" pada laporan HTML, Markdown, dan slide berasal dari blok `report:` di `targets.yml`.
