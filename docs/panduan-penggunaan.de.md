@@ -257,6 +257,37 @@ Zeile 1 gehört in das PowerShell-Profil (`notepad $PROFILE`), Zeile 2 in `~/.ba
 
 Ein relativer Projektpfad wird vom Ordner aus aufgelöst, in dem der Befehl ausgeführt wird. Legen Sie Projektordner außerhalb des Kit-Ordners ab, damit sie beim Löschen des Kit-Ordners nicht verloren gehen.
 
+### Bug-Bounty-Modus
+
+Für Programme auf HackerOne, Bugcrowd, Intigriti und ähnlichen Plattformen. Scope und Rate-Limit von der Programmseite übernehmen und den Block `bounty:` in der `targets.yml` des Projekts aktivieren.
+
+```yaml
+bounty:
+  enabled: true
+  in_scope: ["app.example.com", "*.example.com"]
+  out_of_scope: ["admin.example.com"]
+  max_rps: 5
+  allow_active: []
+```
+
+- `in_scope` verwendet Hostnamen. `*.example.com` passt nur auf Subdomains, nicht auf die Apex-Domain; diese separat eintragen. `out_of_scope` gewinnt immer.
+- Jedes Modul lehnt Hosts außerhalb des Scopes ab, auch die `base_url` in der Modulkonfiguration.
+- Module mit aktivem Datenverkehr werden abgelehnt: `injection`, `ratelimit`, `session-mgmt`, `mass-assignment`, `upload`, `ssrf`, `auth-policy`, `jwt`, `zap api`/`zap full` sowie Portscan, nuclei, Crawl und Fuzzing in `recon`. Den Namen nur dann in `allow_active` eintragen (`recon-active`, `zap-api`, `zap-full` für die Nicht-Python-Fälle), wenn die Programmregeln es erlauben.
+- `recon` verwirft Subdomains außerhalb des Scopes vor dem Probing und übergibt `max_rps` an httpx (`-rl`).
+- Alle Python-Module werden automatisch begrenzt, ohne Konfiguration je Modul: Jede Anfrage (auch jeder Redirect und Retry) wird gegen den Scope geprüft und so getaktet, dass die Gesamtrate `max_rps` nie überschreitet, gleichmäßig verteilt ohne Spitzen. Ein Redirect auf einen Host außerhalb des Scopes wird vor dem Senden blockiert. Lässt sich der Scope nicht laden, läuft das Modul gar nicht erst.
+- Ausnahmen: Docker-Tools (`zap` baseline und `tls`) erhalten nur die Scope-Prüfung, da `max_rps` für einen Prozess außerhalb von Python nicht erzwingbar ist. Die Browser-Cache-Prüfung in `clientleak` ist im Bounty-Modus deaktiviert, weil Chromium sich nicht beschränken lässt, ohne den Cache abzuschalten; Beweis-Screenshots in `authz` laufen weiterhin über den Guard.
+
+Empfohlener Ablauf:
+
+```
+python audit.py --project acme-h1 init recon,clientleak,cors,open-redirect,cookie-flags,response-leak,webstack
+python audit.py --project acme-h1 scope https://app.example.com
+python audit.py --project acme-h1 recon
+python audit.py --project acme-h1 clientleak
+```
+
+`scope` ohne Argument zeigt den aktiven Scope; mit Host oder URL antwortet es *in scope* oder *out of scope* (Exit-Code 1). Scanner-Ergebnisse sind nur eine erste Karte: vor dem Melden manuell verifizieren und einen PoC schreiben, da automatische Funde oft als Duplicate gelten.
+
 ### Autor und Unternehmen im Bericht
 
 Die Zeile „Disusun oleh" (erstellt von) in den HTML-, Markdown- und Folienberichten stammt aus dem Block `report:` in `targets.yml`.

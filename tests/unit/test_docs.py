@@ -82,7 +82,7 @@ def test_documented_audit_commands_exist():
     spec = importlib.util.spec_from_file_location("audit_docs_t", ROOT / "audit.py")
     au = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(au)
-    valid = {"all", "init", "zap", "tls", "headers", "deps", *au.PY_MODULES, "recon", "rollback", "report", "clean"}
+    valid = {"all", "init", "zap", "tls", "headers", "deps", *au.PY_MODULES, "recon", "rollback", "report", "clean", "scope"}
     bad = []
     for rel in ALL_DOCS:
         for cmd in _commands(_read(rel)):

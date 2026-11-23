@@ -33,6 +33,7 @@ import requests
 import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import _color as C  # noqa: E402  (shared console ANSI colors in tests/)
+import _throttle  # noqa: E402  (bounty scope + rate limit guard in tests/)
 
 ENV_RE = re.compile(r"\$\{([A-Z0-9_]+)\}")
 
@@ -167,6 +168,11 @@ def check_browser_cache(cfg, base, paths, reports_dir=None):
     def skip(note):
         return [{"kind": "browser-cache", "label": "cache browser (Playwright)",
                  "status": -1, "ok": True, "note": f"skip: {note}"}]
+
+    if _throttle.active():
+        # Routing would disable the browser cache (the thing under test), and an unrouted Chromium
+        # could not honor the bounty scope and rate limit, so the check is off in bounty mode.
+        return skip("dinonaktifkan di mode bounty (Chromium tidak dapat dibatasi scope dan max_rps)")
 
     try:
         from playwright.sync_api import sync_playwright
