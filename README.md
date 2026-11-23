@@ -4,6 +4,7 @@
 
 ![License](https://img.shields.io/badge/License-Apache_2.0-blue?style=flat)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat&logo=python&logoColor=white)
+[![Sponsor di GitHub](https://img.shields.io/badge/Sponsor_di-GitHub-ea4aaa?style=flat&logo=githubsponsors&logoColor=white)](https://github.com/sponsors/hadymaggot)
 [![Dukung di Saweria](https://img.shields.io/badge/Dukung_di-Saweria-faae2b?style=flat&logo=buymeacoffee&logoColor=black)](https://saweria.co/hadymaggot)
 
 Toolkit security testing berbasis *file* config untuk web app: mengubah temuan pentest menjadi automated test, lalu menyusun hasilnya menjadi report yang dapat dipertanggungjawabkan.
