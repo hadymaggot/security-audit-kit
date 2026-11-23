@@ -2,6 +2,10 @@
 
 # Security Audit Kit
 
+![License](https://img.shields.io/badge/License-Apache_2.0-blue?style=flat)
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat&logo=python&logoColor=white)
+[![Support on Saweria](https://img.shields.io/badge/Dukung_di-Saweria-faae2b?style=flat&logo=buymeacoffee&logoColor=black)](https://saweria.co/hadymaggot)
+
 A file-configured security testing toolkit for web apps: it turns pentest findings into automated tests, then rolls the results up into a report you can stand behind.
 
 - Tests more than 20 modules: headers, TLS, access control, upload, injection, JWT, CORS, dependencies, and more.
