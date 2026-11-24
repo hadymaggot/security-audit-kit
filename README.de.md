@@ -72,6 +72,7 @@ Weitere Befehle: `init`, `report`, `rollback`, `clean`. Vollständige Liste: `py
 | Dokument | Inhalt |
 |---|---|
 | [Benutzerhandbuch](docs/panduan-penggunaan.de.md) | Installation, Config, Authentifizierung, Scans, Bericht, Rollback, Troubleshooting |
+| [Autonomer Runner](docs/runner.de.md) | Führt den gesamten Audit vom Scan bis zum Bericht ohne manuelle Schritte und ohne KI aus; über eine Config für neue Projekte wiederverwendbar |
 | [Glossar](docs/glosarium.de.md) | Technische Begriffe je Sprache und die Option `--lang` |
 | [Methodik](docs/metodologi.de.md) | Prüfphasen und Normverweise (OWASP, ASVS) |
 | [Zuordnung Befund zu Test](docs/temuan-to-test-mapping.de.md) | Pentest-Befunde in Testfälle überführen |
@@ -85,6 +86,7 @@ Erweiterte Optionen (im Handbuch): [mehrere Projekte](docs/panduan-penggunaan.de
 
 ```text
 audit.py, audit.ps1, Makefile   # OS-übergreifender Entry Point und kurze Wrapper
+runner.py                       # autonomer Runner: vom Scan zum Report aus einer Config
 report.py                       # Zusammenführung des Berichts
 remediation.py                  # Wissensbasis für Behebung und Severity-Begründung
 glossary.py, glosarium.yml      # Glossar-Loader und -Daten

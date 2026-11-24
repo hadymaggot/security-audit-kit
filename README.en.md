@@ -72,6 +72,7 @@ Other commands: `init`, `report`, `rollback`, `clean`. Full list: `python audit.
 | Document | Contents |
 |---|---|
 | [Usage guide](docs/panduan-penggunaan.en.md) | Installation, config, authentication, scans, report, rollback, troubleshooting |
+| [Autonomous runner](docs/runner.en.md) | Runs the whole audit from scan to report with no manual steps and no AI; reusable for new projects through one config |
 | [Glossary](docs/glosarium.en.md) | Technical terms per language and the `--lang` option |
 | [Methodology](docs/metodologi.en.md) | Test stages and standards reference (OWASP, ASVS) |
 | [Finding-to-test mapping](docs/temuan-to-test-mapping.en.md) | Turning pentest findings into test cases |
@@ -85,6 +86,7 @@ Advanced options (in the guide): [multiple projects](docs/panduan-penggunaan.en.
 
 ```text
 audit.py, audit.ps1, Makefile   # cross-OS entry point and short wrappers
+runner.py                       # autonomous runner: scan to report from one config
 report.py                       # combined report assembler
 remediation.py                  # remediation knowledge base and severity rationale
 glossary.py, glosarium.yml      # glossary loader and data
