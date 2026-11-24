@@ -96,6 +96,15 @@ def run(cmd: list[str], cwd: Path | None = None, env: dict | None = None, timeou
     return done
 
 
+def kit_version() -> str:
+    """Short version of the kit from its git history. Works without git (zip download, minimal image)."""
+    try:
+        out = run(["git", "-C", str(KIT), "log", "-1", "--format=%h %s"], check=False).stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        return "tidak diketahui"
+    return out or "tidak diketahui"
+
+
 def http(method: str, url: str, body=None, token: str | None = None, timeout: int = 30):
     """HTTP request with an identifying User-Agent. Returns (status, lowercase headers, json)."""
     headers = {"User-Agent": USER_AGENT, "Content-Type": "application/json"}
@@ -364,8 +373,7 @@ class Context:
             raise AuditError("Docker tidak ditemukan. Docker dibutuhkan oleh ZAP, testssl, trivy, semgrep, dan gitleaks.")
         if run(["docker", "info", "--format", "{{.ServerVersion}}"], check=False).returncode != 0:
             raise AuditError("Docker belum berjalan. Nyalakan Docker lalu ulangi.")
-        version = run(["git", "-C", str(KIT), "log", "-1", "--format=%h %s"], check=False).stdout.strip()
-        log(f"  toolkit: {KIT} ({version})")
+        log(f"  toolkit: {KIT} ({kit_version()})")
 
     # -- target --
     def prepare_target(self) -> None:
@@ -1329,7 +1337,7 @@ def run_name(ctx: Context, stamp: str) -> str:
 
 
 def write_summary(ctx: Context, out: Path, name: str) -> None:
-    version = run(["git", "-C", str(KIT), "log", "-1", "--format=%h %s"], check=False).stdout.strip()
+    version = kit_version()
     lines = [f"# Ringkasan eksekusi audit {ctx.target_name}", "",
              f"- Proyek: {ctx.cfg.get('project.name')}", f"- Waktu: {time.strftime('%Y-%m-%d %H:%M:%S')}",
              f"- Target: {ctx.base} ({ctx.level})", f"- Security Audit Kit: {version}",

@@ -318,3 +318,23 @@ def test_check_command_returns_2_on_an_invalid_config(tmp_path):
     good = tmp_path / "good.yml"
     good.write_text((ROOT / "config" / "runner.example.yml").read_text(encoding="utf-8"), encoding="utf-8")
     assert RN.command_check(argparse.Namespace(config=str(good))) == 0
+
+
+# --- environments without git ---
+
+def _no_git(*args, **kwargs):
+    raise FileNotFoundError("git")
+
+
+def test_kit_version_falls_back_when_git_is_missing(monkeypatch):
+    monkeypatch.setattr(RN, "run", _no_git)
+    assert RN.kit_version() == "tidak diketahui"
+
+
+def test_finish_works_without_git(tmp_path, monkeypatch):
+    """A zip download or a minimal CI image has no git; the report must still be built and copied."""
+    monkeypatch.setattr(RN, "run", _no_git)
+    ctx = _FakeCtx(tmp_path)
+    assert RN.finish(ctx) == 0
+    summary = next((tmp_path / "docs" / "security-audit").glob("*/*-ringkasan.md"))
+    assert "tidak diketahui" in summary.read_text(encoding="utf-8")
