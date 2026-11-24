@@ -225,3 +225,24 @@ def test_mod_zap_baseline_without_snapshot(monkeypatch):
     monkeypatch.setattr(AU, "run", lambda cmd: ran.append(cmd) or 0)
     assert AU.mod_zap({"base_url": "http://t", "snapshot": PG}, "baseline") == 0
     assert "zap-baseline.py" in ran[0]
+
+
+def test_guard_restores_when_older_entry_with_same_label_is_done(monkeypatch, tmp_path):
+    """A second run with the same label must restore its OWN snapshot. The journal used to be
+    matched by label, found the first run's finished entry and skipped the restore."""
+    stamps = iter(["20260101-000001", "20260101-000002"])
+    real_strftime = SN.time.strftime
+    monkeypatch.setattr(SN.time, "strftime",
+                        lambda fmt, *a: next(stamps) if fmt == "%Y%m%d-%H%M%S" else real_strftime(fmt, *a))
+    runner = FakeRunner()
+    g1, _ = _guard(tmp_path, runner)
+    with g1:
+        pass
+    restores_first = sum("pg_restore" in " ".join(c[0]) for c in runner.calls)
+    g2, lines = _guard(tmp_path, runner)
+    with g2:
+        assert len(RB.pending(tmp_path)) == 1                  # only this run's entry is pending
+    restores_second = sum("pg_restore" in " ".join(c[0]) for c in runner.calls)
+    assert restores_second > restores_first                    # the second snapshot was restored
+    assert g2.ok is True and RB.pending(tmp_path) == []
+    assert not any("sudah dipulihkan" in l for l in lines)

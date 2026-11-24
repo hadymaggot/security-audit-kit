@@ -175,6 +175,7 @@ class Guard:
         self.manifest = backup(self.cfg, outdir, self.runner)         # SnapshotError aborts the scan
         mpath = outdir / "manifest.json"
         save_manifest(self.manifest, mpath)
+        self._mpath = str(mpath)
         for s in self.manifest["steps"]:
             self.echo(f"  ok  {s['name']} ({(s['bytes'] or 0) / 1_048_576:.1f} MB)")
         self._entry = _rollback.record(self.reports, {
@@ -188,8 +189,10 @@ class Guard:
         # Idempotent: a module run INSIDE the guard (e.g. audit.py mass-assignment) calls
         # mod_rollback at its end, which also processes this pending snapshot entry and then deletes
         # the dump files. If the entry is already done, do not restore again (the files are gone).
+        # Match by manifest path (unique per run), not by label: a repeated run with the same label
+        # would otherwise find an OLDER entry that is already done and skip the restore.
         entry = next((e for e in _rollback.load(self.reports)
-                      if e.get("label") == self._entry.get("label")), None)
+                      if (e.get("action") or {}).get("snapshot_manifest") == self._mpath), None)
         if entry and entry.get("done"):
             self.echo(f"== Data setelah {self.label} sudah dipulihkan oleh rollback bawaan ==")
             self.ok, self.results = True, []
@@ -202,7 +205,7 @@ class Guard:
         if self.ok:
             data = _rollback.load(self.reports)
             for e in data:
-                if e.get("label") == self._entry.get("label") and not e.get("done"):
+                if (e.get("action") or {}).get("snapshot_manifest") == self._mpath and not e.get("done"):
                     e["done"] = True
             _rollback._write(self.reports, data)
             if not self.manifest.get("keep"):
