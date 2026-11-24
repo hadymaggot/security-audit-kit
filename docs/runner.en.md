@@ -70,7 +70,7 @@ Every run creates a new folder and new files named `security-audit-kit_<project>
 
 - `<name>.html`, `<name>.md`, and `<name>-slides.html`: the full report and the slides.
 - `<name>-ringkasan.md`: which modules ran, were skipped, or failed, with the toolkit version.
-- A `data/` folder with the raw output of every module (JSON and ZAP output) and a static `README.md` that explains it. The evidence folder, when screenshots exist, stays at the top level because the report links to it.
+- A `data/` folder with the raw output of every module (JSON and ZAP output) and a static README in three languages (`README.md`, `README.en.md`, `README.de.md`) that explains it. The evidence folder, when screenshots exist, stays at the top level because the report links to it.
 
 `RIWAYAT.md` in the parent folder holds one line per run so runs are easy to compare. Before copying, the whole report is scanned for known passwords, tokens, and keys; if anything leaked, only that run folder is deleted.
 

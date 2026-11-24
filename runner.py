@@ -58,55 +58,162 @@ INIT_MODULES = ("authz,cors,cookie-flags,open-redirect,response-leak,openapi-cov
                 "ratelimit,mass-assignment,ssrf,auth-policy,clientleak,webstack")
 
 
-# Static text written to data/README.md in every run folder; the same for every project.
-DATA_README = """# Data mentah audit
+# Static README written to data/ in every run folder, in three languages. The same for every project.
+DATA_README_ROWS = [
+    ("authz.json", "authz",
+     {"id": "Hasil matriks kontrol akses per role", "en": "Access control matrix result per role",
+      "de": "Ergebnis der Zugriffsmatrix je Rolle"}),
+    ("headers.json", "headers",
+     {"id": "Pemeriksaan security header", "en": "Security header check", "de": "Prüfung der Security-Header"}),
+    ("cors.json", "cors",
+     {"id": "Uji CORS terhadap origin asing", "en": "CORS test against a foreign origin",
+      "de": "CORS-Test gegen einen fremden Origin"}),
+    ("cookie_flags.json", "cookie-flags",
+     {"id": "Atribut keamanan cookie", "en": "Cookie security attributes", "de": "Sicherheitsattribute von Cookies"}),
+    ("open_redirect.json", "open-redirect",
+     {"id": "Parameter pengalih ke host luar", "en": "Redirect parameters pointing to an outside host",
+      "de": "Redirect-Parameter auf einen externen Host"}),
+    ("response_leak.json", "response-leak",
+     {"id": "Kebocoran data sensitif pada respons API", "en": "Sensitive data leaking in API responses",
+      "de": "Sensible Daten in API-Antworten"}),
+    ("client_leak.json", "clientleak",
+     {"id": "Cache respons sensitif, secret di JS dan HTML, serta berkas terekspos",
+      "en": "Cached sensitive responses, secrets in JS and HTML, and exposed files",
+      "de": "Gecachte sensible Antworten, Secrets in JS und HTML sowie offene Dateien"}),
+    ("openapi_coverage.json", "openapi-coverage",
+     {"id": "Endpoint yang terbuka tanpa login menurut spesifikasi OpenAPI",
+      "en": "Endpoints open without login according to the OpenAPI spec",
+      "de": "Endpunkte ohne Login laut OpenAPI-Spezifikation"}),
+    ("injection.json", "injection",
+     {"id": "Uji SQL injection", "en": "SQL injection test", "de": "SQL-Injection-Test"}),
+    ("jwt.json", "jwt",
+     {"id": "Algoritma, masa berlaku, dan pemalsuan token", "en": "Algorithm, lifetime, and token forgery",
+      "de": "Algorithmus, Lebensdauer und Token-Fälschung"}),
+    ("upload.json", "upload",
+     {"id": "Penolakan upload berbahaya", "en": "Rejection of dangerous uploads",
+      "de": "Ablehnung gefährlicher Uploads"}),
+    ("mass_assignment.json", "mass-assignment",
+     {"id": "Field terlarang pada objek milik sendiri", "en": "Forbidden fields on the account's own object",
+      "de": "Verbotene Felder am eigenen Objekt"}),
+    ("ssrf.json", "ssrf",
+     {"id": "Request keluar dari server ke listener canary", "en": "Outgoing requests from the server to a canary listener",
+      "de": "Ausgehende Anfragen des Servers an einen Canary-Listener"}),
+    ("session_mgmt.json", "session",
+     {"id": "Pencabutan sesi, ganti password, dan rotasi refresh token",
+      "en": "Session revocation, password change, and refresh token rotation",
+      "de": "Sitzungswiderruf, Passwortwechsel und Rotation des Refresh-Tokens"}),
+    ("auth_policy.json", "auth-policy",
+     {"id": "Kebijakan kekuatan password", "en": "Password strength policy", "de": "Richtlinie zur Passwortstärke"}),
+    ("ratelimit.json", "ratelimit",
+     {"id": "Pembatasan laju request", "en": "Request rate limiting", "de": "Begrenzung der Anfragerate"}),
+    ("webstack.json", "webstack",
+     {"id": "Versi komponen web yang dipetakan ke CVE", "en": "Web component versions mapped to CVEs",
+      "de": "Webkomponenten-Versionen, auf CVEs abgebildet"}),
+    ("testssl.json", "tls",
+     {"id": "Protokol dan kerentanan TLS", "en": "TLS protocols and vulnerabilities",
+      "de": "TLS-Protokolle und Schwachstellen"}),
+    ("trivy.json", "deps",
+     {"id": "CVE pada dependency", "en": "CVEs in dependencies", "de": "CVEs in Abhängigkeiten"}),
+    ("semgrep.json", "deps",
+     {"id": "Hasil SAST pada kode", "en": "SAST result on the code", "de": "SAST-Ergebnis zum Code"}),
+    ("gitleaks.json", "deps",
+     {"id": "Secret yang ter-commit", "en": "Committed secrets", "de": "Eingecheckte Secrets"}),
+    ("zap-baseline.json", "zap",
+     {"id": "Hasil OWASP ZAP baseline (pasif)", "en": "OWASP ZAP baseline result (passive)",
+      "de": "OWASP-ZAP-Baseline-Ergebnis (passiv)"}),
+    ("zap-baseline.html", "zap",
+     {"id": "Laporan OWASP ZAP baseline", "en": "OWASP ZAP baseline report", "de": "OWASP-ZAP-Baseline-Bericht"}),
+    ("zap-api.json", "zap",
+     {"id": "Hasil OWASP ZAP API scan (aktif)", "en": "OWASP ZAP API scan result (active)",
+      "de": "OWASP-ZAP-API-Scan-Ergebnis (aktiv)"}),
+    ("zap-api.html", "zap",
+     {"id": "Laporan OWASP ZAP API scan", "en": "OWASP ZAP API scan report", "de": "OWASP-ZAP-API-Scan-Bericht"}),
+    ("rollback.json", "internal",
+     {"id": "Hasil pemulihan data uji setelah uji yang menulis data",
+      "en": "Result of restoring test data after tests that write data",
+      "de": "Ergebnis der Wiederherstellung der Testdaten nach schreibenden Tests"}),
+    ("rollback_journal.json", "internal",
+     {"id": "Jurnal pemulihan data uji", "en": "Test data restore journal", "de": "Journal der Testdaten-Wiederherstellung"}),
+]
 
-Folder ini berisi keluaran mentah setiap modul Security Audit Kit pada run ini. Berkas-berkas ini **bukan konfigurasi**.
-Report (html, md, dan slide di folder induk) disusun dari data ini, sehingga simpan folder ini bersama report bila bukti
-suatu temuan perlu ditelusuri.
+DATA_README_TEXT = {
+    "id": {
+        "name": "README.md",
+        "title": "Data mentah audit",
+        "intro": ("Folder ini berisi keluaran mentah setiap modul Security Audit Kit pada run ini. Berkas-berkas ini "
+                  "**bukan konfigurasi**. Report (html, md, dan slide di folder induk) disusun dari data ini, sehingga "
+                  "simpan folder ini bersama report bila bukti suatu temuan perlu ditelusuri."),
+        "contents": "Isi",
+        "only": "Hanya modul yang dijalankan pada run ini yang menghasilkan berkas.",
+        "head": ("Berkas", "Modul", "Isi"),
+        "notes": "Perhatian",
+        "bullets": [
+            "Berkas ini memuat bukti rinci, seperti URL, status HTTP, dan potongan respons. Perlakukan dengan klasifikasi "
+            "yang sama dengan report dan jangan dibagikan di luar pihak yang berwenang.",
+            "Runner memindai kebocoran kata sandi dan token yang dikenal sebelum menyalin hasil, tetapi tidak dapat "
+            "mengenali semua data sensitif. Tinjau isinya sebelum dibagikan.",
+            "Jangan mengubah berkas di sini. Report dibuat dari data ini, dan perubahan membuat report tidak lagi "
+            "sesuai buktinya.",
+        ],
+    },
+    "en": {
+        "name": "README.en.md",
+        "title": "Raw audit data",
+        "intro": ("This folder holds the raw output of every Security Audit Kit module for this run. These files are "
+                  "**not configuration**. The report (html, md and slides in the parent folder) is built from this data, "
+                  "so keep this folder with the report if the evidence behind a finding must be traced."),
+        "contents": "Contents",
+        "only": "Only the modules that ran in this run produce files.",
+        "head": ("File", "Module", "Content"),
+        "notes": "Notes",
+        "bullets": [
+            "These files hold detailed evidence, such as URLs, HTTP statuses and response excerpts. Give them the same "
+            "classification as the report and do not share them beyond authorized parties.",
+            "The runner scans for known passwords and tokens before copying the results, but it cannot recognize all "
+            "sensitive data. Review the content before sharing.",
+            "Do not edit the files here. The report is built from this data, and edits make the report stop matching "
+            "its evidence.",
+        ],
+    },
+    "de": {
+        "name": "README.de.md",
+        "title": "Rohdaten des Audits",
+        "intro": ("Dieser Ordner enthält die Rohausgabe jedes Moduls des Security Audit Kit für diesen Lauf. Diese Dateien "
+                  "sind **keine Konfiguration**. Der Report (html, md und Folien im übergeordneten Ordner) wird aus diesen "
+                  "Daten erstellt. Bewahren Sie den Ordner daher zusammen mit dem Report auf, falls die Belege eines "
+                  "Befunds nachvollzogen werden müssen."),
+        "contents": "Inhalt",
+        "only": "Nur die Module, die in diesem Lauf liefen, erzeugen Dateien.",
+        "head": ("Datei", "Modul", "Inhalt"),
+        "notes": "Hinweise",
+        "bullets": [
+            "Diese Dateien enthalten detaillierte Belege wie URLs, HTTP-Status und Auszüge aus Antworten. Behandeln Sie "
+            "sie mit derselben Klassifizierung wie den Report und geben Sie sie nicht an Unbefugte weiter.",
+            "Der Runner prüft vor dem Kopieren auf bekannte Passwörter und Token, kann aber nicht alle sensiblen Daten "
+            "erkennen. Prüfen Sie den Inhalt vor der Weitergabe.",
+            "Ändern Sie die Dateien hier nicht. Der Report wird aus diesen Daten erstellt, und Änderungen führen dazu, "
+            "dass der Report nicht mehr zu seinen Belegen passt.",
+        ],
+    },
+}
 
-## Isi
 
-Hanya modul yang dijalankan pada run ini yang menghasilkan berkas.
+LANGUAGE_NAMES = {"id": "Indonesia", "en": "English", "de": "Deutsch"}
 
-| Berkas | Modul | Isi |
-|---|---|---|
-| `authz.json` | `authz` | Hasil matriks kontrol akses per role |
-| `headers.json` | `headers` | Pemeriksaan security header |
-| `cors.json` | `cors` | Uji CORS terhadap origin asing |
-| `cookie_flags.json` | `cookie-flags` | Atribut keamanan cookie |
-| `open_redirect.json` | `open-redirect` | Parameter pengalih ke host luar |
-| `response_leak.json` | `response-leak` | Kebocoran data sensitif pada respons API |
-| `client_leak.json` | `clientleak` | Cache respons sensitif, secret di JS dan HTML, serta berkas terekspos |
-| `openapi_coverage.json` | `openapi-coverage` | Endpoint yang terbuka tanpa login menurut spesifikasi OpenAPI |
-| `injection.json` | `injection` | Uji SQL injection |
-| `jwt.json` | `jwt` | Algoritma, masa berlaku, dan pemalsuan token |
-| `upload.json` | `upload` | Penolakan upload berbahaya |
-| `mass_assignment.json` | `mass-assignment` | Field terlarang pada objek milik sendiri |
-| `ssrf.json` | `ssrf` | Request keluar dari server ke listener canary |
-| `session_mgmt.json` | `session` | Pencabutan sesi, ganti password, dan rotasi refresh token |
-| `auth_policy.json` | `auth-policy` | Kebijakan kekuatan password |
-| `ratelimit.json` | `ratelimit` | Pembatasan laju request |
-| `webstack.json` | `webstack` | Versi komponen web yang dipetakan ke CVE |
-| `testssl.json` | `tls` | Protokol dan kerentanan TLS |
-| `trivy.json` | `deps` | CVE pada dependency |
-| `semgrep.json` | `deps` | Hasil SAST pada kode |
-| `gitleaks.json` | `deps` | Secret yang ter-commit |
-| `zap-baseline.json` | `zap` | Hasil OWASP ZAP baseline (pasif) |
-| `zap-baseline.html` | `zap` | Laporan OWASP ZAP baseline |
-| `zap-api.json` | `zap` | Hasil OWASP ZAP API scan (aktif) |
-| `zap-api.html` | `zap` | Laporan OWASP ZAP API scan |
-| `rollback.json` | `internal` | Hasil pemulihan data uji setelah uji yang menulis data |
-| `rollback_journal.json` | `internal` | Jurnal pemulihan data uji |
 
-## Perhatian
-
-- Berkas ini memuat bukti rinci, seperti URL, status HTTP, dan potongan respons. Perlakukan dengan klasifikasi yang sama
-  dengan report dan jangan dibagikan di luar pihak yang berwenang.
-- Runner memindai kebocoran kata sandi dan token yang dikenal sebelum menyalin hasil, tetapi tidak dapat mengenali semua
-  data sensitif. Tinjau isinya sebelum dibagikan.
-- Jangan mengubah berkas di sini. Report dibuat dari data ini, dan perubahan membuat report tidak lagi sesuai buktinya.
-"""
+def data_readmes() -> dict[str, str]:
+    """README files for the data/ folder in all three languages, keyed by file name."""
+    files = {code: DATA_README_TEXT[code]["name"] for code in LANGUAGE_NAMES}
+    result = {}
+    for lang, t in DATA_README_TEXT.items():
+        switch = " · ".join(f"**{name}**" if code == lang else f"[{name}]({files[code]})"
+                                 for code, name in LANGUAGE_NAMES.items())
+        lines = [switch, "", f"# {t['title']}", "", t["intro"], "", f"## {t['contents']}", "", t["only"], "",
+                 f"| {t['head'][0]} | {t['head'][1]} | {t['head'][2]} |", "|---|---|---|"]
+        lines += [f"| `{f}` | `{m}` | {d[lang]} |" for f, m, d in DATA_README_ROWS]
+        lines += ["", f"## {t['notes']}", ""] + [f"- {b}" for b in t["bullets"]]
+        result[t["name"]] = chr(10).join(lines) + chr(10)
+    return result
 
 
 def log(message: str) -> None:
@@ -1462,7 +1569,8 @@ def finish(ctx: Context) -> int:
             data_dir.mkdir(exist_ok=True)
             shutil.copy2(src, data_dir / src.name)
     if data_dir.exists():
-        (data_dir / "README.md").write_text(DATA_README, encoding="utf-8")
+        for readme_name, readme_text in data_readmes().items():
+            (data_dir / readme_name).write_text(readme_text, encoding="utf-8")
     slides = out_dir / renamed["laporan-slides.html"]
     if slides.exists():                          # the slides mention the full report by file name
         slides.write_text(slides.read_text(encoding="utf-8").replace("laporan.html", f"{name}.html"), encoding="utf-8")

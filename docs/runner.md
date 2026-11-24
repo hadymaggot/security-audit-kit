@@ -70,7 +70,7 @@ Setiap run membuat folder dan berkas baru dengan pola `security-audit-kit_<proje
 
 - `<nama>.html`, `<nama>.md`, dan `<nama>-slides.html`: report lengkap dan slide.
 - `<nama>-ringkasan.md`: modul yang dijalankan, dilewati, atau galat, beserta versi toolkit.
-- Folder `data/` berisi hasil mentah tiap modul (JSON dan keluaran ZAP) beserta `README.md` statis yang menjelaskan isinya. Folder bukti, bila ada tangkapan layar, tetap di level atas karena dirujuk oleh report.
+- Folder `data/` berisi hasil mentah tiap modul (JSON dan keluaran ZAP) beserta README statis dalam tiga bahasa (`README.md`, `README.en.md`, `README.de.md`) yang menjelaskan isinya. Folder bukti, bila ada tangkapan layar, tetap di level atas karena dirujuk oleh report.
 
 `RIWAYAT.md` di folder induk memuat satu baris per run agar mudah dibandingkan. Sebelum disalin, seluruh report dipindai terhadap kata sandi, token, dan kunci yang dikenal; bila ada yang bocor, hanya folder run itu yang dihapus.
 
