@@ -208,3 +208,20 @@ def test_login_429_retry_can_be_disabled(monkeypatch):
     s.sess = _LoginSess([_LoginResp(429, {"Retry-After": "7"})])
     with pytest.raises(RuntimeError, match="HTTP 429"):
         s.login({**_LOGIN, "retry_429": False}, {"username": "x", "password": "y"}, "bearer")
+
+
+def test_request_waits_and_retries_on_429(monkeypatch):
+    """HTTP 429 is the rate limiter, not an access control verdict: the request waits for Retry-After and repeats."""
+    sleeps = []
+    monkeypatch.setattr(AZ.time, "sleep", sleeps.append)
+    seq = [_LoginResp(429, {"Retry-After": "3"}), _LoginResp(200)]
+
+    class _Limited:
+        cookies = _Jar()
+
+        def request(self, *a, **k):
+            return seq.pop(0)
+
+    s = AZ.Session("anon", {"anonymous": True}, "http://gw")
+    s.sess = _Limited()
+    assert s.request("GET", "/api/x").status_code == 200 and sleeps == [4]
