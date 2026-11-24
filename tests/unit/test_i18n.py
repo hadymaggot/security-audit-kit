@@ -115,3 +115,40 @@ def test_report_is_written_in_the_requested_language(tmp_path, monkeypatch, lang
     if lang != "id":
         assert "Ringkasan Eksekutif" not in md and "Rincian Temuan" not in html_text
         assert remediation.KB["upload-accepted"]["description"][:40] not in md
+
+
+# --- run-time text from the test modules (locales/evidence.<lang>.yml) ---
+
+import yaml  # noqa: E402
+
+EXAMPLES = yaml.safe_load((ROOT / "tests" / "unit" / "evidence_examples.yml").read_text(encoding="utf-8"))["examples"]
+
+
+@pytest.mark.parametrize("lang", LANGS)
+def test_evidence_rules_compile(lang):
+    rules = i18n._load("evidence", lang)["rules"]
+    assert len(rules) > 200 and len(i18n._rules(lang)) == len(rules)      # no rule was skipped as broken
+
+
+def test_evidence_examples_translate_as_expected():
+    """One generic example per message; all rules are active at once, so rule order and overlap are covered."""
+    assert len(EXAMPLES) > 250
+    wrong = [(src, i18n.dynamic(src, "en"), en) for src, en, de in EXAMPLES if i18n.dynamic(src, "en") != en]
+    wrong += [(src, i18n.dynamic(src, "de"), de) for src, en, de in EXAMPLES if i18n.dynamic(src, "de") != de]
+    assert not wrong, wrong[:3]
+
+
+def test_dynamic_text_is_untouched_in_the_source_language_and_when_unknown():
+    assert i18n.dynamic("Token palsu ditolak (HTTP 401).", "id") == "Token palsu ditolak (HTTP 401)."
+    assert i18n.dynamic("kalimat yang tidak dikenal aturan mana pun", "en") == "kalimat yang tidak dikenal aturan mana pun"
+    assert i18n.dynamic("", "de") == ""
+
+
+def test_findings_are_classified_on_the_source_text_then_translated(monkeypatch):
+    """The classifier matches Indonesian check names, so translation must happen after it."""
+    monkeypatch.setenv("SAK_LANG", "en")
+    G.reset_cache()
+    i18n.reset_cache()
+    src = "ganti password: password lama ditolak"
+    finding = RP.norm("session-mgmt", src, 200, "", False)
+    assert finding["kind"] == "old-password-accepted" and finding["title"] != src

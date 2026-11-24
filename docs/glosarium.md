@@ -17,7 +17,7 @@ Urutan prioritas: opsi `--lang id|en|de`, environment variable `SAK_LANG`, `repo
 python audit.py --project my-app --lang de report
 ```
 
-Glosarium tersedia untuk `id`, `en`, dan `de`. Katalog teks laporan lengkap untuk `id`, `en`, dan `de`. Teks sumbernya bahasa Indonesia di kode; terjemahannya ada di `locales/text.<bahasa>.yml` (teks laporan) dan `locales/kb.<bahasa>.yml` (deskripsi, dampak, dan rekomendasi tiap jenis temuan), dengan cara kerja seperti gettext atau Transifex. Bukti per instance yang dihasilkan modul uji dan pesan konsol tetap berbahasa Indonesia. Bahasa yang katalognya lengkap didaftarkan di `complete_text` pada `glosarium.yml`.
+Glosarium tersedia untuk `id`, `en`, dan `de`. Katalog teks laporan lengkap untuk `id`, `en`, dan `de`. Teks sumbernya bahasa Indonesia di kode; terjemahannya ada di `locales/text.<bahasa>.yml` (teks laporan) dan `locales/kb.<bahasa>.yml` (deskripsi, dampak, dan rekomendasi tiap jenis temuan), dengan cara kerja seperti gettext atau Transifex. Nama pemeriksaan dan bukti per instance yang ditulis modul uji saat berjalan diterjemahkan lewat aturan regex berurutan di `locales/evidence.<bahasa>.yml`, karena kalimatnya memuat nilai seperti URL dan status; contohnya ada di `tests/unit/evidence_examples.yml`. Teks dari alat pihak ketiga (misalnya deskripsi ZAP), data dari config, dan pesan konsol tidak diterjemahkan. Bahasa yang katalognya lengkap didaftarkan di `complete_text` pada `glosarium.yml`.
 
 ## Isi `glosarium.yml`
 
@@ -48,4 +48,4 @@ Kasus lain:
 
 1. Glosarium per bahasa, pembakuan istilah, dan pencetakan miring (selesai).
 2. Katalog teks laporan bahasa Inggris dan Jerman (selesai). Periksa dengan `python scripts/catalog_status.py`, yang melaporkan teks yang belum diterjemahkan, sudah usang, atau placeholder-nya berbeda.
-3. Terjemahan bukti per instance dari modul uji dan pesan konsol.
+3. Terjemahan nama pemeriksaan dan bukti per instance dari modul uji (selesai). Pesan konsol tetap berbahasa Indonesia karena dibaca oleh runner.

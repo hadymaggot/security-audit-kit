@@ -17,7 +17,7 @@ Priority: the `--lang id|en|de` option, the `SAK_LANG` environment variable, `re
 python audit.py --project my-app --lang de report
 ```
 
-The glossary exists for `id`, `en`, and `de`. The report text catalog is complete for `id`, `en`, and `de`. The source text is Indonesian in the code; the translations live in `locales/text.<lang>.yml` (report text) and `locales/kb.<lang>.yml` (description, impact, and recommendation per finding type), working like gettext or Transifex. Per instance evidence produced by the test modules and the console messages stay Indonesian. Languages with a complete catalog are listed in `complete_text` in `glosarium.yml`.
+The glossary exists for `id`, `en`, and `de`. The report text catalog is complete for `id`, `en`, and `de`. The source text is Indonesian in the code; the translations live in `locales/text.<lang>.yml` (report text) and `locales/kb.<lang>.yml` (description, impact, and recommendation per finding type), working like gettext or Transifex. Check names and per instance evidence written by the test modules at run time are translated through ordered regex rules in `locales/evidence.<lang>.yml`, because those sentences carry values such as URLs and statuses; examples are in `tests/unit/evidence_examples.yml`. Text from third-party tools (for example ZAP descriptions), data from the config, and console messages are not translated. Languages with a complete catalog are listed in `complete_text` in `glosarium.yml`.
 
 ## `glosarium.yml` keys
 
@@ -48,4 +48,4 @@ Other cases:
 
 1. Per-language glossary, term standardization, and italics (done).
 2. English and German report text catalogs (done). Check them with `python scripts/catalog_status.py`, which reports text that is untranslated, obsolete, or has different placeholders.
-3. Translation of the per instance evidence from the test modules and of the console messages.
+3. Translation of check names and per instance evidence from the test modules (done). Console messages stay Indonesian because the runner reads them.
