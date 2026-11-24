@@ -409,3 +409,12 @@ def test_finish_keeps_the_evidence_folder_at_the_top_level(tmp_path, monkeypatch
     RN.finish(ctx)
     run = next((tmp_path / "docs" / "security-audit").glob("security-audit-kit_*"))
     assert (run / "evidence" / "a.png").exists() and not (run / "data" / "evidence").exists()
+
+
+def test_data_readme_names_only_known_modules():
+    """The Modul column of data/README.md must use module ids the runner knows (or 'internal')."""
+    import re
+    rows = re.findall(r"^\| `([^`]+)` \| `([^`]+)` \|", RN.DATA_README, re.M)
+    assert rows, "the README table must have rows"
+    assert {m for _, m in rows} <= set(RN.KNOWN_MODULES) | {"internal"}
+    assert len({f for f, _ in rows}) == len(rows), "one row per file"
