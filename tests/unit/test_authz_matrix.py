@@ -7,6 +7,7 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -156,3 +157,54 @@ def test_main_flags_direct_port_forged_bypass(tmp_path, monkeypatch):
     assert "[forged] http://svc:8002/api/admin" in bad
     assert "admin langsung ke service" in bad
     assert "[forged] /api/admin" not in bad                      # gateway stays safe
+
+
+# --- login: static token and HTTP 429 ---
+
+class _LoginResp:
+    def __init__(self, status, headers=None, body=None):
+        self.status_code = status
+        self.headers = headers or {}
+        self._body = body or {}
+
+    def json(self):
+        return self._body
+
+
+class _LoginSess:
+    cookies = _Jar()
+
+    def __init__(self, seq):
+        self.seq = list(seq)
+        self.calls = 0
+
+    def request(self, method, url, json=None, headers=None, timeout=None, allow_redirects=None):
+        self.calls += 1
+        return self.seq.pop(0)
+
+
+_LOGIN = {"path": "/api/login", "body": {"u": "{username}", "p": "{password}"}, "token_field": "token"}
+
+
+def test_login_static_token_sends_no_request():
+    s = AZ.Session("r", {}, "http://gw")
+    s.sess = _LoginSess([])
+    s.login(_LOGIN, {"username": "x", "password": "y", "token": "abc"}, "bearer")
+    assert s.bearer == "abc" and s.sess.calls == 0
+
+
+def test_login_waits_for_retry_after_on_429(monkeypatch):
+    sleeps = []
+    monkeypatch.setattr(AZ.time, "sleep", sleeps.append)
+    s = AZ.Session("r", {}, "http://gw")
+    s.sess = _LoginSess([_LoginResp(429, {"Retry-After": "7"}), _LoginResp(200, body={"token": "t"})])
+    s.login(_LOGIN, {"username": "x", "password": "y"}, "bearer")
+    assert s.bearer == "t" and sleeps == [9]                   # Retry-After 7 s + 2 s margin
+
+
+def test_login_429_retry_can_be_disabled(monkeypatch):
+    monkeypatch.setattr(AZ.time, "sleep", lambda s: pytest.fail("must not wait"))
+    s = AZ.Session("r", {}, "http://gw")
+    s.sess = _LoginSess([_LoginResp(429, {"Retry-After": "7"})])
+    with pytest.raises(RuntimeError, match="HTTP 429"):
+        s.login({**_LOGIN, "retry_429": False}, {"username": "x", "password": "y"}, "bearer")
