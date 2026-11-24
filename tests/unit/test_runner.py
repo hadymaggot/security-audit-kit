@@ -256,6 +256,7 @@ def test_finish_keeps_earlier_runs_and_names_files_uniquely(tmp_path, monkeypatc
     assert (first / f"{runs[0]}-slides.html").exists() and (first / f"{runs[0]}-ringkasan.md").exists()
     assert not (first / "laporan.md").exists()
     assert (first / "data" / "authz.json").exists() and not (first / "authz.json").exists()   # raw output is tucked away
+    assert (first / "data" / "README.md").read_text(encoding="utf-8") == RN.DATA_README   # static, same for every run
     assert f"{runs[0]}.html" in (first / f"{runs[0]}-slides.html").read_text(encoding="utf-8")
     assert len((base / "RIWAYAT.md").read_text(encoding="utf-8").splitlines()) == 6     # header + 2 runs
 
