@@ -114,7 +114,7 @@ def test_dig_follows_dotted_paths():
 
 
 def test_env_name_is_shell_safe():
-    assert RN.env_name("SAK_TOK_", "perancang-harmonisasi") == "SAK_TOK_PERANCANG_HARMONISASI"
+    assert RN.env_name("SAK_TOK_", "senior-editor") == "SAK_TOK_SENIOR_EDITOR"
 
 
 def test_read_env_strips_quotes_and_ignores_comments(tmp_path):
