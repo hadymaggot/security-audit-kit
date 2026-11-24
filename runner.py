@@ -58,6 +58,39 @@ INIT_MODULES = ("authz,cors,cookie-flags,open-redirect,response-leak,openapi-cov
                 "ratelimit,mass-assignment,ssrf,auth-policy,clientleak,webstack")
 
 
+# Static text written to data/README.md in every run folder; the same for every project.
+DATA_README = """# Data mentah audit
+
+Folder ini berisi keluaran mentah setiap modul Security Audit Kit pada run ini. Berkas-berkas ini **bukan konfigurasi**.
+Report (html, md, dan slide di folder induk) disusun dari data ini, sehingga simpan folder ini bersama report bila bukti
+suatu temuan perlu ditelusuri.
+
+## Isi
+
+Hanya modul yang dijalankan pada run ini yang menghasilkan berkas.
+
+| Berkas | Isi |
+|---|---|
+| `authz.json` | Hasil matriks kontrol akses per role |
+| `headers.json`, `cors.json`, `cookie_flags.json`, `open_redirect.json` | Pemeriksaan header, CORS, cookie, dan open redirect |
+| `response_leak.json`, `client_leak.json`, `openapi_coverage.json` | Kebocoran data pada respons, cache dan berkas terekspos, serta cakupan autentikasi menurut OpenAPI |
+| `injection.json`, `jwt.json`, `upload.json`, `mass_assignment.json`, `ssrf.json` | Uji injection, JWT, upload, mass assignment, dan SSRF |
+| `session_mgmt.json`, `auth_policy.json`, `ratelimit.json` | Uji sesi, kebijakan password, dan pembatasan laju |
+| `webstack.json`, `testssl.json` | Versi komponen web dan konfigurasi TLS |
+| `trivy.json`, `semgrep.json`, `gitleaks.json` | CVE dependency, SAST, dan secret ter-commit |
+| `zap-baseline.*`, `zap-api.*` | Keluaran OWASP ZAP |
+| `rollback.json`, `rollback_journal.json` | Catatan pemulihan data uji setelah uji yang menulis data |
+
+## Perhatian
+
+- Berkas ini memuat bukti rinci, seperti URL, status HTTP, dan potongan respons. Perlakukan dengan klasifikasi yang sama
+  dengan report dan jangan dibagikan di luar pihak yang berwenang.
+- Runner memindai kebocoran kata sandi dan token yang dikenal sebelum menyalin hasil, tetapi tidak dapat mengenali semua
+  data sensitif. Tinjau isinya sebelum dibagikan.
+- Jangan mengubah berkas di sini. Report dibuat dari data ini, dan perubahan membuat report tidak lagi sesuai buktinya.
+"""
+
+
 def log(message: str) -> None:
     print(f"[{time.strftime('%H:%M:%S')}] {message}", flush=True)
 
@@ -1410,6 +1443,8 @@ def finish(ctx: Context) -> int:
         else:                                    # raw module output stays out of sight in data/
             data_dir.mkdir(exist_ok=True)
             shutil.copy2(src, data_dir / src.name)
+    if data_dir.exists():
+        (data_dir / "README.md").write_text(DATA_README, encoding="utf-8")
     slides = out_dir / renamed["laporan-slides.html"]
     if slides.exists():                          # the slides mention the full report by file name
         slides.write_text(slides.read_text(encoding="utf-8").replace("laporan.html", f"{name}.html"), encoding="utf-8")
