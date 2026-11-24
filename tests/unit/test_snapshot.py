@@ -246,3 +246,18 @@ def test_guard_restores_when_older_entry_with_same_label_is_done(monkeypatch, tm
     assert restores_second > restores_first                    # the second snapshot was restored
     assert g2.ok is True and RB.pending(tmp_path) == []
     assert not any("sudah dipulihkan" in l for l in lines)
+
+
+def test_mod_zap_auth_header_goes_through_hook_not_command_line(monkeypatch, tmp_path):
+    ran = []
+    monkeypatch.setenv("ZAP_AUTH_HEADER", "Authorization: Bearer rahasia-token")
+    monkeypatch.setattr(AU, "have_docker", lambda: True)
+    monkeypatch.setattr(AU, "reports_dir", lambda: tmp_path)
+    monkeypatch.setattr(AU, "run", lambda cmd: ran.append(cmd) or 0)
+    assert AU.mod_zap({"base_url": "http://t"}, "baseline") == 0
+    cmd = ran[0]
+    assert "--hook=/zap/wrk/zap_auth_hook.py" in cmd and "-config" not in cmd
+    assert "-e" in cmd and "ZAP_AUTH_HEADER" in cmd             # value is inherited, not spelled out
+    assert not any("rahasia-token" in part for part in cmd)     # the token never reaches the command line
+    hook = (tmp_path / "zap_auth_hook.py").read_text(encoding="utf-8")
+    assert "def zap_started" in hook and "rahasia-token" not in hook
