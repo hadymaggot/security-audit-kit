@@ -13,11 +13,11 @@
 #
 # Product names (OWASP ZAP, Docker) and acronyms (CVE, XSS, RCE) are never italicized.
 
-default: en
+default: id
 
 # Languages whose report/console text catalog is complete. Others fall back to the first entry
 # until their catalog exists; add a code here when its catalog is done.
-complete_text: [id]
+complete_text: [id, en, de]
 
 languages:
 

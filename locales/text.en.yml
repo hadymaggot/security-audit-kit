@@ -1,0 +1,116 @@
+# Report text catalog (English). Keys are the Indonesian source strings from report.py; values are the
+# translations. Keep {placeholders} unchanged and follow glosarium.yml for technical terms.
+# Check with: python scripts/catalog_status.py
+text:
+  ? Pengujian dijalankan secara otomatis dan non-destruktif terhadap target yang berwenang diuji. Acuannya OWASP Top 10 2021, OWASP ASVS, dan OWASP Risk Rating Methodology (severity = Likelihood x Impact). Tooling yang digunakan OWASP ZAP, Trivy, dan testssl.sh, ditambah rangkaian regression test untuk access control, upload, dan password policy.
+  : Testing was run automatically and non-destructively against a target that is authorized for testing. It follows OWASP Top 10 2021, OWASP ASVS, and the OWASP Risk Rating Methodology (severity = Likelihood x Impact). The tooling is OWASP ZAP, Trivy, and testssl.sh, plus a set of regression tests for access control, upload, and password policy.
+  ? Laporan ini merupakan hasil automation, bukan pengganti pentest manual. Temuan scanner (misalnya ZAP) dapat berupa false positive dan wajib diverifikasi sebelum severity final ditetapkan. Celah logika bisnis hanya terdeteksi apabila test-nya ditulis secara khusus. Cakupan pengujian terbatas pada target dan endpoint yang dikonfigurasi saat dijalankan. Uji destruktif (mis. mass-assignment) menulis ke target lalu DIPULIHKAN otomatis ke keadaan semula sebagai fase terakhir setelah laporan ini dibuat; log pemulihan ada di reports/rollback.json, dan `python audit.py rollback` memulihkan ulang bila perlu.
+  : This report is the result of automation and does not replace a manual pentest. Scanner findings (for example ZAP) can be false positives and must be verified before the final severity is set. Business logic flaws are only detected when a test is written for them. The test coverage is limited to the target and endpoints configured for the run. Destructive tests (e.g. mass-assignment) write to the target and are then RESTORED automatically to the original state as the last phase after this report is built; the restore log is in reports/rollback.json, and `python audit.py rollback` restores again when needed.
+  RAHASIA / CONFIDENTIAL: CONFIDENTIAL
+  ? Skor CVSS bersifat indikatif (pemetaan kualitatif dari OWASP Risk Rating + vektor v3.1 representatif per jenis temuan); skor+vektor final tetap perlu diverifikasi manual per konteks target.
+  : The CVSS score is indicative (a qualitative mapping from the OWASP Risk Rating plus a representative v3.1 vector per finding type); the final score and vector must still be verified manually for the target context.
+  'Acuan: OWASP Top 10 2021, OWASP API Security Top 10 2023, OWASP ASVS, OWASP Risk Rating Methodology.': 'References: OWASP Top 10 2021, OWASP API Security Top 10 2023, OWASP ASVS, OWASP Risk Rating Methodology.'
+  Access control rusak (role rendah membuka area terbatas): Broken access control (a low role opens a restricted area)
+  Header identitas (X-Auth-*) dipercaya dari klien: Identity header (X-Auth-*) trusted from the client
+  IDOR — akses objek milik entitas lain: IDOR — access to an object owned by another entity
+  File/informasi sensitif exposed: Sensitive file/information exposed
+  Response sensitif dapat di-cache: Sensitive response can be cached
+  Exposure secret/endpoint di aset klien: Secret/endpoint exposure in client assets
+  Upload file berbahaya diterima: Dangerous file upload accepted
+  Mass assignment / eskalasi properti objek (BOPLA): Mass assignment / object property escalation (BOPLA)
+  Kebijakan password lemah: Weak password policy
+  Captcha tidak regenerasi: Captcha does not regenerate
+  Header keamanan tidak diset: Security header not set
+  Konfigurasi TLS lemah: Weak TLS configuration
+  Web server versi rentan (CVE diketahui): Vulnerable web server version (known CVE)
+  SQL Injection (A03): SQL Injection (A03)
+  Dependency dengan kerentanan (CVE): Dependency with a vulnerability (CVE)
+  CORS salah konfigurasi: CORS misconfiguration
+  Open redirect: Open redirect
+  Atribut keamanan cookie tidak lengkap: Incomplete cookie security attributes
+  Server-Side Request Forgery (server menembak URL yang dikendalikan penyerang): Server-Side Request Forgery (the server requests an attacker-controlled URL)
+  Server menerima JWT yang dipalsukan: Server accepts a forged JWT
+  Secret JWT lemah dapat ditebak: Weak JWT secret can be guessed
+  Konfigurasi JWT tidak aman: Insecure JWT configuration
+  Captcha expose jawabannya di response: Captcha exposes its answer in the response
+  Session lain tidak dicabut setelah ganti password: Other sessions are not revoked after a password change
+  Logout tidak mencabut session di server: Logout does not revoke the session on the server
+  Password lama masih diterima setelah penggantian: Old password still accepted after the change
+  Tidak ada pembatasan laju pada endpoint sensitif: No rate limiting on a sensitive endpoint
+  Penguncian akun tidak sesuai kebijakan: Account lockout does not match the policy
+  Penguncian akun dapat dilewati dengan password benar: Account lockout can be bypassed with the correct password
+  Akun terdaftar dapat dibedakan dari response (enumerasi akun): Registered accounts can be told apart from the response (account enumeration)
+  Endpoint terlindungi menurut spesifikasi namun terbuka tanpa login: Endpoint protected according to the specification but open without login
+  Endpoint terbuka tanpa autentikasi (perlu ditinjau): Endpoint open without authentication (needs review)
+  Spesifikasi OpenAPI tidak akurat terhadap perilaku nyata: OpenAPI specification does not match the real behavior
+  Error server (5xx) pada request anonim: Server error (5xx) on an anonymous request
+  Data sensitif exposed di response API: Sensitive data exposed in an API response
+  Response verbose/debug expose detail implementasi: Verbose/debug response exposes implementation details
+  Alamat/hostname internal exposed di response: Internal address/hostname exposed in a response
+  Aset/subdomain terpetakan (recon): Asset/subdomain mapped (recon)
+  Port/layanan exposed ke publik: Port/service exposed to the public
+  Kredensial/secret exposed di source/aset: Credential/secret exposed in source/assets
+  Temuan recon aktif (nuclei): Active recon finding (nuclei)
+  Temuan analisis statis kode (SAST/semgrep): Static code analysis finding (SAST/semgrep)
+  Temuan pemindai pasif (ZAP): Passive scanner finding (ZAP)
+  Sedang: Medium
+  Tinggi: High
+  ? Tidak ditemukan temuan pada cakupan yang diuji; seluruh kontrol yang diuji berperilaku sesuai harapan. Pemeriksaan yang lolos dirinci pada bagian Kontrol yang Lolos sebagai bukti cakupan uji.
+  : No findings were identified within the tested scope; every tested control behaved as expected. The checks that passed are listed in the Passed Controls section as evidence of test coverage.
+  Critical dan High: Critical and High
+  Medium dan Low: Medium and Low
+  dibuat oleh: created by
+  ? 'Pengujian menemukan {total} instance temuan ({per}) yang tergolong dalam {kinds} jenis alert. Temuan berisiko tertinggi: {top}. Perbaikan disarankan memprioritaskan temuan {priority} terlebih dahulu. Rincian teknis, bukti endpoint, dan rekomendasi tersedia pada bagian Rincian Temuan.'
+  : 'Testing identified {total} finding instances ({per}) grouped into {kinds} alert types. Highest risk findings: {top}. Remediation should prioritize the {priority} findings first. Technical details, endpoint evidence, and recommendations are in the Finding Details section.'
+  Rincian Temuan: Finding Details
+  Pemeriksaan yang diuji dan berperilaku benar (bukan temuan) — bukti cakupan uji.: Checks that were tested and behaved correctly (not findings) — evidence of test coverage.
+  Lampiran: Appendix
+  Ringkasan Eksekutif: Executive Summary
+  Ruang Lingkup & Metodologi: Scope & Methodology
+  Ringkasan Risiko: Risk Summary
+  Daftar CVE: CVE List
+  Laporan Uji Keamanan: Security Test Report
+  Laporan Hasil Uji Keamanan: Security Test Report
+  Dibuat: Created
+  Versi dokumen: Document version
+  Modul/teknik: Modules/techniques
+  Metodologi: Methodology
+  Risiko: Risk
+  Keyakinan: Confidence
+  Paket/Lokasi: Package/Location
+  Tooling & acuan: Tooling & references
+  Catatan CVSS: CVSS note
+  Batasan & pertanggungjawaban: Limitations & accountability
+  Presentasi: Presentation
+  Jumlah instance: Instance count
+  kontrol lolos: controls passed
+  Modul/teknik yang dijalankan: Modules/techniques run
+  Tidak ada temuan — seluruh kontrol yang diuji lolos.: No findings — every tested control passed.
+  indikatif: indicative
+  Terbuka: Open
+  Sumber/plugin: Source/plugin
+  Deskripsi: Description
+  Instance yang diuji: Instances tested
+  Endpoint diuji: Endpoint tested
+  Konteks: Context
+  Bukti: Evidence
+  Dampak: Impact
+  Justifikasi severity: Severity justification
+  Rekomendasi & contoh solusi: Recommendation & sample fix
+  Referensi: References
+  Kontrol yang Lolos: Passed Controls
+  Pemeriksaan: Check
+  Modul: Module
+  Tidak ada temuan — semua kontrol yang diuji lolos.: No findings — all tested controls passed.
+  Endpoint diuji (bukti): Endpoint tested (evidence)
+  Catatan: Note
+  Tidak ada CVE terdeteksi.: No CVE detected.
+  Disusun oleh: Prepared by
+  Alat: Tool
+  instance temuan: finding instances
+  Terima kasih: Thank you
+  Laporan lengkap: Full report
+  Dokumen bersifat: This document is
+  Klasifikasi: Classification
+  bukti: evidence
+  Rekomendasi utama: Main recommendation

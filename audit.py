@@ -787,7 +787,7 @@ def main(argv=None):
                "config & reports milik project tsb; nama saja = <kit>/projects/<nama>. "
                "--color auto|always|never (atau --no-color; env SAK_COLOR / NO_COLOR) mengatur "
                "warna keluaran; bawaan auto = hanya di terminal interaktif. "
-               "--lang id|en|de (atau env SAK_LANG) memilih glosarium istilah teknis; bawaan en.")
+               "--lang id|en|de (atau env SAK_LANG) memilih bahasa report dan glosarium istilah teknis; bawaan id.")
     ap.add_argument("module", choices=["all", "init", "zap", "tls", "headers", "deps", *PY_MODULES,
                                        "recon", "rollback", "report", "clean", "scope"])
     ap.add_argument("sub", nargs="?", default="baseline",

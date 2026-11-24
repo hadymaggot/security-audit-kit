@@ -1,0 +1,360 @@
+kb:
+  broken-access:
+    description: "A sensitive endpoint can be accessed by an unauthorized role because authorization is not enforced on the server side."
+    impact: "Privilege escalation, account creation/deletion, modification of critical data, potentially leading to full system takeover."
+    severity_basis: "High likelihood (can be triggered by an ordinary logged-in user without special tools) x High impact (full control of admin functions)."
+    recommendation:
+      - "Enforce authorization on the SERVER SIDE for every endpoint, rather than merely hiding menus on the client."
+      - "Apply an authorization middleware/guard before the handler, example pattern:"
+      - "    // middleware: deny if the role is not in the allowed list\n    if (!user.roles.intersects(endpoint.allowedRoles)) return deny(403);"
+      - "Use centralized RBAC/ABAC; make 'default deny' the built-in behavior."
+  forged-header:
+    description: "The client can inject internal authorization headers (e.g. X-Auth-Roles) and the gateway/reverse proxy does not overwrite them, resulting in elevated privileges."
+    impact: "Complete authorization bypass simply by adding a header to the request."
+    severity_basis: "High likelihood (editing a header is enough) x High impact (impersonating an admin)."
+    recommendation:
+      - "Configure the reverse proxy to ALWAYS strip and then reset the X-Auth-* headers from a trusted source; do not forward values supplied by the client."
+      - "Example (Traefik forwardAuth): use authResponseHeaders so that only values from the auth service are forwarded to the backend."
+      - "The backend must also verify the token/session and must not trust raw headers."
+  idor:
+    description: "Direct object references (IDs in the URL/parameters) are not checked for ownership, so data belonging to other accounts can be accessed."
+    impact: "Information disclosure/tampering of data across users or across companies."
+    severity_basis: "Medium-high likelihood (IDs are easy to guess) x High impact (personal data/other companies' data disclosed)."
+    recommendation:
+      - "Verify on the server that the requested object actually belongs to the currently logged-in user/scope before returning it."
+      - "    // example: constrain the query by owner, not just by-id\n    SELECT * FROM doc WHERE id = :id AND company_id = :currentCompany;"
+      - "Consider unpredictable IDs (UUID/ULID) as an additional layer, not as a replacement for the authorization check."
+  upload-accepted:
+    description: "Dangerous files (e.g. PDFs containing JavaScript, polyglots, double extensions, oversized files) are accepted by the server because of weak validation."
+    impact: "Stored XSS when the file is opened by another user, storage of malicious content, potential session theft."
+    severity_basis: "Medium likelihood (a file must be crafted) x High impact (script execution in the victim's context)."
+    recommendation:
+      - "Validate the file type based on its CONTENT (magic bytes), not only on the extension/Content-Type supplied by the client."
+      - "Enforce an extension allowlist and size limits on the server; reject double extensions."
+      - "Sanitize/normalize file names (avoid path traversal), store files under random names and serve them with Content-Disposition: attachment."
+      - "For PDFs: reject/strip /JavaScript and /OpenAction objects. Apply a strict CSP on pages that display uploaded content."
+  weak-password:
+    description: "The password policy accepts weak/common passwords."
+    impact: "Accounts are easy to guess/brute-force, leading to account takeover."
+    severity_basis: "Medium likelihood x Medium-high impact (per account)."
+    recommendation:
+      - "Set a minimum length (e.g. 12-16 characters) and reject passwords found in breached/common password lists."
+      - "Enable MFA/2FA, and require the old password when changing the password."
+      - "Store passwords with a strong hash (bcrypt/argon2), never plaintext/MD5/SHA1."
+  captcha-static:
+    description: "The captcha value is not refreshed after a failed attempt / can be reused."
+    impact: "The captcha is ineffective at stopping automation/brute-force."
+    severity_basis: "Medium likelihood x Low impact (an additional layer, not the only one)."
+    recommendation:
+      - "Regenerate the captcha token and challenge on every failed attempt; make it single-use with a short validity period."
+      - "Combine it with rate limiting and per-account lockout."
+  missing-header:
+    description: "Response security headers are not configured (or information disclosure headers such as Server/X-Powered-By are still present)."
+    impact: "Facilitates clickjacking, MIME sniffing, XSS, and server fingerprinting."
+    severity_basis: "Low-medium likelihood x Low impact (generally an enabler, not a standalone vulnerability)."
+    recommendation:
+      - "Set the headers at the reverse proxy/framework:"
+      - "    Strict-Transport-Security: max-age=31536000; includeSubDomains\n    Content-Security-Policy: default-src 'self'\n    X-Content-Type-Options: nosniff\n    X-Frame-Options: DENY\n    Referrer-Policy: strict-origin-when-cross-origin"
+      - "Blank out/remove the Server and X-Powered-By headers."
+  mass-assignment:
+    description: "The server accepts fields that the client should not be allowed to change (e.g. role, is_admin, company_id, status) when creating/updating an object: mass assignment / broken object property level authorization."
+    impact: "Privilege escalation or data manipulation: an ordinary user promotes themselves to admin, moves to another tenant, or changes object ownership simply by adding one field to the request."
+    severity_basis: "Medium likelihood (adding a field to the body is enough) x High impact (privilege escalation / data integrity)."
+    recommendation:
+      - "Use an allowlist of assignable fields; do not mass-assign the entire input."
+      - "    // Laravel: restrict via $fillable + FormRequest->validated(),\n    // do NOT use Model::update($request->all())."
+      - "Separate fields that only an admin may change; reject/ignore privileged fields coming from non-admin roles."
+      - "Apply per-property authorization (BOPLA), not only per-object authorization."
+  sql-injection:
+    description: "User input is concatenated directly into the SQL query without parameterization, allowing an attacker to alter the query logic (error-based, boolean-based, or time-based)."
+    impact: "Unauthorized reading/modification of data, authentication bypass, and potentially RCE depending on the DBMS configuration."
+    severity_basis: "Medium-high likelihood (classic vector, abundant tooling) x High impact (data confidentiality and integrity). Automated detections must be verified manually before the final severity is locked in."
+    recommendation:
+      - "Use prepared statements / parameterized queries (bind parameters); do not build query strings from input."
+      - "    // Laravel: Model::where('x', $input) / DB::select('... = ?', [$input])\n    // do NOT use DB::raw(\"... = '$input'\")."
+      - "Apply an allowlist of input types/formats and least privilege on the DB account."
+      - "Use the ORM/query builder correctly; avoid raw queries containing raw input."
+  server-vuln:
+    description: "The web server/component version detected from the banner matches registered vulnerabilities (CVE), e.g. Apache mod_http2 or NGINX HTTP/2."
+    impact: "Depending on the CVE, potentially remote code execution, DoS, or memory corruption on the exposed server."
+    severity_basis: "Medium likelihood (public exploits for active CVEs) x High impact (RCE/DoS). Detection is banner-based: medium confidence, must be confirmed against the vendor advisory."
+    recommendation:
+      - "Update to the fixed version according to the vendor advisory (e.g. Apache httpd 2.4.71+, NGINX 1.30.7+/1.31.9+)."
+      - "Limit exposure of the vulnerable component; apply temporary mitigations (e.g. WAF, disable the related module/feature where possible)."
+      - "Blank out the version banner (ServerTokens Prod / server_tokens off) so that fingerprinting is not made easier."
+  tls-weak:
+    description: "The server accepts obsolete TLS protocols/ciphers."
+    impact: "Communications can potentially be decrypted (downgrade/known attacks)."
+    severity_basis: "Low likelihood (requires a MITM position) x High impact (data confidentiality)."
+    recommendation:
+      - "Disable SSLv3/TLS1.0/TLS1.1; use TLS 1.2 at minimum, prefer TLS 1.3."
+      - "Use modern cipher suites (ECDHE + AES-GCM/ChaCha20), disable weak ciphers."
+  client-cache:
+    description: "Responses containing sensitive data (authenticated pages/endpoints) do not forbid caching, so they may be stored in the browser cache, a shared proxy, or be reachable via the Back button after logout."
+    impact: "Sensitive user data can be read from a shared device/proxy by another party after the session has ended."
+    severity_basis: "Medium likelihood (shared devices/proxies, browser history) x Medium-high impact (personal data disclosed)."
+    recommendation:
+      - "Set anti-cache headers on sensitive/authenticated responses:"
+      - "    Cache-Control: no-store, no-cache, must-revalidate, private\n    Pragma: no-cache\n    Expires: 0"
+      - "Do not use 'public' or a large 'max-age' on responses that contain user data."
+      - "Make sure public static assets may still be cached (do not overdo it in the opposite direction)."
+  js-leak:
+    description: "Client-side JavaScript bundles/assets expose sensitive information: internal/admin endpoints, secrets (API keys/tokens), or source maps (.map) that reveal the original source code."
+    impact: "Provides an attack map: an attacker discovers admin endpoints and the API structure (as in privilege escalation findings that start from JS analysis), or uses the exposed secrets."
+    severity_basis: "High likelihood (client assets can be downloaded by anyone) x Variable impact (from an enabler up to direct access when secrets are included)."
+    recommendation:
+      - "Do not place secrets (API keys, tokens, credentials) in frontend code; move them to the server and have the frontend call through the backend."
+      - "Disable publishing of source maps in production (e.g. build without .map, or do not serve .map files)."
+      - "Authorize endpoints on the server: endpoints listed in the JS must still reject unauthorized users (see also Broken Access Control)."
+      - "Periodically audit bundle contents (CI) for secret patterns and .map references."
+  info-exposure:
+    description: "Sensitive files or information are publicly exposed without requiring JavaScript: configuration files (.env), repositories (.git/), backups/dumps, or HTML comments/content that expose secrets or internal endpoints."
+    impact: "Exposure of credentials, source code, or system structure that facilitates follow-up attacks."
+    severity_basis: "High likelihood (a single GET to one URL is enough) x Variable impact (from an attack map up to direct credentials)."
+    recommendation:
+      - "Do not serve sensitive files from the web root: block access to .env, .git/, backup/dump files, and source files."
+      - "Example (nginx):"
+      - "    location ~ /\\.(?!well-known) { deny all; }\n    location ~* \\.(env|bak|sql|zip|tar\\.gz)$ { deny all; }"
+      - "Move secret configuration to environment variables / a secret manager."
+      - "Remove HTML comments containing sensitive information before release."
+  cors-misconfig:
+    description: "The CORS configuration is too permissive: the server reflects any Origin into Access-Control-Allow-Origin, or combines a wildcard with Access-Control-Allow-Credentials, or accepts the 'null' Origin."
+    impact: "A malicious site opened by the victim can send credentialed requests to the API and read the responses: cross-origin theft of authenticated data."
+    severity_basis: "Medium likelihood (requires the victim to open a malicious site while logged in) x High impact (reading authenticated data)."
+    recommendation:
+      - "Do not reflect the raw Origin. Use an allowlist of trusted origins only."
+      - "Example (backend pattern):"
+      - "    if (allowlist.includes(origin)) resp.header('Access-Control-Allow-Origin', origin);"
+      - "If Access-Control-Allow-Credentials: true is needed, the Origin MUST be specific, not '*' and not the result of arbitrary reflection."
+      - "Reject the 'null' Origin. Restrict the allowed methods and headers to what is necessary."
+  open-redirect:
+    description: "A redirect parameter (redirect/next/url/return) is used to build the Location header without validation, so it can be pointed at an external domain."
+    impact: "Used for phishing (the link looks legitimate but leads to a malicious site) and for bypassing domain-based protections."
+    severity_basis: "Medium likelihood x Low-medium impact (generally a phishing enabler, not direct access)."
+    recommendation:
+      - "Validate the redirect target against an allowlist of internal paths/domains."
+      - "Avoid redirecting to absolute URLs taken from user input; use relative paths only."
+      - "If an external target is genuinely required, show an intermediate (interstitial) page."
+  vuln-dependency:
+    description: "Outdated components/dependencies with registered vulnerabilities (CVE)."
+    impact: "Depends on the CVE: from information disclosure up to remote code execution (RCE) through the vulnerable library."
+    severity_basis: "Follows the CVSS score of the related CVE; public exploits raise the likelihood."
+    recommendation:
+      - "Update the package to the fixed version stated in the finding."
+      - "If no fix is available yet, apply mitigations/pin a safe version and monitor releases."
+      - "Automate: Dependabot/Renovate + a CI gate (trivy/osv-scanner) so that new CVEs are detected quickly."
+  zap-generic:
+    description: "A finding from the OWASP ZAP scan that requires further analysis to determine whether it is a true or false positive."
+    impact: "Depends on the alert type; review the details per alert."
+    severity_basis: "Derived from the ZAP risk score; verify manually before it is finalized."
+    recommendation:
+      - "Review the alert details in the ZAP report (reports/zap-*.html)."
+      - "Confirm whether it is reproducible; set the final severity after verification."
+  ssrf:
+    description: "The server makes HTTP requests to a user-controlled URL, including private/loopback addresses, without validating the destination (Server-Side Request Forgery)."
+    impact: "An attacker can use the server as a proxy into the internal network: scanning private services, reading cloud metadata (credentials), or accessing internal services that are not exposed to the internet."
+    severity_basis: "Medium likelihood (requires an endpoint that accepts a URL) x High impact (internal network access, scope change)."
+    recommendation:
+      - "Validate the URL with a host/scheme allowlist; reject private, loopback, and link-local addresses (including 169.254.169.254) and all of their alternative representations (decimal, hex, IPv6-mapped)."
+      - "Resolve DNS yourself, validate the resolved IP, then connect to that IP directly (prevents DNS rebinding); disable or re-validate redirects."
+      - "Example (pseudo): ip = resolve(host); if (is_private(ip)) reject(); client.get(url, allow_redirects=False)"
+      - "Run the fetcher in an isolated network without access to internal services/metadata; require IMDSv2 in the cloud."
+  jwt-forgery:
+    description: "The server accepts forged JWTs: unsigned (alg=none), with the signature stripped, or with a modified payload."
+    impact: "Anyone can create a valid token for any identity/role: account takeover and complete privilege escalation."
+    severity_basis: "High likelihood (no prerequisites) x Critical impact (full authentication bypass)."
+    recommendation:
+      - "Always verify the signature and REQUIRE an allowed algorithm (whitelist); reject alg=none."
+      - "Do not trust the 'alg' header from the token: determine the algorithm on the server side."
+      - "Example (jsonwebtoken/Node): jwt.verify(token, key, { algorithms: ['HS256'] });"
+      - "Update the JWT library to the latest version and add regression tests for forged tokens."
+  jwt-weak-secret:
+    description: "HMAC-signed JWTs use a weak/common secret that can be guessed with a dictionary."
+    impact: "An attacker who knows the secret can issue valid tokens for any identity."
+    severity_basis: "High likelihood (a small dictionary is enough) x Critical impact."
+    recommendation:
+      - "Replace the secret with a random value of at least 256 bits from a CSPRNG and rotate it immediately; revoke all old tokens."
+      - "Consider asymmetric algorithms (RS256/ES256) so that the signing key is not shared."
+      - "Store the secret in a secret manager/environment variable, not in code."
+  jwt-weak-config:
+    description: "The JWT configuration does not follow good practice: missing/excessively long exp, sensitive claims in the payload, alg=none, or risky key headers (kid/jku)."
+    impact: "Stolen tokens remain valid for a long time; sensitive data can be read from the payload (it is only encoded); key headers can be abused if they are not validated."
+    severity_basis: "Medium likelihood x Medium impact (amplifies the impact of token theft)."
+    recommendation:
+      - "Set a short exp (minutes to hours) with refresh tokens and revocation capability."
+      - "Do not place sensitive data in the payload (a JWT is only encoded, not encrypted)."
+      - "Validate/whitelist kid, jku, x5u, and jwk; do not fetch keys from a URL in the token."
+  captcha-answer-leak:
+    description: "The captcha challenge response exposes its answer (the answer key, or the position offset in the SVG/image), so the captcha can be bypassed automatically without solving it."
+    impact: "The captcha as an anti-automation control (login brute-force, spam, mass registration) becomes ineffective; bots can bypass it by reading the response."
+    severity_basis: "High likelihood (parsing the response is enough) x Medium impact (the anti-automation control fails, although rate limiting/lockout can dampen it)."
+    recommendation:
+      - "Do not send the position/answer to the client: keep the target on the server and validate the answer on the server side."
+      - "For slider captchas: render the hole AND the puzzle piece as bitmaps that do not contain the target coordinates; do not include translate/clip offsets equivalent to the target position."
+      - "Consider a proven captcha (Cloudflare Turnstile, hCaptcha, reCAPTCHA) rather than a custom implementation."
+      - "Keep the other layers in place: rate limiting, account lockout, and anomaly detection."
+  session-not-revoked:
+    description: "After the password is changed, other sessions belonging to the same account remain valid (sessions are not revoked on the server)."
+    impact: "A stolen session (malware, insecure network, lost device) can still be used by the attacker even though the victim has changed the password."
+    severity_basis: "Medium likelihood (requires prior session theft) x High impact (continued account access)."
+    recommendation:
+      - "Revoke all other sessions when the password changes (keep the session that performed the change, if needed)."
+      - "Laravel example: Auth::logoutOtherDevices($newPassword) + delete the user's session/device records (e.g. DeviceSession) and the sessions in Redis."
+      - "Send a security notification and offer 'sign out of all devices'."
+  logout-no-invalidate:
+    description: "Logout does not revoke the session on the server: the old session cookie is still accepted after logout."
+    impact: "A session cookie that has been exposed can still be used (replay) even though the user has logged out."
+    severity_basis: "Medium likelihood x High impact (session hijacking)."
+    recommendation:
+      - "Delete/invalidate the session in server-side storage on logout, not only the client cookie."
+      - "Laravel example: Auth::logout(); $request->session()->invalidate(); $request->session()->regenerateToken();"
+  old-password-accepted:
+    description: "The old password is still accepted after the password has been changed, or the new password does not take effect."
+    impact: "Changing the password does not cut off access for a party who knows the old password."
+    severity_basis: "High likelihood x High impact (old credentials remain valid)."
+    recommendation:
+      - "Ensure the password hash is replaced atomically and the old password becomes invalid immediately."
+      - "Check for caches/replicas that still hold the old credentials."
+  no-rate-limit:
+    description: "A sensitive endpoint (e.g. login) does not limit the request rate, so credential attempts can be repeated without limit."
+    impact: "Brute-force and credential stuffing can be run at full speed until valid credentials are found."
+    severity_basis: "High likelihood (no prerequisites) x Medium-high impact (account takeover), dampened when other controls are present (captcha, MFA)."
+    recommendation:
+      - "Apply rate limiting per IP and per account on the login, password reset, and OTP endpoints."
+      - "Laravel example (routes/api.php):"
+      - "    Route::post('/login', [LoginController::class, 'login'])\n        ->middleware('throttle:5,1');   // 5 attempts per minute"
+      - "Add rate limiting at the gateway/WAF as a second layer; return 429 + Retry-After."
+  weak-lockout:
+    description: "Account lockout after repeated wrong passwords is not enforced according to policy (not locked, too slow, or an unreasonable duration)."
+    impact: "An attacker can guess passwords without being stopped; alternatively, an unbounded lock can be used to lock out the victim's account (denial of service)."
+    severity_basis: "Medium likelihood (other controls may dampen it) x Medium impact."
+    recommendation:
+      - "Lock the account temporarily (e.g. 15 minutes) after N wrong passwords (e.g. 5) and reset the counter on successful login."
+      - "Ensure the lock is temporary so that it does not become a vector for locking out victim accounts."
+      - "Combine it with per-IP rate limiting and captcha/MFA."
+  lockout-bypass:
+    description: "Login with the correct password succeeds even though the account is in a locked state."
+    impact: "Account lockout provides no protection; an attacker who guesses the password still gets in during the lock period."
+    severity_basis: "High likelihood x High impact (the anti brute-force control is ineffective)."
+    recommendation:
+      - "Check the lock status BEFORE verifying the password and reject (423) during the lock period."
+      - "Example pattern: if ($user->isLocked()) return response()->json([...], 423);"
+  user-enumeration:
+    description: "Authentication responses differ for registered and unregistered accounts (status, message, or lockout behavior), so the existence of an account can be inferred."
+    impact: "An attacker can compile a list of valid accounts for targeted password/phishing attacks."
+    severity_basis: "Information supporting follow-up attacks; low direct impact."
+    recommendation:
+      - "Return an identical generic response (status + message) for registered and unregistered accounts."
+      - "Apply the failure counter/lockout uniformly, or do not differentiate the lockout response (e.g. always 401 with the same message) and notify the account owner by email."
+  auth-coverage-gap:
+    description: "An endpoint that requires authentication according to the OpenAPI specification can in fact be accessed without credentials (authentication enforcement does not match the design)."
+    impact: "Anyone without logging in can read (or trigger) functionality that is assumed to be protected: unauthorized data access."
+    severity_basis: "High likelihood (no prerequisites, calling the URL is enough) x High impact (protected data/functions exposed)."
+    recommendation:
+      - "Attach authentication middleware to the route, or group protected routes in a single auth group so that they are locked by default."
+      - "Laravel example:"
+      - "    Route::middleware('auth:sanctum')->group(function () {\n        Route::get('/laporan', [LaporanController::class, 'index']);\n    });"
+      - "Apply 'default deny': new routes automatically require auth unless explicitly exempted."
+      - "Align the OpenAPI specification with the actual behavior, then make this test part of CI."
+  unauthenticated-endpoint:
+    description: "The endpoint does not declare authentication, is not on the list of permitted public endpoints, yet can be accessed without credentials."
+    impact: "If the endpoint is supposed to be private, data or functionality is open to the public; if it is indeed public, the allowlist/specification needs to be completed."
+    severity_basis: "Requires review: the impact depends on whether the endpoint is genuinely public."
+    recommendation:
+      - "Review each endpoint: if private, add authentication; if public, register it in the allowlist and declare `security: []` in the specification."
+      - "Ensure public endpoints do not return sensitive or internal data."
+  anon-server-error:
+    description: "An anonymous (unauthenticated) request triggers a 5xx server error, indicating that validation or error handling is not performed before authentication."
+    impact: "Unhandled errors can expose internal details, indicate bugs that can be triggered without logging in, and become a vector for service disruption."
+    severity_basis: "Can be triggered without prerequisites, but the direct impact is limited (availability/information)."
+    recommendation:
+      - "Ensure authentication and input validation run first and reject with 401/403/422, not 500."
+      - "Handle exceptions at a global layer and return a generic response."
+      - "Check the server logs for the cause of the 500 and add a regression test for it."
+  spec-mismatch:
+    description: "The OpenAPI specification is inaccurate with respect to actual behavior: the operation does not declare `security` even though it actually rejects anonymous access."
+    impact: "Misleading documentation; clients and automated tests cannot trust the specification, making authentication gaps hard to detect."
+    severity_basis: "A documentation quality issue; it does not open up direct access."
+    recommendation:
+      - "Declare a global security scheme and per-operation `security` in the specification."
+      - "Example (OpenAPI): components.securitySchemes + security: [{ cookieAuth: [] }]; mark public endpoints with `security: []`."
+      - "Generate the specification from code (e.g. Scramble) with the correct security configuration."
+  sensitive-data-exposure:
+    description: "API responses contain sensitive data (passwords/hashes, secrets, tokens, private keys, or other confidential data) that should not be sent to the client."
+    impact: "Exposed credentials or secrets can be used for account takeover, access to third-party services, or follow-up attacks."
+    severity_basis: "High likelihood (calling the endpoint is enough) x High impact (credential/secret exposure)."
+    recommendation:
+      - "Do not serialize sensitive fields: use an explicit field whitelist (API Resource/DTO) instead of returning the whole model."
+      - "Laravel example: hide them in the model and use a Resource."
+      - "    protected $hidden = ['password', 'remember_token', 'two_factor_secret',\n                          'two_factor_recovery_codes'];"
+      - "Revoke and rotate secrets that have already been exposed."
+      - "Apply per-field authorization on the same response for different roles."
+  verbose-error:
+    description: "Responses (especially errors) expose implementation details: stack traces, server file paths, framework versions, or SQL messages."
+    impact: "Internal details make it easier to map the technology stack and develop targeted attacks (e.g. injection, exploitation of vulnerable versions)."
+    severity_basis: "Medium likelihood (easy to trigger) x Low-medium impact (information supporting an attack, not a direct compromise)."
+    recommendation:
+      - "Turn off debug mode outside local environments (Laravel: APP_DEBUG=false; Django: DEBUG=False)."
+      - "Return a generic error message + correlation ID; keep the details only in the server logs."
+      - "Laravel example (bootstrap/app.php): render generic JSON for API requests."
+      - "    $exceptions->render(fn (Throwable $e, Request $r) => $r->is('api/*')\n        ? response()->json(['message' => 'Terjadi kesalahan.'], 500) : null);"
+  internal-info-leak:
+    description: "The response contains internal IP addresses or private network hostnames."
+    impact: "Helps map the internal network topology for SSRF or pivoting."
+    severity_basis: "Supporting information; low direct impact."
+    recommendation:
+      - "Remove internal addresses/hostnames from responses and headers."
+      - "Use public service names or opaque IDs instead of internal IPs."
+  cookie-flags:
+    description: "Session/authentication cookies do not use the full set of security attributes (HttpOnly, Secure, SameSite) or have an excessively long lifetime."
+    impact: "Without HttpOnly, XSS can steal the session cookie; without Secure, the cookie can be exposed over plain HTTP; without SameSite, the CSRF risk increases."
+    severity_basis: "Medium likelihood (requires XSS/an insecure network/CSRF as a prerequisite) x Medium-high impact (session takeover)."
+    recommendation:
+      - "Set HttpOnly on all session/authentication cookies (except those that must be read by the SPA, e.g. XSRF-TOKEN)."
+      - "Set Secure and serve the site over HTTPS only (enable HSTS)."
+      - "Set SameSite=Lax (or Strict for sensitive sessions); use None only when cross-site use is required, and always together with Secure."
+      - "Laravel example (config/session.php):"
+      - "    'http_only' => true,\n    'secure' => env('SESSION_SECURE_COOKIE', true),\n    'same_site' => 'lax',\n    'lifetime' => 120,   // minutes"
+      - "Consider the __Host- prefix for session cookies."
+  recon-subdomain:
+    description: "Assets/subdomains that can be discovered publicly through OSINT (subfinder/httpx), expanding the attack surface."
+    impact: "Forgotten (dangling) subdomains, open staging environments, or exposed admin panels can become an initial entry point."
+    severity_basis: "Informational: an asset inventory; severity increases if the host exposes sensitive services/panels (see related findings)."
+    recommendation:
+      - "Inventory all subdomains; shut down/archive those that are not in use."
+      - "Ensure there are no dangling subdomains (DNS pointing to deleted resources) to prevent subdomain takeover."
+      - "Restrict access to non-production environments (staging/dev) with an allowlist/VPN."
+  exposed-service:
+    description: "Ports/services open to the internet (e.g. SSH, databases, Redis, Elasticsearch) that should be restricted."
+    impact: "Exposed admin services/datastores facilitate brute-force, unauthenticated access, or exploitation of service CVEs."
+    severity_basis: "Medium-high likelihood (indexed by mass scanners) x Impact depends on the service; a datastore without auth = high."
+    recommendation:
+      - "Close unnecessary ports; apply default-deny on the firewall/security group."
+      - "Restrict management access (SSH/RDP/DB) to trusted IPs or via a VPN/bastion."
+      - "Require strong authentication on datastores (Redis/Elasticsearch/Mongo) and do not expose them on 0.0.0.0."
+  leaked-secret:
+    description: "Credentials/secrets (API keys, tokens, passwords) were detected in the source or assets (trufflehog), potentially committed to the repository."
+    impact: "Exposed secrets can be used to abuse third-party services, access data, or pivot into internal systems."
+    severity_basis: "High likelihood (easily found via automated scanners) x High impact (direct access to services/data). Verified = High."
+    recommendation:
+      - "Revoke and rotate exposed secrets immediately; treat them as compromised."
+      - "Remove the secret from the git history (git filter-repo/BFG), not only from the latest commit."
+      - "Move secrets to environment variables / a secret manager; do not commit them to the repo."
+      - "Install a pre-commit hook (gitleaks/trufflehog) to prevent repeated exposure."
+  sast-finding:
+    description: "Static code analysis (semgrep) found potentially vulnerable patterns (e.g. injection, XSS, weak cryptography, insecure configuration) in the source."
+    impact: "Depends on the matching rule; it may be an exploitable vulnerability (SQL injection, command injection, XSS) or a false positive that needs triage."
+    severity_basis: "Follows the semgrep rule severity (ERROR=High, WARNING=Medium); must be verified manually because SAST can produce false positives."
+    recommendation:
+      - "Triage each finding: confirm whether the user data path actually reaches the sink."
+      - "Fix according to the rule message (parameterized queries, output escaping, secure crypto APIs)."
+      - "Add `# nosemgrep: <rule>` only for verified false positives, with the reason stated in a comment."
+      - "Run semgrep in CI so that regressions are caught before merge."
+  recon-finding:
+    description: "A finding from active vulnerability scanning (nuclei) against live assets. The severity is taken directly from the matching nuclei template."
+    impact: "Depends on the template; may include exploitable CVEs, misconfigurations, exposures, or default logins."
+    severity_basis: "Follows the nuclei template severity (CVSS/community); verify true positives before escalation."
+    recommendation:
+      - "Verify each finding (true/false positive) on the authorized target."
+      - "Patch vulnerable components according to the stated CVE/CWE; check the availability of a fixed version."
+      - "Fix misconfigurations (headers, CORS, exposed panels) according to the tag category."

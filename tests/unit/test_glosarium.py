@@ -32,20 +32,19 @@ def _clean(monkeypatch):
 # --- loading and language selection ---------------------------------------------------------
 def test_languages_match_documentation():
     assert G.languages() == ["de", "en", "id"]
-    assert G.default_lang() == "en"
+    assert G.default_lang() == "id"
 
 
 def test_requested_vs_effective_language(monkeypatch):
-    assert G.requested_lang() == "en"
-    assert G.effective_lang() == "id"          # only the id text catalog is complete so far
+    assert (G.requested_lang(), G.effective_lang()) == ("id", "id")
     monkeypatch.setenv("SAK_LANG", "de")
     G.reset_cache()
-    assert (G.requested_lang(), G.effective_lang()) == ("de", "id")
+    assert (G.requested_lang(), G.effective_lang()) == ("de", "de")     # the en and de text catalogs are complete
 
 
 def test_unknown_language_falls_back_to_default(monkeypatch):
     monkeypatch.setenv("SAK_LANG", "xx")
-    assert G.requested_lang() == "en"
+    assert G.requested_lang() == "id"
 
 
 def test_project_language_and_glossary_override(tmp_path, monkeypatch):

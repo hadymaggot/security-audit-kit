@@ -11,19 +11,19 @@ Kit memiliki satu glosarium per bahasa, [`glosarium.yml`](../glosarium.yml), aga
 
 ## Memilih bahasa
 
-Urutan prioritas: opsi `--lang id|en|de`, environment variable `SAK_LANG`, `report.language` pada `targets.yml` project, lalu bawaan glosarium (`en`).
+Urutan prioritas: opsi `--lang id|en|de`, environment variable `SAK_LANG`, `report.language` pada `targets.yml` project, lalu bawaan glosarium (`id`).
 
 ```
 python audit.py --project my-app --lang de report
 ```
 
-Glosarium tersedia untuk `id`, `en`, dan `de`. Katalog teks laporan dan konsol baru lengkap untuk `id`; bahasa lain sementara memakai teks `id` sambil tetap memakai glosarium bahasa yang dipilih. Setelah katalog suatu bahasa selesai, tambahkan kodenya ke `complete_text` di `glosarium.yml`.
+Glosarium tersedia untuk `id`, `en`, dan `de`. Katalog teks laporan lengkap untuk `id`, `en`, dan `de`. Teks sumbernya bahasa Indonesia di kode; terjemahannya ada di `locales/text.<bahasa>.yml` (teks laporan) dan `locales/kb.<bahasa>.yml` (deskripsi, dampak, dan rekomendasi tiap jenis temuan), dengan cara kerja seperti gettext atau Transifex. Bukti per instance yang dihasilkan modul uji dan pesan konsol tetap berbahasa Indonesia. Bahasa yang katalognya lengkap didaftarkan di `complete_text` pada `glosarium.yml`.
 
 ## Isi `glosarium.yml`
 
 | Kunci | Fungsi |
 |---|---|
-| `default` | Bahasa bawaan (`en`). |
+| `default` | Bahasa bawaan (`id`). |
 | `complete_text` | Bahasa yang katalog teks laporan/konsolnya sudah lengkap. |
 | `languages.<kode>.italic` | `false` bila teksnya sudah berbahasa Inggris sehingga tidak ada yang dimiringkan (bawaan `true`). |
 | `languages.<kode>.terms` | Istilah yang dicetak miring; tidak membedakan huruf besar/kecil, bentuk jamak dan frasa beberapa kata ikut dikenali. |
@@ -47,5 +47,5 @@ Kasus lain:
 ## Peta jalan bahasa
 
 1. Glosarium per bahasa, pembakuan istilah, dan pencetakan miring (selesai).
-2. Katalog teks laporan dan konsol bahasa Inggris, lalu `en` ditambahkan ke `complete_text`.
-3. Katalog bahasa Jerman.
+2. Katalog teks laporan bahasa Inggris dan Jerman (selesai). Periksa dengan `python scripts/catalog_status.py`, yang melaporkan teks yang belum diterjemahkan, sudah usang, atau placeholder-nya berbeda.
+3. Terjemahan bukti per instance dari modul uji dan pesan konsol.
