@@ -303,15 +303,21 @@ def mod_zap(tgt, sub="baseline"):
     extra = []
     hdr = os.environ.get("ZAP_AUTH_HEADER")  # e.g. "Authorization: Bearer xxx"
     if hdr:
-        name, _, val = hdr.partition(":")
-        val = val.strip()
-        extra = [
-            "-config", "replacer.full_list(0).description=auth",
-            "-config", "replacer.full_list(0).enabled=true",
-            "-config", "replacer.full_list(0).matchtype=REQ_HEADER",
-            "-config", f"replacer.full_list(0).matchstr={name.strip()}",
-            "-config", f"replacer.full_list(0).replacement={val}",
-        ]
+        # A raw `-config` option is parsed by the ZAP scripts as `-c`, and a header value with a space
+        # cannot pass through `-z`. The header is installed by a hook that reads the environment
+        # variable, so the token never appears on the command line and the hook file holds no secret.
+        hook = Path(reports_dir()) / "zap_auth_hook.py"
+        hook.write_text('''import os
+
+
+def zap_started(zap, target):
+    name, _, val = os.environ['ZAP_AUTH_HEADER'].partition(':')
+    zap.replacer.add_rule(description='auth', enabled='true', matchtype='REQ_HEADER',
+                          matchregex='false', matchstring=name.strip(),
+                          replacement=val.strip(), initiators='')
+''', encoding="utf-8")
+        base = base[:-1] + ["-e", "ZAP_AUTH_HEADER", image]
+        extra = ["--hook=/zap/wrk/zap_auth_hook.py"]
     if sub == "baseline":
         return run(base + ["zap-baseline.py", "-t", tgt["base_url"],
                            "-r", "zap-baseline.html", "-J", "zap-baseline.json", "-I"] + extra)
