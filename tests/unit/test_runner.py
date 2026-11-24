@@ -255,6 +255,7 @@ def test_finish_keeps_earlier_runs_and_names_files_uniquely(tmp_path, monkeypatc
     assert (first / f"{runs[0]}.md").exists() and (first / f"{runs[0]}.html").exists()
     assert (first / f"{runs[0]}-slides.html").exists() and (first / f"{runs[0]}-ringkasan.md").exists()
     assert not (first / "laporan.md").exists()
+    assert (first / "data" / "authz.json").exists() and not (first / "authz.json").exists()   # raw output is tucked away
     assert f"{runs[0]}.html" in (first / f"{runs[0]}-slides.html").read_text(encoding="utf-8")
     assert len((base / "RIWAYAT.md").read_text(encoding="utf-8").splitlines()) == 6     # header + 2 runs
 
@@ -389,3 +390,21 @@ def test_resolve_path_prefers_the_file_next_to_the_config(tmp_path):
     (cfg_dir / ".env.dev").unlink()
     assert RN.Context.resolve_path(ctx, ".env.dev") == repo / ".env.dev"
     assert RN.Context.resolve_path(ctx, str(tmp_path / "abs.env")) == tmp_path / "abs.env"
+
+
+def test_finish_keeps_the_evidence_folder_at_the_top_level(tmp_path, monkeypatch):
+    """The report links evidence images by relative path, so only loose raw files go to data/."""
+    ctx = _FakeCtx(tmp_path)
+    original = ctx.audit
+
+    def with_evidence(*args, **kwargs):
+        result = original(*args, **kwargs)
+        shot = ctx.project / "reports" / "evidence"
+        shot.mkdir(exist_ok=True)
+        (shot / "a.png").write_bytes(b"x")
+        return result
+
+    ctx.audit = with_evidence
+    RN.finish(ctx)
+    run = next((tmp_path / "docs" / "security-audit").glob("security-audit-kit_*"))
+    assert (run / "evidence" / "a.png").exists() and not (run / "data" / "evidence").exists()

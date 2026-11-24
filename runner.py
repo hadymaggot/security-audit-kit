@@ -1364,7 +1364,7 @@ def write_summary(ctx: Context, out: Path, name: str) -> None:
              f"- Jumlah akun login: {len({id(s) for s in ctx.sessions.values()})}", "",
              "| Modul | Status | Catatan |", "|---|---|---|"]
     lines += [f"| {m} | {s} | {c} |" for m, s, c in ctx.summary]
-    lines += ["", f"Hasil per modul dan temuan ada di {name}.md. Berkas ini dibuat otomatis oleh runner.py."]
+    lines += ["", f"Hasil per modul dan temuan ada di {name}.md; data mentah modul ada di folder data/. Berkas ini dibuat otomatis oleh runner.py."]
     (out / f"{name}-ringkasan.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -1398,13 +1398,17 @@ def finish(ctx: Context) -> int:
     out_dir.mkdir(parents=True)
     skip = {"snapshots", "__pycache__", "zap_auth_hook.py", "zap.yaml"}
     renamed = {"laporan.md": f"{name}.md", "laporan.html": f"{name}.html", "laporan-slides.html": f"{name}-slides.html"}
+    data_dir = out_dir / "data"
     for src in reports.iterdir():
         if src.name in skip:
             continue
-        if src.is_dir():
+        if src.is_dir():                         # evidence images are linked from the report by relative path
             shutil.copytree(src, out_dir / src.name)
-        else:
-            shutil.copy2(src, out_dir / renamed.get(src.name, src.name))
+        elif src.name in renamed:
+            shutil.copy2(src, out_dir / renamed[src.name])
+        else:                                    # raw module output stays out of sight in data/
+            data_dir.mkdir(exist_ok=True)
+            shutil.copy2(src, data_dir / src.name)
     slides = out_dir / renamed["laporan-slides.html"]
     if slides.exists():                          # the slides mention the full report by file name
         slides.write_text(slides.read_text(encoding="utf-8").replace("laporan.html", f"{name}.html"), encoding="utf-8")
