@@ -119,8 +119,19 @@ class Session:
             headers["Authorization"] = f"Bearer {self.bearer}"
         # Per-endpoint base_url, e.g. the service port directly to test gateway bypass.
         url = (base_url or self.base_url).rstrip("/") + path
-        return self.sess.request(method, url, json=body, headers=headers,
-                                 timeout=20, allow_redirects=False)
+        resp = self.sess.request(method, url, json=body, headers=headers, timeout=20, allow_redirects=False)
+        # HTTP 429 is the rate limiter, not an access control verdict: wait for Retry-After and try again
+        # (at most 3 times, 120 s each) so a busy limiter does not turn into false findings.
+        retries = 0
+        while resp.status_code == 429 and retries < 3:
+            try:
+                wait = min(int(resp.headers.get("Retry-After", "30")), 120) + 1
+            except (ValueError, AttributeError):
+                wait = 31
+            time.sleep(wait)
+            retries += 1
+            resp = self.sess.request(method, url, json=body, headers=headers, timeout=20, allow_redirects=False)
+        return resp
 
 
 def forged_blocks(fh):
