@@ -39,7 +39,7 @@ Ein vollständiges kommentiertes Beispiel steht in [config/runner.example.yml](.
 
 Legen Sie die Config unter `projects/<name>/audit.config.yml` im Toolkit ab, einem Ordner, der wie jedes andere Toolkit-Projekt nicht eingecheckt wird, und setzen Sie `project.repo` auf den Ort des Anwendungs-Repos. Dieses Repo erhält die Report-Kopie und ist die Basis der Pfade der `stack`-Schritte.
 
-`project.language` wählt die Sprache des Reports (`id`, `en` oder `de`) und ist standardmäßig `id`; die Option `--lang` überschreibt sie. Der Reporttext ist in allen drei Sprachen vollständig; die Belege je Instanz aus den Testmodulen bleiben indonesisch. Die Zusammenfassung des Laufs und die Konsolenmeldungen des Runners selbst sind auf Indonesisch.
+`project.language` wählt die Sprache des Reports (`id`, `en` oder `de`) und ist standardmäßig `id`; die Option `--lang` überschreibt sie. Reporttext und Belege je Instanz liegen in allen drei Sprachen vor; Daten aus der Config und Texte von Drittwerkzeugen werden nicht übersetzt. Die Zusammenfassung des Laufs und die Konsolenmeldungen des Runners selbst sind auf Indonesisch.
 
 | Abschnitt | Inhalt |
 |---|---|

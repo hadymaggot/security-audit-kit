@@ -39,7 +39,7 @@ Contoh lengkap dengan komentar ada di [config/runner.example.yml](../config/runn
 
 Simpan config di `projects/<nama>/audit.config.yml` pada toolkit, folder yang tidak di-commit seperti project toolkit lainnya, lalu isi `project.repo` dengan lokasi repo aplikasi. Repo itu menjadi tujuan salinan report dan acuan path langkah `stack`.
 
-`project.language` memilih bahasa report (`id`, `en`, atau `de`) dan bawaannya `id`; opsi `--lang` menimpanya. Teks report tersedia lengkap dalam ketiga bahasa; bukti per instance dari modul uji tetap berbahasa Indonesia. Ringkasan eksekusi dan pesan konsol runner sendiri berbahasa Indonesia.
+`project.language` memilih bahasa report (`id`, `en`, atau `de`) dan bawaannya `id`; opsi `--lang` menimpanya. Teks report dan bukti per instance tersedia dalam ketiga bahasa; data dari config dan teks alat pihak ketiga tidak diterjemahkan. Ringkasan eksekusi dan pesan konsol runner sendiri berbahasa Indonesia.
 
 | Bagian | Isi |
 |---|---|

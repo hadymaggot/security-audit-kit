@@ -79,8 +79,8 @@ def norm(module, title, status, evidence, passed, override_sev=None, cve=None,
     kb = R.lookup(kind)
     sev = "passed" if passed else (override_sev or kb["severity"]).lower()
     return {
-        "module": module, "title": title, "kind": kind, "passed": passed,
-        "severity": sev, "status": status, "evidence": evidence,
+        "module": module, "title": i18n.dynamic(title), "kind": kind, "passed": passed,   # classified on the source text
+        "severity": sev, "status": status, "evidence": i18n.dynamic(evidence),
         "url": url or "", "screenshot": screenshot or "", "cve": cve or [], "kb": kb,
     }
 
@@ -596,7 +596,7 @@ def write_md(path, findings, counts, when, cves):
         L.append("")
     L += [
         "## 6. " + T("Lampiran"), "",
-        f"**{T('Tooling & acuan')}.** " + "; ".join(TOOLS) + ". " + T(REFERENCE_NOTE), "",
+        f"**{T('Tooling & acuan')}.** " + "; ".join(T(x) for x in TOOLS) + ". " + T(REFERENCE_NOTE), "",
         f"**{T('Catatan CVSS')}.** " + T(CVSS_NOTE), "",
         f"**{T('Batasan & pertanggungjawaban')}.** " + I(T(LIMITATIONS)), "",
         "---", "", f"_{credit_text()}_", "",
@@ -757,7 +757,7 @@ def write_html(path, findings, counts, when, cves):
 <h2>5. {esc(T('Daftar CVE'))}</h2>
 <table><thead><tr><th>CVE</th><th>{esc(T('Paket/Lokasi'))}</th><th>Severity</th></tr></thead><tbody>{cve_rows}</tbody></table>
 <h2>6. {esc(T('Lampiran'))}</h2>
-<div class="note"><p><b>{esc(T('Tooling & acuan'))}.</b> {esc('; '.join(TOOLS))}. {esc(T(REFERENCE_NOTE))}</p>
+<div class="note"><p><b>{esc(T('Tooling & acuan'))}.</b> {esc('; '.join(T(x) for x in TOOLS))}. {esc(T(REFERENCE_NOTE))}</p>
 <p><b>{esc(T('Catatan CVSS'))}.</b> {esc(T(CVSS_NOTE))}</p>
 <p><b>{esc(T('Batasan & pertanggungjawaban'))}.</b> {glossary.italic_html(html.escape(T(LIMITATIONS)))}</p></div>
 </main>

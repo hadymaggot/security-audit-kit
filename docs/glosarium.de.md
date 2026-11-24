@@ -17,7 +17,7 @@ Priorität: Option `--lang id|en|de`, Umgebungsvariable `SAK_LANG`, `report.lang
 python audit.py --project my-app --lang de report
 ```
 
-Das Glossar gibt es für `id`, `en` und `de`. Der Text-Katalog für Berichte ist für `id`, `en` und `de` vollständig. Der Quelltext steht auf Indonesisch im Code; die Übersetzungen liegen in `locales/text.<sprache>.yml` (Berichtstext) und `locales/kb.<sprache>.yml` (Beschreibung, Auswirkung und Empfehlung je Befundtyp) und funktionieren wie gettext oder Transifex. Belege je Instanz aus den Testmodulen und die Konsolenmeldungen bleiben indonesisch. Sprachen mit vollständigem Katalog stehen in `complete_text` in `glosarium.yml`.
+Das Glossar gibt es für `id`, `en` und `de`. Der Text-Katalog für Berichte ist für `id`, `en` und `de` vollständig. Der Quelltext steht auf Indonesisch im Code; die Übersetzungen liegen in `locales/text.<sprache>.yml` (Berichtstext) und `locales/kb.<sprache>.yml` (Beschreibung, Auswirkung und Empfehlung je Befundtyp) und funktionieren wie gettext oder Transifex. Prüfungsnamen und Belege je Instanz, die die Testmodule zur Laufzeit schreiben, werden über geordnete Regex-Regeln in `locales/evidence.<sprache>.yml` übersetzt, da diese Sätze Werte wie URLs und Status enthalten; Beispiele stehen in `tests/unit/evidence_examples.yml`. Texte von Drittwerkzeugen (zum Beispiel ZAP-Beschreibungen), Daten aus der Config und Konsolenmeldungen werden nicht übersetzt. Sprachen mit vollständigem Katalog stehen in `complete_text` in `glosarium.yml`.
 
 ## Schlüssel in `glosarium.yml`
 
@@ -48,4 +48,4 @@ Weitere Fälle:
 
 1. Glossar pro Sprache, Begriffsvereinheitlichung und Kursivsatz (erledigt).
 2. Englischer und deutscher Text-Katalog für Berichte (erledigt). Prüfung mit `python scripts/catalog_status.py`, das nicht übersetzte, veraltete oder in den Platzhaltern abweichende Texte meldet.
-3. Übersetzung der Belege je Instanz aus den Testmodulen und der Konsolenmeldungen.
+3. Übersetzung der Prüfungsnamen und Belege je Instanz aus den Testmodulen (erledigt). Konsolenmeldungen bleiben indonesisch, weil der Runner sie liest.

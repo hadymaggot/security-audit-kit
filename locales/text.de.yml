@@ -53,6 +53,13 @@ text:
   Temuan recon aktif (nuclei): Befund der aktiven Recon (nuclei)
   Temuan analisis statis kode (SAST/semgrep): Befund der statischen Codeanalyse (SAST/semgrep)
   Temuan pemindai pasif (ZAP): Befund des passiven Scanners (ZAP)
+  OWASP ZAP (DAST): OWASP ZAP (DAST)
+  Trivy (SCA/CVE): Trivy (SCA/CVE)
+  semgrep (SAST): semgrep (SAST)
+  gitleaks (secret): gitleaks (secret)
+  testssl.sh (TLS): testssl.sh (TLS)
+  ? runner internal Security Audit Kit (authz, mass-assignment, upload, auth-policy, client-leak, cors, open-redirect, webstack, injection)
+  : interne Runner des Security Audit Kit (authz, mass-assignment, upload, auth-policy, client-leak, cors, open-redirect, webstack, injection)
   Sedang: Mittel
   Tinggi: Hoch
   ? Tidak ditemukan temuan pada cakupan yang diuji; seluruh kontrol yang diuji berperilaku sesuai harapan. Pemeriksaan yang lolos dirinci pada bagian Kontrol yang Lolos sebagai bukti cakupan uji.

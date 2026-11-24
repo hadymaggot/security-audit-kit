@@ -27,7 +27,7 @@ import i18n  # noqa: E402
 import remediation  # noqa: E402
 
 # Module-level names in report.py whose value is a source string (or a dict of them).
-NAMED = ("METHODOLOGY", "LIMITATIONS", "CLASSIFICATION", "CVSS_NOTE", "REFERENCE_NOTE", "KIND_LABEL")
+NAMED = ("METHODOLOGY", "LIMITATIONS", "CLASSIFICATION", "CVSS_NOTE", "REFERENCE_NOTE", "KIND_LABEL", "TOOLS")
 
 
 def _constant(node, env):
@@ -57,7 +57,7 @@ def source_strings(path: Path | None = None) -> list[str]:
 
     for name in NAMED:
         value = env.get(name)
-        for item in (value.values() if isinstance(value, dict) else [value]):
+        for item in (value.values() if isinstance(value, dict) else value if isinstance(value, list) else [value]):
             add(item)
     for node in ast.walk(tree):
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "T" and node.args:

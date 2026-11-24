@@ -5,6 +5,7 @@ The Indonesian text in the code is the SOURCE string and also the lookup key. Ea
 has resource files under locales/:
   locales/text.<lang>.yml   text: { "<source string>": "<translation>" }
   locales/kb.<lang>.yml     kb:   { <kind>: {description, impact, severity_basis, recommendation[]} }
+  locales/evidence.<lang>.yml  evidence: { rules: [[regex, replacement], ...] } for text built at run time
 
 `T(source)` returns the translation for the requested report language, or the source itself when
 there is none, so a missing entry never breaks a report. Placeholders such as {total} are kept in
@@ -30,6 +31,7 @@ PLACEHOLDER = re.compile(r"\{[a-z_]+\}")
 
 def reset_cache() -> None:
     _cache.clear()
+    _rules_cache.clear()
 
 
 def language() -> str:
@@ -75,6 +77,40 @@ def kb_entry(kind: str, entry: dict, lang: str | None = None) -> dict:
     if isinstance(rec, list) and len(rec) == len(entry.get("recommendation") or []):
         out["recommendation"] = [str(x) for x in rec]
     return out
+
+
+_rules_cache: dict[str, list] = {}
+
+
+def _rules(lang: str) -> list:
+    """Compiled (pattern, replacement) rules of locales/evidence.<lang>.yml; a broken rule is skipped."""
+    if lang not in _rules_cache:
+        compiled = []
+        for rule in _load("evidence", lang).get("rules") or []:
+            if isinstance(rule, (list, tuple)) and len(rule) == 2:
+                try:
+                    compiled.append((re.compile(str(rule[0])), str(rule[1])))
+                except re.error:
+                    continue
+        _rules_cache[lang] = compiled
+    return _rules_cache[lang]
+
+
+def dynamic(text: str, lang: str | None = None) -> str:
+    """Translate text built at run time by the test modules (check names, evidence notes).
+
+    The modules always write Indonesian, which the classifier relies on. Their sentences carry values
+    (URLs, statuses, counts), so they are translated by ordered regex rules instead of exact strings.
+    Text that no rule matches stays as it is."""
+    lang = lang or language()
+    if lang == SOURCE_LANG or not text:
+        return text
+    for pattern, replacement in _rules(lang):
+        try:
+            text = pattern.sub(replacement, text)
+        except re.error:
+            continue
+    return text
 
 
 def available() -> list[str]:
