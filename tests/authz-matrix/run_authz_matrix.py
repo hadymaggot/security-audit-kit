@@ -13,6 +13,7 @@ Usage:
 """
 from __future__ import annotations
 
+import time
 import argparse
 import json
 import os
@@ -70,6 +71,11 @@ class Session:
     def login(self, login_cfg, creds, mode):
         if self.anonymous:
             return
+        # Static token (bearer mode): the role carries a ready-made `token`, so no login request is
+        # sent. Useful when the login endpoint is rate limited and many roles are under test.
+        if mode == "bearer" and creds.get("token"):
+            self.bearer = creds["token"]
+            return
         # Sanctum SPA: fetch the CSRF + session cookies first, send a stateful Origin.
         if self.sanctum:
             _sanctum.prime_csrf(self.sess, self.base_url, self.sanctum)
@@ -81,6 +87,20 @@ class Session:
         url = self.base_url + login_cfg["path"]
         resp = self.sess.request(login_cfg.get("method", "POST"), url, json=body,
                                  headers=self._sanctum_headers(), timeout=20)
+        # Login rate limit (HTTP 429): wait for Retry-After and try again instead of failing the whole
+        # run. `retry_429: false` disables it; `retry_429_max_wait` (seconds, default 1200) caps one wait.
+        retries = 0
+        while resp.status_code == 429 and login_cfg.get("retry_429", True) and retries < 3:
+            try:
+                wait = int(resp.headers.get("Retry-After", "60"))
+            except ValueError:
+                wait = 60
+            wait = min(wait, int(login_cfg.get("retry_429_max_wait", 1200))) + 2
+            print(f"  login '{self.role}': HTTP 429, menunggu {wait} detik (Retry-After)", flush=True)
+            time.sleep(wait)
+            retries += 1
+            resp = self.sess.request(login_cfg.get("method", "POST"), url, json=body,
+                                     headers=self._sanctum_headers(), timeout=20)
         if resp.status_code >= 400:
             raise RuntimeError(f"login role '{self.role}' gagal: HTTP {resp.status_code}")
         if mode == "bearer":
