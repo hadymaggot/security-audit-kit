@@ -72,6 +72,7 @@ Perintah lain: `init`, `report`, `rollback`, `clean`. Daftar lengkap: `python au
 | Dokumen | Isi |
 |---|---|
 | [Panduan penggunaan](docs/panduan-penggunaan.md) | Instalasi, config, autentikasi, scan, report, *rollback*, troubleshooting |
+| [Runner otonom](docs/runner.md) | Menjalankan seluruh audit dari scan sampai report tanpa campur tangan manual dan tanpa AI; dapat dipakai untuk project baru lewat satu config |
 | [Glosarium](docs/glosarium.md) | Istilah teknis per bahasa dan opsi `--lang` |
 | [Metodologi](docs/metodologi.md) | Tahapan uji dan acuan standar (OWASP, ASVS) |
 | [Pemetaan temuan ke test](docs/temuan-to-test-mapping.md) | Mengubah temuan pentest menjadi kasus uji |
@@ -85,6 +86,7 @@ Opsi lanjutan (di panduan): [multi-project](docs/panduan-penggunaan.md#multi-pro
 
 ```text
 audit.py, audit.ps1, Makefile   # entry point lintas-OS dan wrapper pendek
+runner.py                       # runner audit otonom: scan sampai report dari satu config
 report.py                       # penyusun report gabungan
 remediation.py                  # knowledge base remediasi dan justifikasi severity
 glossary.py, glosarium.yml      # pemuat dan data glosarium

@@ -12,6 +12,7 @@ FAMILIES = {
     "README": ["README.md", "README.en.md", "README.de.md"],
     "CONTRIBUTING": ["CONTRIBUTING.md", "CONTRIBUTING.en.md", "CONTRIBUTING.de.md"],
     "usage-guide": [f"docs/panduan-penggunaan{s}.md" for s in ("", ".en", ".de")],
+    "runner": [f"docs/runner{s}.md" for s in ("", ".en", ".de")],
     "methodology": [f"docs/metodologi{s}.md" for s in ("", ".en", ".de")],
     "finding-to-test-mapping": [f"docs/temuan-to-test-mapping{s}.md" for s in ("", ".en", ".de")],
     "glossary": [f"docs/glosarium{s}.md" for s in ("", ".en", ".de")],
