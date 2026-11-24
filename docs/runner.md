@@ -92,4 +92,4 @@ Target baru, seperti staging, cukup ditambahkan di `targets` dengan berkas env s
 - Hasil scanner tetap perlu diverifikasi; celah logika bisnis hanya terdeteksi jika kasusnya ditulis di config.
 - `session` memeriksa autentikasi bearer dengan refresh token, dan butuh akun berhak tinggi untuk membuat akun uji sekali pakai.
 - `tls` hanya untuk target HTTPS, dan `deps` memindai kode sehingga umumnya dijalankan pada target `stack`.
-- Runner membuat project kerja di folder `projects/` toolkit, yang tidak di-commit.
+- Runner membuat project kerja di `work/kit/` di samping config, sehingga `projects/` tetap berisi satu folder per project.

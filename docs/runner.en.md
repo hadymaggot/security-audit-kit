@@ -92,4 +92,4 @@ A new target, such as staging, is added under `targets` with its own env file.
 - Scanner results still need verification; business logic flaws are only found when the case is written in the config.
 - `session` checks bearer authentication with refresh tokens, and needs a high privilege account to create a one-off test account.
 - `tls` is for HTTPS targets only, and `deps` scans code, so it usually runs on the `stack` target.
-- The runner creates working projects in the `projects/` folder of the toolkit, which is not committed.
+- The runner creates its working projects in `work/kit/` next to the config, so `projects/` keeps one folder per project.
