@@ -241,8 +241,18 @@ class Config:
     def load(cls, path: Path, repo: Path | None = None) -> "Config":
         if not path.exists():
             raise AuditError(f"Config tidak ditemukan: {path}. Buat dengan: python runner.py init --config {path}")
+        path = path.resolve()
         data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-        return cls(data, path.resolve(), repo or find_repo_root(path.resolve().parent))
+        explicit = (data.get("project") or {}).get("repo")
+        if explicit:
+            root = Path(explicit)
+            repo = root if root.is_absolute() else (path.parent / root).resolve()
+        elif repo is None:
+            repo = find_repo_root(path.parent)
+            if repo == KIT:
+                raise AuditError("Config berada di folder toolkit: isi project.repo dengan lokasi repo aplikasi "
+                                 "(tujuan salinan report dan sumber berkas env stack).")
+        return cls(data, path, repo)
 
     def get(self, dotted: str, default=None):
         value = dig(self.data, dotted)
@@ -388,7 +398,7 @@ class Context:
             self.check_health()
             self.accounts = self.stack_accounts()
         else:
-            env_file = Path(self.args.env_file) if getattr(self.args, "env_file", None) else self.repo / self.target["env_file"]
+            env_file = Path(self.args.env_file) if getattr(self.args, "env_file", None) else self.resolve_path(self.target["env_file"])
             if not env_file.exists():
                 raise AuditError(f"Berkas env target tidak ada: {env_file}. Salin contohnya lalu isi.")
             env = read_env(env_file)
@@ -423,6 +433,16 @@ class Context:
             order += [r for r in sorted(self.accounts) if r not in order]
             self.accounts = {r: self.accounts[r] for r in order[:limit]}
         log(f"Target {self.target_name}: {self.base} ({self.level}), {len(self.accounts)} akun")
+
+    def resolve_path(self, relative: str) -> Path:
+        """A path from the config: absolute as given, else next to the config file, else relative to the repo."""
+        path = Path(relative)
+        if path.is_absolute():
+            return path
+        for base in (self.cfg.path.parent, self.repo):
+            if (base / path).exists():
+                return base / path
+        return self.cfg.path.parent / path
 
     def check_health(self) -> None:
         for url in self.target.get("healthy", []):

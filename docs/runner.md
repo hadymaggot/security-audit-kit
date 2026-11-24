@@ -14,11 +14,11 @@
 ## Mulai cepat
 
 ```bash
-python runner.py init --config security-audit/audit.config.yml
-python runner.py check --config security-audit/audit.config.yml
-python runner.py run --config security-audit/audit.config.yml --target local
-python runner.py run --config security-audit/audit.config.yml --target dev --skip ratelimit
-python runner.py down --config security-audit/audit.config.yml
+python runner.py init --config projects/example-app/audit.config.yml
+python runner.py check --config projects/example-app/audit.config.yml
+python runner.py run --config projects/example-app/audit.config.yml --target local
+python runner.py run --config projects/example-app/audit.config.yml --target dev --skip ratelimit
+python runner.py down --config projects/example-app/audit.config.yml
 ```
 
 Hasil: folder report bernama unik di `project.output`, lengkap dengan HTML, Markdown, slide, bukti per modul, dan ringkasan eksekusi. Kode keluar 2 berarti ada galat yang menghentikan run; temuan keamanan tidak mengubah kode keluar, karena hasilnya ada di report.
@@ -36,6 +36,8 @@ Hasil: folder report bernama unik di `project.output`, lengkap dengan HTML, Mark
 ## Konfigurasi
 
 Contoh lengkap dengan komentar ada di [config/runner.example.yml](../config/runner.example.yml).
+
+Simpan config di `projects/<nama>/audit.config.yml` pada toolkit, folder yang tidak di-commit seperti project toolkit lainnya, lalu isi `project.repo` dengan lokasi repo aplikasi. Repo itu menjadi tujuan salinan report dan acuan path langkah `stack`.
 
 | Bagian | Isi |
 |---|---|
