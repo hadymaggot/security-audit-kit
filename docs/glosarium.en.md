@@ -11,19 +11,19 @@ The kit keeps one glossary per language, [`glosarium.yml`](../glosarium.yml), so
 
 ## Choosing the language
 
-Priority: the `--lang id|en|de` option, the `SAK_LANG` environment variable, `report.language` in the project's `targets.yml`, then the glossary default (`en`).
+Priority: the `--lang id|en|de` option, the `SAK_LANG` environment variable, `report.language` in the project's `targets.yml`, then the glossary default (`id`).
 
 ```
 python audit.py --project my-app --lang de report
 ```
 
-The glossary exists for `id`, `en`, and `de`. The report and console text catalog is complete for `id` only; other languages temporarily reuse the `id` text while still using their own glossary. When a language's catalog is finished, add its code to `complete_text` in `glosarium.yml`.
+The glossary exists for `id`, `en`, and `de`. The report text catalog is complete for `id`, `en`, and `de`. The source text is Indonesian in the code; the translations live in `locales/text.<lang>.yml` (report text) and `locales/kb.<lang>.yml` (description, impact, and recommendation per finding type), working like gettext or Transifex. Per instance evidence produced by the test modules and the console messages stay Indonesian. Languages with a complete catalog are listed in `complete_text` in `glosarium.yml`.
 
 ## `glosarium.yml` keys
 
 | Key | Purpose |
 |---|---|
-| `default` | Default language (`en`). |
+| `default` | Default language (`id`). |
 | `complete_text` | Languages whose report/console text catalog is complete. |
 | `languages.<code>.italic` | `false` when the text is already English so nothing is italicized (default `true`). |
 | `languages.<code>.terms` | Terms printed in italics; case-insensitive, plurals and multi-word phrases are matched. |
@@ -47,5 +47,5 @@ Other cases:
 ## Language roadmap
 
 1. Per-language glossary, term standardization, and italics (done).
-2. English report and console text catalog, then add `en` to `complete_text`.
-3. German catalog.
+2. English and German report text catalogs (done). Check them with `python scripts/catalog_status.py`, which reports text that is untranslated, obsolete, or has different placeholders.
+3. Translation of the per instance evidence from the test modules and of the console messages.

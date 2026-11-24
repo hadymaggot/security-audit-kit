@@ -1,0 +1,360 @@
+kb:
+  broken-access:
+    description: "Sensible Endpoints sind für nicht berechtigte Rollen zugänglich, weil die Autorisierung serverseitig nicht durchgesetzt wird."
+    impact: "Privilege Escalation, Anlegen/Löschen von Konten, Änderung kritischer Daten – mit dem Potenzial einer Übernahme des Systems."
+    severity_basis: "Likelihood hoch (durch einen gewöhnlichen angemeldeten Benutzer ohne Spezialwerkzeuge auslösbar) x Impact hoch (vollständige Kontrolle über die Admin-Funktionen)."
+    recommendation:
+      - "Setzen Sie die Autorisierung SERVERSEITIG an jedem Endpoint durch, statt lediglich Menüs im Client auszublenden."
+      - "Schalten Sie eine Authorization-Middleware bzw. einen Guard vor den Handler, Beispielmuster:"
+      - "    // Middleware: ablehnen, wenn die Rolle nicht in der Liste der erlaubten Rollen enthalten ist\n    if (!user.roles.intersects(endpoint.allowedRoles)) return deny(403);"
+      - "Verwenden Sie ein zentrales RBAC/ABAC; machen Sie 'default deny' zum Standardverhalten."
+  forged-header:
+    description: "Der Client kann interne Autorisierungs-Header (z. B. X-Auth-Roles) einschleusen, und das Gateway bzw. der Reverse Proxy überschreibt sie nicht, sodass die Zugriffsrechte ausgeweitet werden."
+    impact: "Vollständige Umgehung der Autorisierung allein durch das Hinzufügen eines Headers zum Request."
+    severity_basis: "Likelihood hoch (das Bearbeiten eines Headers genügt) x Impact hoch (Auftreten als Admin)."
+    recommendation:
+      - "Konfigurieren Sie den Reverse Proxy so, dass er die Header X-Auth-* IMMER entfernt und anschließend aus einer vertrauenswürdigen Quelle neu setzt; leiten Sie keine Werte vom Client weiter."
+      - "Beispiel (Traefik forwardAuth): Verwenden Sie authResponseHeaders, damit ausschließlich Werte des Auth-Service an das Backend weitergeleitet werden."
+      - "Auch das Backend muss Token/Session verifizieren und darf rohen Headern nicht vertrauen."
+  idor:
+    description: "Direkte Objektreferenzen (IDs in URL/Parametern) werden nicht auf ihre Zugehörigkeit geprüft, sodass auf Daten anderer Konten zugegriffen werden kann."
+    impact: "Information Disclosure bzw. Tampering von Daten zwischen Benutzern oder zwischen Unternehmen."
+    severity_basis: "Likelihood mittel–hoch (IDs sind leicht zu erraten) x Impact hoch (personenbezogene Daten bzw. Daten anderer Unternehmen werden offengelegt)."
+    recommendation:
+      - "Prüfen Sie serverseitig, ob das angeforderte Objekt tatsächlich dem angemeldeten Benutzer bzw. dessen Scope gehört, bevor es zurückgegeben wird."
+      - "    // Beispiel: Query auf den Eigentümer einschränken, nicht nur by-id\n    SELECT * FROM doc WHERE id = :id AND company_id = :currentCompany;"
+      - "Ziehen Sie nicht vorhersagbare IDs (UUID/ULID) als zusätzliche Schutzschicht in Betracht, nicht als Ersatz für die Autorisierungsprüfung."
+  upload-accepted:
+    description: "Gefährliche Dateien (z. B. PDF mit JavaScript, Polyglot, doppelte Dateiendung, Überschreitung des Limits) werden vom Server aufgrund schwacher Validierung angenommen."
+    impact: "Stored XSS, sobald die Datei von anderen Benutzern geöffnet wird, Speicherung schädlicher Inhalte, möglicher Diebstahl der Session."
+    severity_basis: "Likelihood mittel (eine Datei muss präpariert werden) x Impact hoch (Skriptausführung im Kontext des Opfers)."
+    recommendation:
+      - "Validieren Sie den Dateityp anhand des INHALTS (Magic Bytes), nicht nur anhand der Dateiendung bzw. des vom Client gelieferten Content-Type."
+      - "Setzen Sie serverseitig eine Allowlist für Dateiendungen und eine Größenbeschränkung durch; lehnen Sie doppelte Dateiendungen ab."
+      - "Bereinigen/normalisieren Sie Dateinamen (Path Traversal vermeiden), speichern Sie unter einem zufälligen Namen und liefern Sie über Content-Disposition: attachment aus."
+      - "Für PDF: Objekte /JavaScript und /OpenAction ablehnen bzw. entfernen. Setzen Sie auf Seiten, die Upload-Inhalte anzeigen, eine strikte CSP durch."
+  weak-password:
+    description: "Die Passwortrichtlinie akzeptiert schwache bzw. gängige Passwörter."
+    impact: "Konten sind leicht zu erraten bzw. per Brute-Force angreifbar; Kontoübernahme."
+    severity_basis: "Likelihood mittel x Impact mittel–hoch (je Konto)."
+    recommendation:
+      - "Legen Sie eine Mindestlänge fest (z. B. 12–16 Zeichen) und lehnen Sie Passwörter ab, die in Listen kompromittierter (breached) bzw. gängiger Passwörter enthalten sind."
+      - "Aktivieren Sie MFA/2FA und verlangen Sie beim Ändern des Passworts das bisherige Passwort."
+      - "Speichern Sie Passwörter mit einem starken Hash (bcrypt/argon2), nicht als Plaintext/MD5/SHA1."
+  captcha-static:
+    description: "Der Captcha-Wert wird nach einem Fehlversuch nicht erneuert bzw. kann wiederverwendet werden."
+    impact: "Das Captcha hält Automatisierung/Brute-Force nicht wirksam auf."
+    severity_basis: "Likelihood mittel x Impact niedrig (zusätzliche Schutzschicht, nicht die einzige)."
+    recommendation:
+      - "Erzeugen Sie Token und Captcha-Aufgabe bei jedem Fehlversuch neu; einmalig verwendbar und mit kurzer Gültigkeitsdauer."
+      - "Kombinieren Sie dies mit Rate Limit und Lockout je Konto."
+  missing-header:
+    description: "Security Header der Response sind nicht konfiguriert (oder Information-Disclosure-Header wie Server/X-Powered-By werden weiterhin ausgegeben)."
+    impact: "Erleichtert Clickjacking, MIME Sniffing, XSS und das Fingerprinting des Servers."
+    severity_basis: "Likelihood niedrig–mittel x Impact niedrig (in der Regel ein Enabler, keine eigenständige Schwachstelle)."
+    recommendation:
+      - "Setzen Sie die Header im Reverse Proxy bzw. Framework:"
+      - "    Strict-Transport-Security: max-age=31536000; includeSubDomains\n    Content-Security-Policy: default-src 'self'\n    X-Content-Type-Options: nosniff\n    X-Frame-Options: DENY\n    Referrer-Policy: strict-origin-when-cross-origin"
+      - "Leeren bzw. entfernen Sie die Header Server und X-Powered-By."
+  mass-assignment:
+    description: "Der Server akzeptiert beim Anlegen/Aktualisieren eines Objekts Felder, die der Client nicht ändern dürfte (z. B. role, is_admin, company_id, status) – Mass Assignment bzw. fehlerhafte Autorisierung auf Ebene der Objekteigenschaften."
+    impact: "Rechteausweitung oder Datenmanipulation: Ein gewöhnlicher Benutzer macht sich selbst zum Admin, wechselt den Tenant oder ändert die Eigentümerschaft eines Objekts, indem er dem Request lediglich ein Feld hinzufügt."
+    severity_basis: "Likelihood mittel (es genügt, ein Feld im Body zu ergänzen) x Impact hoch (Rechteausweitung / Datenintegrität)."
+    recommendation:
+      - "Verwenden Sie eine Allowlist der Felder, die zugewiesen werden dürfen; weisen Sie nicht die gesamte Eingabe per Mass Assignment zu."
+      - "    // Laravel: über $fillable + FormRequest->validated() einschränken,\n    // NIEMALS Model::update($request->all())."
+      - "Trennen Sie Felder ab, die nur ein Admin ändern darf; lehnen Sie privilegierte Felder von Nicht-Admin-Rollen ab bzw. ignorieren Sie diese."
+      - "Setzen Sie die Autorisierung je Eigenschaft (BOPLA) durch, nicht nur je Objekt."
+  sql-injection:
+    description: "Benutzereingaben werden ohne Parametrisierung direkt in die SQL-Query eingebaut, sodass ein Angreifer die Logik der Query verändern kann (error-based, boolean-based oder time-based)."
+    impact: "Lesen/Ändern von Daten außerhalb der eigenen Berechtigung, Umgehung der Authentifizierung bis hin zu möglicher RCE, abhängig von der Konfiguration des DBMS."
+    severity_basis: "Likelihood mittel–hoch (klassischer Vektor, reichlich Tooling vorhanden) x Impact hoch (Vertraulichkeit und Integrität der Daten). Automatisch erkannte Funde müssen manuell verifiziert werden, bevor die endgültige Severity festgelegt wird."
+    recommendation:
+      - "Verwenden Sie Prepared Statements / Parameterized Queries (Bind-Parameter); setzen Sie den Query-String nicht aus Eingaben zusammen."
+      - "    // Laravel: Model::where('x', $input) / DB::select('... = ?', [$input])\n    // NIEMALS DB::raw(\"... = '$input'\")."
+      - "Setzen Sie eine Allowlist für Typ/Format der Eingaben sowie Least Privilege für das DB-Konto durch."
+      - "Verwenden Sie ORM/Query Builder korrekt; vermeiden Sie Raw Queries mit ungefilterten Eingaben."
+  server-vuln:
+    description: "Die anhand des Banners erkannte Version des Webservers bzw. der Komponente entspricht einer bereits registrierten Schwachstelle (CVE), z. B. Apache mod_http2 oder NGINX HTTP/2."
+    impact: "Je nach CVE drohen Remote Code Execution, DoS oder Memory Corruption auf dem exponierten Server."
+    severity_basis: "Likelihood mittel (öffentliche Exploits für aktive CVEs) x Impact hoch (RCE/DoS). Banner-basierte Erkennung – mittlere Konfidenz, muss anhand des Hersteller-Advisorys bestätigt werden."
+    recommendation:
+      - "Aktualisieren Sie gemäß Hersteller-Advisory auf eine bereinigte Version (z. B. Apache httpd 2.4.71+, NGINX 1.30.7+/1.31.9+)."
+      - "Begrenzen Sie die Exposition der verwundbaren Komponente; setzen Sie vorübergehende Mitigationen um (z. B. WAF, Deaktivierung betroffener Module/Funktionen, sofern möglich)."
+      - "Entfernen Sie das Versions-Banner (ServerTokens Prod / server_tokens off), um das Fingerprinting nicht zu erleichtern."
+  tls-weak:
+    description: "Der Server akzeptiert veraltete TLS-Protokolle/-Cipher."
+    impact: "Die Kommunikation kann potenziell entschlüsselt werden (Downgrade/bekannte Angriffe)."
+    severity_basis: "Likelihood niedrig (MITM-Position erforderlich) x Impact hoch (Vertraulichkeit der Daten)."
+    recommendation:
+      - "Deaktivieren Sie SSLv3/TLS1.0/TLS1.1; mindestens TLS 1.2, bevorzugt TLS 1.3."
+      - "Verwenden Sie moderne Cipher Suites (ECDHE + AES-GCM/ChaCha20) und deaktivieren Sie schwache Cipher."
+  client-cache:
+    description: "Responses mit sensiblen Daten (authentifizierte Seiten/Endpoints) untersagen das Caching nicht, sodass sie im Browser-Cache, in gemeinsam genutzten Proxys oder über die Zurück-Schaltfläche nach dem Logout verfügbar bleiben können."
+    impact: "Sensible Benutzerdaten können nach dem Ende der Session von Dritten auf gemeinsam genutzten Geräten/Proxys ausgelesen werden."
+    severity_basis: "Likelihood mittel (gemeinsam genutzte Geräte/Proxys, Browserverlauf) x Impact mittel–hoch (personenbezogene Daten werden offengelegt)."
+    recommendation:
+      - "Setzen Sie Anti-Cache-Header für sensible/authentifizierte Responses:"
+      - "    Cache-Control: no-store, no-cache, must-revalidate, private\n    Pragma: no-cache\n    Expires: 0"
+      - "Verwenden Sie weder 'public' noch ein großes 'max-age' bei Responses, die Benutzerdaten enthalten."
+      - "Stellen Sie sicher, dass öffentliche statische Assets weiterhin gecacht werden dürfen (im Umkehrschluss nicht übertreiben)."
+  js-leak:
+    description: "Clientseitige JavaScript-Bundles/-Assets legen sensible Informationen offen: interne/Admin-Endpoints, Secrets (API Key/Token) oder Source Maps (.map), die den ursprünglichen Source Code preisgeben."
+    impact: "Liefert eine Angriffslandkarte – ein Angreifer findet Admin-Endpoints und die API-Struktur (wie bei Privilege-Escalation-Funden, die mit einer JS-Analyse beginnen) oder verwendet die offengelegten Secrets."
+    severity_basis: "Likelihood hoch (Client-Assets können von jedermann heruntergeladen werden) x Impact variabel (vom Enabler bis zum direkten Zugriff, sofern Secrets enthalten sind)."
+    recommendation:
+      - "Legen Sie keine Secrets (API Key, Token, Zugangsdaten) im Frontend-Code ab – verlagern Sie diese auf den Server; das Frontend ruft über das Backend auf."
+      - "Deaktivieren Sie die Veröffentlichung von Source Maps in der Produktion (z. B. Build ohne .map, oder .map-Dateien nicht ausliefern)."
+      - "Autorisieren Sie Endpoints auf dem Server – in JS aufgeführte Endpoints müssen nicht berechtigte Benutzer dennoch abweisen (siehe auch Broken Access Control)."
+      - "Prüfen Sie den Inhalt der Bundles regelmäßig (CI) auf Secret-Muster und .map-Referenzen."
+  info-exposure:
+    description: "Sensible Dateien oder Informationen sind öffentlich exponiert, ohne dass JavaScript erforderlich ist: Konfigurationsdateien (.env), Repository (.git/), Backups/Dumps oder HTML-Kommentare/-Inhalte, die Secrets oder interne Endpoints offenlegen."
+    impact: "Offenlegung von Zugangsdaten, Source Code oder der Systemstruktur, was Folgeangriffe erleichtert."
+    severity_basis: "Likelihood hoch (ein GET auf eine einzige URL genügt) x Impact variabel (von der Angriffslandkarte bis zu unmittelbar nutzbaren Zugangsdaten)."
+    recommendation:
+      - "Liefern Sie keine sensiblen Dateien aus dem Web Root aus: Sperren Sie den Zugriff auf .env, .git/, Backup-/Dump-Dateien und Quelldateien."
+      - "Beispiel (nginx):"
+      - "    location ~ /\\.(?!well-known) { deny all; }\n    location ~* \\.(env|bak|sql|zip|tar\\.gz)$ { deny all; }"
+      - "Verlagern Sie die Konfiguration von Secrets in Environment Variables / einen Secret Manager."
+      - "Entfernen Sie vor dem Release HTML-Kommentare, die sensible Informationen enthalten."
+  cors-misconfig:
+    description: "Die CORS-Konfiguration ist zu freizügig: Der Server spiegelt einen beliebigen Origin in Access-Control-Allow-Origin, kombiniert eine Wildcard mit Access-Control-Allow-Credentials oder akzeptiert den Origin 'null'."
+    impact: "Eine vom Opfer geöffnete bösartige Website kann Requests mit Credentials an die API senden und deren Responses lesen – Diebstahl authentifizierter Daten über Origin-Grenzen hinweg."
+    severity_basis: "Likelihood mittel (das Opfer muss im angemeldeten Zustand eine bösartige Website öffnen) x Impact hoch (Lesen authentifizierter Daten)."
+    recommendation:
+      - "Spiegeln Sie den Origin nicht ungeprüft. Verwenden Sie ausschließlich eine Allowlist vertrauenswürdiger Origins."
+      - "Beispiel (Backend-Muster):"
+      - "    if (allowlist.includes(origin)) resp.header('Access-Control-Allow-Origin', origin);"
+      - "Wird Access-Control-Allow-Credentials: true benötigt, MUSS der Origin spezifisch sein – weder '*' noch das Ergebnis einer beliebigen Spiegelung."
+      - "Lehnen Sie den Origin 'null' ab. Beschränken Sie die erlaubten Methoden und Header auf das Notwendige."
+  open-redirect:
+    description: "Weiterleitungsparameter (redirect/next/url/return) werden ohne Validierung zum Aufbau des Location-Headers verwendet, sodass auf externe Domains umgeleitet werden kann."
+    impact: "Wird für Phishing genutzt (der Link wirkt legitim, führt jedoch auf eine bösartige Website) sowie zur Umgehung domainbasierter Schutzmechanismen."
+    severity_basis: "Likelihood mittel x Impact niedrig–mittel (in der Regel ein Enabler für Phishing, kein direkter Zugriff)."
+    recommendation:
+      - "Validieren Sie das Redirect-Ziel gegen eine Allowlist interner Pfade/Domains."
+      - "Vermeiden Sie Redirects auf absolute URLs aus Benutzereingaben; verwenden Sie ausschließlich relative Pfade."
+      - "Ist ein externes Ziel tatsächlich erforderlich, zeigen Sie eine Zwischenseite (Interstitial) an."
+  vuln-dependency:
+    description: "Komponente/Dependency in veralteter Version mit bereits registrierter Schwachstelle (CVE)."
+    impact: "Abhängig von der CVE: von Information Disclosure bis zur Remote Code Execution (RCE) über die verwundbare Library."
+    severity_basis: "Richtet sich nach dem CVSS-Score der betreffenden CVE; öffentliche Exploits erhöhen die Likelihood."
+    recommendation:
+      - "Aktualisieren Sie das Paket auf die im Befund angegebene bereinigte Version (Fixed Version)."
+      - "Ist noch keine Korrektur verfügbar, setzen Sie Mitigationen um bzw. pinnen Sie eine sichere Version und beobachten Sie die Releases."
+      - "Automatisieren Sie: Dependabot/Renovate + CI-Gate (trivy/osv-scanner), damit neue CVEs schnell erkannt werden."
+  zap-generic:
+    description: "Befund aus einem Scan mit OWASP ZAP, der einer weiterführenden Analyse bedarf, um True/False Positive zu klären."
+    impact: "Abhängig von der Art des Alerts; prüfen Sie die Details je Alert."
+    severity_basis: "Aus dem Risiko-Score von ZAP; vor der Festlegung manuell verifizieren."
+    recommendation:
+      - "Prüfen Sie die Details des Alerts im ZAP-Bericht (reports/zap-*.html)."
+      - "Bestätigen Sie, ob der Befund reproduzierbar ist; legen Sie die endgültige Severity nach der Verifikation fest."
+  ssrf:
+    description: "Der Server führt HTTP-Requests an vom Benutzer kontrollierte URLs aus, einschließlich privater/Loopback-Adressen, ohne das Ziel zu validieren (Server-Side Request Forgery)."
+    impact: "Ein Angreifer kann den Server als Proxy in das interne Netzwerk verwenden: private Dienste scannen, Cloud-Metadaten (Zugangsdaten) auslesen oder auf interne Dienste zugreifen, die nicht zum Internet hin exponiert sind."
+    severity_basis: "Likelihood mittel (ein Endpoint, der URLs entgegennimmt, ist erforderlich) x Impact hoch (Zugriff auf das interne Netzwerk, Scope ändert sich)."
+    recommendation:
+      - "Validieren Sie URLs mit einer Allowlist für Hosts/Schemata; lehnen Sie private, Loopback- und Link-Local-Adressen (einschließlich 169.254.169.254) sowie sämtliche alternativen Schreibweisen (dezimal, hexadezimal, IPv6-mapped) ab."
+      - "Lösen Sie DNS selbst auf, validieren Sie die aufgelöste IP und kontaktieren Sie anschließend direkt diese IP (Schutz vor DNS Rebinding); deaktivieren Sie Redirects oder validieren Sie diese erneut."
+      - "Beispiel (Pseudocode): ip = resolve(host); if (is_private(ip)) reject(); client.get(url, allow_redirects=False)"
+      - "Betreiben Sie den Fetcher in einem isolierten Netzwerk ohne Zugriff auf interne Dienste/Metadaten; erzwingen Sie in der Cloud IMDSv2."
+  jwt-forgery:
+    description: "Der Server akzeptiert gefälschte JWTs: ohne Signatur (alg=none), mit entfernter Signatur oder mit verändertem Payload."
+    impact: "Jedermann kann gültige Token für beliebige Identitäten/Rollen erzeugen – Kontoübernahme und vollständige Privilege Escalation."
+    severity_basis: "Likelihood hoch (ohne Voraussetzungen) x Impact kritisch (vollständige Umgehung der Authentifizierung)."
+    recommendation:
+      - "Verifizieren Sie stets die Signatur und ERZWINGEN Sie die zulässigen Algorithmen (Whitelist); lehnen Sie alg=none ab."
+      - "Vertrauen Sie dem Header 'alg' des Tokens nicht: Legen Sie den Algorithmus serverseitig fest."
+      - "Beispiel (jsonwebtoken/Node): jwt.verify(token, key, { algorithms: ['HS256'] });"
+      - "Aktualisieren Sie die JWT-Library auf die neueste Version und ergänzen Sie Regressionstests für gefälschte Token."
+  jwt-weak-secret:
+    description: "HMAC-signierte JWT-Token verwenden ein schwaches/gängiges Secret, das sich per Wörterbuch erraten lässt."
+    impact: "Ein Angreifer, der das Secret kennt, kann gültige Token für beliebige Identitäten ausstellen."
+    severity_basis: "Likelihood hoch (ein kleines Wörterbuch genügt) x Impact kritisch."
+    recommendation:
+      - "Ersetzen Sie das Secret durch einen Zufallswert von mindestens 256 Bit aus einem CSPRNG und rotieren Sie es umgehend; widerrufen Sie sämtliche alten Token."
+      - "Ziehen Sie asymmetrische Algorithmen (RS256/ES256) in Betracht, damit der Signaturschlüssel nicht geteilt werden muss."
+      - "Speichern Sie das Secret in einem Secret Manager bzw. einer Environment Variable, nicht im Code."
+  jwt-weak-config:
+    description: "Die JWT-Konfiguration folgt nicht den bewährten Praktiken: kein oder zu langes exp, sensible Claims im Payload, alg=none oder riskante Schlüssel-Header (kid/jku)."
+    impact: "Gestohlene Token bleiben lange gültig; sensible Daten lassen sich aus dem Payload auslesen (lediglich encodiert); Schlüssel-Header können missbraucht werden, wenn sie nicht validiert werden."
+    severity_basis: "Likelihood mittel x Impact mittel (vergrößert die Auswirkungen eines Token-Diebstahls)."
+    recommendation:
+      - "Setzen Sie ein kurzes exp (Minuten bis Stunden) in Verbindung mit Refresh Token und der Möglichkeit zum Widerruf."
+      - "Legen Sie keine sensiblen Daten im Payload ab (ein JWT ist lediglich encodiert, nicht verschlüsselt)."
+      - "Validieren Sie kid, jku, x5u und jwk bzw. setzen Sie sie auf eine Whitelist; beziehen Sie keine Schlüssel von einer URL aus dem Token."
+  captcha-answer-leak:
+    description: "Die Response der Captcha-Aufgabe legt deren Lösung offen (Lösungsschlüssel oder Positions-Offset im SVG/Bild), sodass das Captcha automatisiert umgangen werden kann, ohne es zu lösen."
+    impact: "Das Captcha wird als Kontrolle gegen Automatisierung (Brute-Force beim Login, Spam, Massenregistrierung) unwirksam; Bots können es durch Auslesen der Response überwinden."
+    severity_basis: "Likelihood hoch (das Parsen der Response genügt) x Impact mittel (die Anti-Automatisierungs-Kontrolle entfällt, Rate Limit/Lockout können dies jedoch abmildern)."
+    recommendation:
+      - "Senden Sie weder Position noch Lösung an den Client: Speichern Sie das Ziel auf dem Server und validieren Sie die Antwort serverseitig."
+      - "Für Slider-Captchas: Rendern Sie die Aussparung UND das Puzzleteil als Bitmap, die keine Zielkoordinaten enthält; fügen Sie keine translate-/clip-Offsets bei, die der Zielposition entsprechen."
+      - "Ziehen Sie bewährte Captchas (Cloudflare Turnstile, hCaptcha, reCAPTCHA) einer Eigenimplementierung vor."
+      - "Behalten Sie weitere Schutzschichten bei: Rate Limit, Konto-Lockout und Anomalieerkennung."
+  session-not-revoked:
+    description: "Nach einer Passwortänderung bleiben die übrigen Sessions desselben Kontos gültig (die Sessions werden auf dem Server nicht widerrufen)."
+    impact: "Eine bereits gestohlene Session (Malware, unsicheres Netzwerk, verlorenes Gerät) kann vom Angreifer weiterhin verwendet werden, obwohl das Opfer das Passwort bereits geändert hat."
+    severity_basis: "Likelihood mittel (vorheriger Diebstahl einer Session erforderlich) x Impact hoch (der Zugriff auf das Konto besteht fort)."
+    recommendation:
+      - "Widerrufen Sie bei einer Passwortänderung alle übrigen Sessions (die ändernde Session bei Bedarf beibehalten)."
+      - "Beispiel Laravel: Auth::logoutOtherDevices($newPassword) + Löschen der Session-/Geräte-Records des Users (z. B. DeviceSession) sowie der Sessions in Redis."
+      - "Versenden Sie eine Sicherheitsbenachrichtigung und bieten Sie 'Von allen Geräten abmelden' an."
+  logout-no-invalidate:
+    description: "Der Logout widerruft die Session auf dem Server nicht: Das alte Session-Cookie wird nach dem Logout weiterhin akzeptiert."
+    impact: "Ein einmal offengelegtes Session-Cookie kann weiterhin verwendet werden (Replay), obwohl sich der Benutzer bereits abgemeldet hat."
+    severity_basis: "Likelihood mittel x Impact hoch (Session Hijacking)."
+    recommendation:
+      - "Löschen/invalidieren Sie beim Logout die Session im serverseitigen Speicher, nicht nur das Cookie im Client."
+      - "Beispiel Laravel: Auth::logout(); $request->session()->invalidate(); $request->session()->regenerateToken();"
+  old-password-accepted:
+    description: "Das alte Passwort wird nach einer Passwortänderung weiterhin akzeptiert, oder das neue Passwort ist nicht gültig."
+    impact: "Die Passwortänderung entzieht Dritten, die das alte Passwort kennen, nicht den Zugriff."
+    severity_basis: "Likelihood hoch x Impact hoch (die alten Zugangsdaten bleiben gültig)."
+    recommendation:
+      - "Stellen Sie sicher, dass der Passwort-Hash atomar ersetzt wird und das alte Passwort sofort ungültig ist."
+      - "Prüfen Sie Caches/Replikate, die noch die alten Zugangsdaten vorhalten."
+  no-rate-limit:
+    description: "Sensible Endpoints (z. B. Login) begrenzen die Request-Rate nicht, sodass Anmeldeversuche unbegrenzt wiederholt werden können."
+    impact: "Brute-Force und Credential Stuffing können mit voller Geschwindigkeit durchgeführt werden, bis gültige Zugangsdaten gefunden sind."
+    severity_basis: "Likelihood hoch (ohne Voraussetzungen) x Impact mittel-hoch (Kontoübernahme), abgemildert, sofern weitere Kontrollen vorhanden sind (Captcha, MFA)."
+    recommendation:
+      - "Setzen Sie für die Endpoints Login, Passwort-Reset und OTP ein Rate Limit je IP und je Konto durch."
+      - "Beispiel Laravel (routes/api.php):"
+      - "    Route::post('/login', [LoginController::class, 'login'])\n        ->middleware('throttle:5,1');   // 5 Versuche pro Minute"
+      - "Ergänzen Sie ein Rate Limit im Gateway/WAF als zweite Schutzschicht; geben Sie 429 + Retry-After zurück."
+  weak-lockout:
+    description: "Die Kontosperrung nach wiederholt falschem Passwort wird nicht richtliniengemäß durchgesetzt (keine Sperrung, zu späte Sperrung oder unangemessene Dauer)."
+    impact: "Ein Angreifer kann Passwörter erraten, ohne aufgehalten zu werden; oder eine unbefristete Sperre kann dazu missbraucht werden, das Konto des Opfers zu sperren (Denial of Service)."
+    severity_basis: "Likelihood mittel (andere Kontrollen können abmildern) x Impact mittel."
+    recommendation:
+      - "Sperren Sie das Konto vorübergehend (z. B. 15 Minuten) nach N falschen Passwörtern (z. B. 5) und setzen Sie den Zähler bei erfolgreichem Login zurück."
+      - "Stellen Sie sicher, dass die Sperre befristet ist, damit sie nicht zum Vektor für das Aussperren des Opferkontos wird."
+      - "Kombinieren Sie dies mit einem Rate Limit je IP und Captcha/MFA."
+  lockout-bypass:
+    description: "Der Login mit korrektem Passwort gelingt, obwohl das Konto den Status „gesperrt“ hat."
+    impact: "Die Kontosperrung bietet keinen Schutz; ein Angreifer, der das Passwort errät, kann sich auch während der Sperrfrist erfolgreich anmelden."
+    severity_basis: "Likelihood hoch x Impact hoch (die Anti-Brute-Force-Kontrolle ist unwirksam)."
+    recommendation:
+      - "Prüfen Sie den Sperrstatus, BEVOR das Passwort verifiziert wird, und lehnen Sie während der Sperrfrist ab (423)."
+      - "Beispielmuster: if ($user->isLocked()) return response()->json([...], 423);"
+  user-enumeration:
+    description: "Die Authentifizierungs-Response unterscheidet sich für registrierte und nicht registrierte Konten (Status, Meldung oder Sperrverhalten), sodass sich die Existenz eines Kontos erschließen lässt."
+    impact: "Ein Angreifer kann eine Liste gültiger Konten für gezielte Passwort-/Phishing-Angriffe erstellen."
+    severity_basis: "Unterstützende Information für Folgeangriffe; die unmittelbare Auswirkung ist gering."
+    recommendation:
+      - "Geben Sie für registrierte und nicht registrierte Konten eine identische generische Response (Status + Meldung) zurück."
+      - "Wenden Sie Fehlversuchszähler/Sperrung einheitlich an oder unterscheiden Sie die Response bei einer Sperrung nicht (z. B. stets 401 mit gleicher Meldung) und informieren Sie den Kontoinhaber per E-Mail."
+  auth-coverage-gap:
+    description: "Endpoints, die laut OpenAPI-Spezifikation eine Authentifizierung erfordern, sind tatsächlich ohne Zugangsdaten zugänglich (die Durchsetzung der Authentifizierung entspricht nicht dem Design)."
+    impact: "Jedermann kann ohne Login Funktionen lesen (oder auslösen), die als geschützt gelten – Datenzugriff ohne Autorisierung."
+    severity_basis: "Likelihood hoch (ohne Voraussetzungen, der Aufruf der URL genügt) x Impact hoch (geschützte Daten/Funktionen liegen offen)."
+    recommendation:
+      - "Versehen Sie die betreffende Route mit einer Authentifizierungs-Middleware oder fassen Sie geschützte Routen in einer Auth-Gruppe zusammen, sodass sie standardmäßig gesperrt sind."
+      - "Beispiel Laravel:"
+      - "    Route::middleware('auth:sanctum')->group(function () {\n        Route::get('/laporan', [LaporanController::class, 'index']);\n    });"
+      - "Setzen Sie 'default deny' um: Neue Routen erfordern automatisch Auth, sofern sie nicht ausdrücklich ausgenommen werden."
+      - "Gleichen Sie die OpenAPI-Spezifikation mit dem tatsächlichen Verhalten ab und machen Sie diesen Test anschließend zum Bestandteil der CI."
+  unauthenticated-endpoint:
+    description: "Der Endpoint deklariert keine Authentifizierung, steht nicht auf der Liste der zulässigen öffentlichen Endpoints und ist dennoch ohne Zugangsdaten zugänglich."
+    impact: "Sollte der Endpoint privat sein, liegen Daten oder Funktionen öffentlich offen; ist er tatsächlich öffentlich, müssen Allowlist/Spezifikation ergänzt werden."
+    severity_basis: "Überprüfung erforderlich: Die Auswirkung hängt davon ab, ob der Endpoint tatsächlich öffentlich ist."
+    recommendation:
+      - "Prüfen Sie jeden Endpoint: Ist er privat, ergänzen Sie eine Authentifizierung; ist er öffentlich, tragen Sie ihn in die Allowlist ein und deklarieren Sie `security: []` in der Spezifikation."
+      - "Stellen Sie sicher, dass öffentliche Endpoints keine sensiblen oder internen Daten zurückgeben."
+  anon-server-error:
+    description: "Anonyme Requests (ohne Authentifizierung) lösen einen Serverfehler 5xx aus, was darauf hindeutet, dass Validierung oder Fehlerbehandlung nicht vor der Authentifizierung erfolgen."
+    impact: "Unbehandelte Fehler können interne Details offenlegen, auf Bugs hinweisen, die sich ohne Login auslösen lassen, und zum Vektor für Störungen des Dienstes werden."
+    severity_basis: "Ohne Voraussetzungen auslösbar, die unmittelbare Auswirkung ist jedoch begrenzt (Verfügbarkeit/Information)."
+    recommendation:
+      - "Stellen Sie sicher, dass Authentifizierung und Eingabevalidierung zuerst ausgeführt werden und mit 401/403/422 statt 500 ablehnen."
+      - "Behandeln Sie Exceptions auf globaler Ebene und geben Sie eine generische Response zurück."
+      - "Prüfen Sie die Server-Logs auf die Ursache des 500 und ergänzen Sie einen entsprechenden Regressionstest."
+  spec-mismatch:
+    description: "Die OpenAPI-Spezifikation bildet das tatsächliche Verhalten nicht korrekt ab: Die Operation deklariert kein `security`, obwohl sie anonymen Zugriff tatsächlich ablehnt."
+    impact: "Die Dokumentation ist irreführend; Clients und automatisierte Tests können sich nicht auf die Spezifikation verlassen, sodass Authentifizierungslücken schwer zu erkennen sind."
+    severity_basis: "Problem der Dokumentationsqualität; eröffnet keinen direkten Zugriff."
+    recommendation:
+      - "Deklarieren Sie in der Spezifikation ein globales Sicherheitsschema sowie `security` je Operation."
+      - "Beispiel (OpenAPI): components.securitySchemes + security: [{ cookieAuth: [] }]; kennzeichnen Sie öffentliche Endpoints mit `security: []`."
+      - "Generieren Sie die Spezifikation aus dem Code (z. B. Scramble) mit korrekter Security-Konfiguration."
+  sensitive-data-exposure:
+    description: "Die API-Response enthält sensible Daten (Passwort/Hash, Secret, Token, privater Schlüssel oder andere vertrauliche Daten), die nicht an den Client gesendet werden dürften."
+    impact: "Offengelegte Zugangsdaten oder Secrets können für Kontoübernahmen, den Zugriff auf Dienste Dritter oder Folgeangriffe verwendet werden."
+    severity_basis: "Likelihood hoch (der Aufruf des Endpoints genügt) x Impact hoch (Offenlegung von Zugangsdaten/Secrets)."
+    recommendation:
+      - "Serialisieren Sie keine sensiblen Felder: Verwenden Sie eine explizite Whitelist der Felder (API Resource/DTO), statt das vollständige Model zurückzugeben."
+      - "Beispiel Laravel: im Model ausblenden und eine Resource verwenden."
+      - "    protected $hidden = ['password', 'remember_token', 'two_factor_secret',\n                          'two_factor_recovery_codes'];"
+      - "Widerrufen (revoke) und rotieren Sie Secrets, die bereits offengelegt wurden."
+      - "Setzen Sie bei derselben Response für unterschiedliche Rollen eine Autorisierung je Feld durch."
+  verbose-error:
+    description: "Responses (insbesondere Fehlermeldungen) legen Implementierungsdetails offen: Stack Trace, Dateipfade des Servers, Framework-Version oder SQL-Meldungen."
+    impact: "Interne Details erleichtern die Kartierung der eingesetzten Technologie und die Entwicklung gezielter Angriffe (z. B. Injection, Ausnutzung verwundbarer Versionen)."
+    severity_basis: "Likelihood mittel (leicht auslösbar) x Impact niedrig-mittel (unterstützende Information für Angriffe, keine unmittelbare Kompromittierung)."
+    recommendation:
+      - "Schalten Sie den Debug-Modus außerhalb der lokalen Umgebung ab (Laravel: APP_DEBUG=false; Django: DEBUG=False)."
+      - "Geben Sie eine generische Fehlermeldung + Korrelations-ID zurück; halten Sie Details ausschließlich im Server-Log fest."
+      - "Beispiel Laravel (bootstrap/app.php): generisches JSON für API-Requests rendern."
+      - "    $exceptions->render(fn (Throwable $e, Request $r) => $r->is('api/*')\n        ? response()->json(['message' => 'Terjadi kesalahan.'], 500) : null);"
+  internal-info-leak:
+    description: "Die Response enthält interne IP-Adressen oder Hostnamen des privaten Netzwerks."
+    impact: "Unterstützt die Kartierung der internen Netzwerktopologie für SSRF oder Pivoting."
+    severity_basis: "Unterstützende Information; die unmittelbare Auswirkung ist gering."
+    recommendation:
+      - "Entfernen Sie interne Adressen/Hostnamen aus Responses und Headern."
+      - "Verwenden Sie öffentliche Dienstnamen oder opake IDs anstelle interner IPs."
+  cookie-flags:
+    description: "Session-/Authentifizierungs-Cookies verwenden nicht die vollständigen Sicherheitsattribute (HttpOnly, Secure, SameSite) oder haben eine zu lange Lebensdauer."
+    impact: "Ohne HttpOnly kann XSS das Session-Cookie stehlen; ohne Secure kann das Cookie über unverschlüsseltes HTTP offengelegt werden; ohne SameSite steigt das CSRF-Risiko."
+    severity_basis: "Likelihood mittel (XSS/unsicheres Netzwerk/CSRF als Voraussetzung erforderlich) x Impact mittel-hoch (Übernahme der Session)."
+    recommendation:
+      - "Setzen Sie HttpOnly für sämtliche Session-/Authentifizierungs-Cookies (ausgenommen solche, die von der SPA gelesen werden müssen, z. B. XSRF-TOKEN)."
+      - "Setzen Sie Secure und liefern Sie die Website ausschließlich über HTTPS aus (HSTS aktivieren)."
+      - "Setzen Sie SameSite=Lax (oder Strict für sensible Sessions); verwenden Sie None nur, wenn Cross-Site erforderlich ist, und dann zwingend zusammen mit Secure."
+      - "Beispiel Laravel (config/session.php):"
+      - "    'http_only' => true,\n    'secure' => env('SESSION_SECURE_COOKIE', true),\n    'same_site' => 'lax',\n    'lifetime' => 120,   // Minuten"
+      - "Ziehen Sie das Präfix __Host- für Session-Cookies in Betracht."
+  recon-subdomain:
+    description: "Assets/Subdomains, die sich öffentlich per OSINT (subfinder/httpx) auffinden lassen und die Attack Surface vergrößern."
+    impact: "Vergessene Subdomains (dangling), offen zugängliche Staging-Umgebungen oder exponierte Admin-Panels können zum ersten Einstiegspunkt werden."
+    severity_basis: "Informativ – Inventar der Assets; die Severity steigt, wenn ein Host sensible Dienste/Panels offenlegt (siehe zugehörige Befunde)."
+    recommendation:
+      - "Inventarisieren Sie sämtliche Subdomains; schalten Sie nicht mehr genutzte ab bzw. archivieren Sie diese."
+      - "Stellen Sie sicher, dass keine Dangling-Subdomains existieren (DNS verweist auf eine gelöschte Ressource), um Subdomain Takeover zu verhindern."
+      - "Beschränken Sie den Zugriff auf Nicht-Produktionsumgebungen (Staging/Dev) per Allowlist/VPN."
+  exposed-service:
+    description: "Zum Internet hin offene Ports/Dienste (z. B. SSH, Datenbank, Redis, Elasticsearch), die eingeschränkt sein sollten."
+    impact: "Exponierte Admin-Dienste/Datastores erleichtern Brute-Force, Zugriff ohne Authentifizierung oder die Ausnutzung von CVEs des Dienstes."
+    severity_basis: "Likelihood mittel–hoch (von Massenscannern indexiert) x Impact abhängig vom Dienst; Datastore ohne Auth = hoch."
+    recommendation:
+      - "Schließen Sie nicht benötigte Ports; setzen Sie Default-Deny in Firewall/Security Group um."
+      - "Beschränken Sie den Verwaltungszugriff (SSH/RDP/DB) auf vertrauenswürdige IPs oder auf den Weg über VPN/Bastion."
+      - "Erzwingen Sie eine starke Authentifizierung für Datastores (Redis/Elasticsearch/Mongo) und exponieren Sie diese nicht auf 0.0.0.0."
+  leaked-secret:
+    description: "Zugangsdaten/Secrets (API Key, Token, Passwort) wurden im Source oder in Assets erkannt (trufflehog) und sind möglicherweise in das Repository committet worden."
+    impact: "Offengelegte Secrets können dazu verwendet werden, Dienste Dritter zu missbrauchen, auf Daten zuzugreifen oder auf interne Systeme zu pivotieren."
+    severity_basis: "Likelihood hoch (über automatisierte Scanner leicht auffindbar) x Impact hoch (direkter Zugriff auf Dienste/Daten). Verifiziert = High."
+    recommendation:
+      - "Widerrufen (revoke) und rotieren Sie offengelegte Secrets umgehend; betrachten Sie diese als kompromittiert."
+      - "Entfernen Sie das Secret aus der Git-Historie (git filter-repo/BFG), nicht nur aus dem neuesten Commit."
+      - "Verlagern Sie Secrets in Environment Variables / einen Secret Manager; committen Sie sie nicht in das Repo."
+      - "Richten Sie einen Pre-Commit-Hook (gitleaks/trufflehog) ein, um eine erneute Offenlegung zu verhindern."
+  sast-finding:
+    description: "Die statische Codeanalyse (semgrep) hat im Source potenziell verwundbare Muster gefunden (z. B. Injection, XSS, schwache Kryptografie, unsichere Konfiguration)."
+    impact: "Abhängig von der zutreffenden Regel; es kann sich um eine ausnutzbare Schwachstelle (SQL Injection, Command Injection, XSS) oder um ein False Positive handeln, das einer Triage bedarf."
+    severity_basis: "Richtet sich nach der Severity der semgrep-Regel (ERROR=High, WARNING=Medium); muss manuell verifiziert werden, da SAST False Positives erzeugen kann."
+    recommendation:
+      - "Führen Sie für jeden Befund eine Triage durch: Bestätigen Sie, ob der Pfad der Benutzerdaten den Sink tatsächlich erreicht."
+      - "Beheben Sie den Befund gemäß der Regelmeldung (Parameterized Query, Output Escaping, sichere Krypto-API)."
+      - "Fügen Sie `# nosemgrep: <Regel>` nur für verifizierte False Positives hinzu, mit einer Begründung im Kommentar."
+      - "Führen Sie semgrep in der CI aus, damit Regressionen vor dem Merge erkannt werden."
+  recon-finding:
+    description: "Befund aus einem aktiven Schwachstellenscan (nuclei) gegen erreichbare Assets. Die Severity wird unmittelbar aus dem zutreffenden nuclei-Template übernommen."
+    impact: "Abhängig vom Template; kann CVEs, Misconfiguration, Exposure oder ausnutzbare Default-Logins umfassen."
+    severity_basis: "Richtet sich nach der Severity des nuclei-Templates (CVSS/Community); True Positive vor einer Eskalation verifizieren."
+    recommendation:
+      - "Verifizieren Sie jeden Befund (True/False Positive) auf dem autorisierten Ziel."
+      - "Patchen Sie verwundbare Komponenten gemäß der angegebenen CVE/CWE; prüfen Sie die Verfügbarkeit einer bereinigten Version."
+      - "Beheben Sie Misconfigurations (Header, CORS, exponierte Panels) entsprechend der Tag-Kategorie."

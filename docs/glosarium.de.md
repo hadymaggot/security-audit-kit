@@ -11,19 +11,19 @@ Das Kit führt ein Glossar pro Sprache, [`glosarium.yml`](../glosarium.yml), dam
 
 ## Sprache wählen
 
-Priorität: Option `--lang id|en|de`, Umgebungsvariable `SAK_LANG`, `report.language` in der `targets.yml` des Projekts, dann der Glossar-Standard (`en`).
+Priorität: Option `--lang id|en|de`, Umgebungsvariable `SAK_LANG`, `report.language` in der `targets.yml` des Projekts, dann der Glossar-Standard (`id`).
 
 ```
 python audit.py --project my-app --lang de report
 ```
 
-Das Glossar gibt es für `id`, `en` und `de`. Der Text-Katalog für Berichte und Konsole ist nur für `id` vollständig; andere Sprachen verwenden vorübergehend den `id`-Text, nutzen aber bereits ihr eigenes Glossar. Ist der Katalog einer Sprache fertig, wird ihr Code in `complete_text` in `glosarium.yml` ergänzt.
+Das Glossar gibt es für `id`, `en` und `de`. Der Text-Katalog für Berichte ist für `id`, `en` und `de` vollständig. Der Quelltext steht auf Indonesisch im Code; die Übersetzungen liegen in `locales/text.<sprache>.yml` (Berichtstext) und `locales/kb.<sprache>.yml` (Beschreibung, Auswirkung und Empfehlung je Befundtyp) und funktionieren wie gettext oder Transifex. Belege je Instanz aus den Testmodulen und die Konsolenmeldungen bleiben indonesisch. Sprachen mit vollständigem Katalog stehen in `complete_text` in `glosarium.yml`.
 
 ## Schlüssel in `glosarium.yml`
 
 | Schlüssel | Zweck |
 |---|---|
-| `default` | Standardsprache (`en`). |
+| `default` | Standardsprache (`id`). |
 | `complete_text` | Sprachen mit vollständigem Text-Katalog für Bericht/Konsole. |
 | `languages.<code>.italic` | `false`, wenn der Text bereits englisch ist und nichts kursiv gesetzt wird (Standard `true`). |
 | `languages.<code>.terms` | Kursiv gesetzte Begriffe; ohne Groß-/Kleinschreibung, Plurale und mehrteilige Begriffe werden erkannt. |
@@ -47,5 +47,5 @@ Weitere Fälle:
 ## Sprach-Roadmap
 
 1. Glossar pro Sprache, Begriffsvereinheitlichung und Kursivsatz (erledigt).
-2. Englischer Text-Katalog für Bericht und Konsole, danach `en` in `complete_text` ergänzen.
-3. Deutscher Katalog.
+2. Englischer und deutscher Text-Katalog für Berichte (erledigt). Prüfung mit `python scripts/catalog_status.py`, das nicht übersetzte, veraltete oder in den Platzhaltern abweichende Texte meldet.
+3. Übersetzung der Belege je Instanz aus den Testmodulen und der Konsolenmeldungen.
