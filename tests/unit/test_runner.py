@@ -256,7 +256,9 @@ def test_finish_keeps_earlier_runs_and_names_files_uniquely(tmp_path, monkeypatc
     assert (first / f"{runs[0]}-slides.html").exists() and (first / f"{runs[0]}-ringkasan.md").exists()
     assert not (first / "laporan.md").exists()
     assert (first / "data" / "authz.json").exists() and not (first / "authz.json").exists()   # raw output is tucked away
-    assert (first / "data" / "README.md").read_text(encoding="utf-8") == RN.DATA_README   # static, same for every run
+    for name, text in RN.data_readmes().items():                                          # static, same for every run
+        assert (first / "data" / name).read_text(encoding="utf-8") == text
+    assert sorted(p.name for p in (first / "data").glob("README*.md")) == ["README.de.md", "README.en.md", "README.md"]
     assert f"{runs[0]}.html" in (first / f"{runs[0]}-slides.html").read_text(encoding="utf-8")
     assert len((base / "RIWAYAT.md").read_text(encoding="utf-8").splitlines()) == 6     # header + 2 runs
 
@@ -411,10 +413,15 @@ def test_finish_keeps_the_evidence_folder_at_the_top_level(tmp_path, monkeypatch
     assert (run / "evidence" / "a.png").exists() and not (run / "data" / "evidence").exists()
 
 
-def test_data_readme_names_only_known_modules():
-    """The Modul column of data/README.md must use module ids the runner knows (or 'internal')."""
+def test_data_readmes_exist_in_three_languages_with_the_same_rows():
+    """README, README.en and README.de describe the same files and modules; modules must be ones the runner knows."""
     import re
-    rows = re.findall(r"^\| `([^`]+)` \| `([^`]+)` \|", RN.DATA_README, re.M)
-    assert rows, "the README table must have rows"
-    assert {m for _, m in rows} <= set(RN.KNOWN_MODULES) | {"internal"}
-    assert len({f for f, _ in rows}) == len(rows), "one row per file"
+    texts = RN.data_readmes()
+    assert sorted(texts) == ["README.de.md", "README.en.md", "README.md"]
+    tables = {name: re.findall(r"^\| `([^`]+)` \| `([^`]+)` \|", text, re.M) for name, text in texts.items()}
+    assert tables["README.md"] and tables["README.md"] == tables["README.en.md"] == tables["README.de.md"]
+    assert {m for _, m in tables["README.md"]} <= set(RN.KNOWN_MODULES) | {"internal"}
+    assert len({f for f, _ in tables["README.md"]}) == len(tables["README.md"]), "one row per file"
+    assert len({len(re.findall(r"^## ", text, re.M)) for text in texts.values()}) == 1
+    for name, text in texts.items():                       # every file links to the other two languages
+        assert all(other in text for other in texts if other != name)

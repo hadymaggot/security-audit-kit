@@ -70,7 +70,7 @@ Jeder Lauf erstellt einen neuen Ordner und neue Dateien nach dem Muster `securit
 
 - `<name>.html`, `<name>.md` und `<name>-slides.html`: den vollständigen Report und die Folien.
 - `<name>-ringkasan.md`: welche Module liefen, übersprungen wurden oder fehlschlugen, samt Toolkit-Version.
-- Einen Ordner `data/` mit der Rohausgabe jedes Moduls (JSON und ZAP-Ausgabe) samt einer statischen `README.md`, die den Inhalt erklärt. Der Belegordner bleibt, falls Screenshots vorhanden sind, auf oberster Ebene, weil der Report darauf verweist.
+- Einen Ordner `data/` mit der Rohausgabe jedes Moduls (JSON und ZAP-Ausgabe) samt einer statischen README in drei Sprachen (`README.md`, `README.en.md`, `README.de.md`), die den Inhalt erklärt. Der Belegordner bleibt, falls Screenshots vorhanden sind, auf oberster Ebene, weil der Report darauf verweist.
 
 `RIWAYAT.md` im übergeordneten Ordner enthält eine Zeile je Lauf, damit sich Läufe leicht vergleichen lassen. Vor dem Kopieren wird der gesamte Report auf bekannte Passwörter, Token und Schlüssel geprüft; ist etwas durchgesickert, wird nur der Ordner dieses Laufs gelöscht.
 
