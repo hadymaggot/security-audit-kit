@@ -51,6 +51,8 @@ KNOWN_MODULES = [
     "clientleak", "openapi-coverage", "open-redirect", "jwt", "upload", "mass-assignment", "ssrf", "session",
     "auth-policy", "zap", "ratelimit",
 ]
+REPORT_LANGUAGES = ("id", "en", "de")
+DEFAULT_LANGUAGE = "id"
 KNOWN_STEPS_UP = {"compose", "docker_run", "node_deps", "run", "seed_if_empty", "process", "web"}
 KNOWN_STEPS_DOWN = {"compose_down", "docker_rm", "process_stop"}
 # Modules that init needs a per module example config for (the others use targets.yml only).
@@ -346,6 +348,9 @@ def validate_config(data: dict) -> list[str]:
         return ["config bukan pemetaan YAML"]
     if not (data.get("project") or {}).get("name"):
         problems.append("project.name wajib diisi")
+    language = (data.get("project") or {}).get("language")
+    if language is not None and str(language).lower() not in REPORT_LANGUAGES:
+        problems.append(f"project.language harus salah satu dari: {', '.join(REPORT_LANGUAGES)}")
     api = data.get("api") or {}
     if not (api.get("login") or {}).get("path"):
         problems.append("api.login.path wajib diisi")
@@ -534,6 +539,7 @@ class Context:
         self.base = ""
         self.level = "local"
         self.login: Login | None = None
+        self.language = str(getattr(args, "lang", None) or cfg.get("project.language") or DEFAULT_LANGUAGE).lower()
         self.only = set(args.only.split(",")) if getattr(args, "only", None) else None
         self.skip = set(args.skip.split(",")) if getattr(args, "skip", None) else set()
 
@@ -645,7 +651,8 @@ class Context:
     def audit(self, project: Path, args: list[str], extra_env: dict | None = None, name: str = "",
               timeout: int = 3600) -> tuple[int, str]:
         env = os.environ.copy()
-        env.update({"PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1", "TARGET_BASE_URL": self.base})
+        env.update({"PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1", "TARGET_BASE_URL": self.base,
+                    "SAK_LANG": self.language})
         env.update(extra_env or {})
         cmd = [sys.executable, str(KIT / "audit.py"), "--project", str(project)] + args
         try:
@@ -1000,7 +1007,7 @@ class Modules:
         self.spec = self.openapi_location()
         targets = {"name": f"{ctx.cfg.get('project.name')} ({ctx.target_name})", "base_url": ctx.base,
                    "openapi": self.spec, "tls_host": "" if self.stack_target else re.sub(r"^https?://", "", ctx.base).split("/")[0],
-                   "header_probe_path": "/"}
+                   "header_probe_path": "/", "report": {"language": ctx.language}}
         if self.stack_target:
             targets["code_path"] = ctx.repo.as_posix()
             semgrep = ctx.cfg.module("deps", ctx.target_name).get("semgrep") or {}
@@ -1523,7 +1530,7 @@ def write_summary(ctx: Context, out: Path, name: str) -> None:
     version = kit_version()
     lines = [f"# Ringkasan eksekusi audit {ctx.target_name}", "",
              f"- Proyek: {ctx.cfg.get('project.name')}", f"- Waktu: {time.strftime('%Y-%m-%d %H:%M:%S')}",
-             f"- Target: {ctx.base} ({ctx.level})", f"- Security Audit Kit: {version}",
+             f"- Target: {ctx.base} ({ctx.level})", f"- Bahasa report: {ctx.language}", f"- Security Audit Kit: {version}",
              f"- Jumlah akun login: {len({id(s) for s in ctx.sessions.values()})}", "",
              "| Modul | Status | Catatan |", "|---|---|---|"]
     lines += [f"| {m} | {s} | {c} |" for m, s, c in ctx.summary]
@@ -1711,6 +1718,7 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--down-after", action="store_true", help="target stack: matikan stack setelah selesai")
     r.add_argument("--rebuild", action="store_true", help="bangun ulang frontend")
     r.add_argument("--openapi", help="lokasi spesifikasi OpenAPI (URL atau berkas)")
+    r.add_argument("--lang", choices=REPORT_LANGUAGES, help="bahasa report (bawaan: project.language, lalu id)")
     r.add_argument("--force-active", action="store_true", help="izinkan modul aktif walau tingkat target pasif")
     up = sub.add_parser("up", help="nyalakan stack target kind stack")
     common(up)

@@ -225,6 +225,7 @@ class _FakeCtx:
         self.sessions = {}
         self.base = "http://localhost"
         self.level = "local"
+        self.language = "id"
         self.secrets = set()
 
     def audit(self, project, args, extra_env=None, name="", timeout=0):
@@ -427,3 +428,42 @@ def test_data_readmes_exist_in_three_languages_with_the_same_rows():
         assert all(other in text for other in texts if other != name)
     for text in texts.values():                            # same flag icons as the kit docs, in every file
         assert all(f"flagcdn.com/{flag}.svg" in text for flag in ("id", "gb", "de"))
+
+
+# --- report language ---
+
+def _lang_ctx(tmp_path, cli_lang, config_lang):
+    data = json.loads(json.dumps(EXAMPLE))
+    if config_lang is None:
+        data["project"].pop("language", None)
+    else:
+        data["project"]["language"] = config_lang
+    args = argparse.Namespace(target="local", repo_root=str(tmp_path), work_dir=str(tmp_path / "work"), only=None,
+                              skip=None, lang=cli_lang)
+    return RN.Context(_cfg(data, tmp_path), args)
+
+
+def test_validate_rejects_an_unknown_report_language():
+    data = json.loads(json.dumps(EXAMPLE))
+    data["project"]["language"] = "fr"
+    assert any("project.language" in p for p in RN.validate_config(data))
+
+
+def test_report_language_precedence_is_cli_then_config_then_indonesian(tmp_path):
+    assert _lang_ctx(tmp_path, "en", "de").language == "en"
+    assert _lang_ctx(tmp_path, None, "de").language == "de"
+    assert _lang_ctx(tmp_path, None, None).language == "id"
+
+
+def test_audit_passes_the_report_language_to_the_kit(tmp_path, monkeypatch):
+    captured = {}
+
+    def fake_run(cmd, **kwargs):
+        captured.update(kwargs["env"])
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(RN.subprocess, "run", fake_run)
+    ctx = _lang_ctx(tmp_path, "de", None)
+    ctx.base = "http://x"
+    ctx.audit(tmp_path / "project", ["headers"], name="t")
+    assert captured["SAK_LANG"] == "de"

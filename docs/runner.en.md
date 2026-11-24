@@ -39,6 +39,8 @@ A complete commented example is in [config/runner.example.yml](../config/runner.
 
 Keep the config in `projects/<name>/audit.config.yml` in the kit, a folder that is not committed like every other kit project, and set `project.repo` to the location of the application repo. That repo receives the report copy and is the base of the `stack` step paths.
 
+`project.language` selects the report language (`id`, `en`, or `de`) and defaults to `id`; the `--lang` option overrides it. The report text is currently complete in Indonesian only, so `en` and `de` switch the glossary of technical terms for now. The run summary and the runner's own console messages are in Indonesian.
+
 | Section | Content |
 |---|---|
 | `project` | Name, short key for file names, and the output folder |

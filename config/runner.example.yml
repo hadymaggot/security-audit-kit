@@ -16,6 +16,7 @@
 project:
   key: example-app                        # short name used in report file names (default: slug of name)
   name: "Example App"
+  language: id                            # report language: id, en or de (default id); --lang overrides it
   # Location of the application repo (absolute, or relative to this file). Reports are copied to <repo>/<output>
   # and the stack steps and env files below are relative to it. Required when this file lives in the kit's
   # projects/ folder (the recommended place: that folder is not committed, like every other kit project).
