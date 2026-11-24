@@ -69,17 +69,35 @@ suatu temuan perlu ditelusuri.
 
 Hanya modul yang dijalankan pada run ini yang menghasilkan berkas.
 
-| Berkas | Isi |
-|---|---|
-| `authz.json` | Hasil matriks kontrol akses per role |
-| `headers.json`, `cors.json`, `cookie_flags.json`, `open_redirect.json` | Pemeriksaan header, CORS, cookie, dan open redirect |
-| `response_leak.json`, `client_leak.json`, `openapi_coverage.json` | Kebocoran data pada respons, cache dan berkas terekspos, serta cakupan autentikasi menurut OpenAPI |
-| `injection.json`, `jwt.json`, `upload.json`, `mass_assignment.json`, `ssrf.json` | Uji injection, JWT, upload, mass assignment, dan SSRF |
-| `session_mgmt.json`, `auth_policy.json`, `ratelimit.json` | Uji sesi, kebijakan password, dan pembatasan laju |
-| `webstack.json`, `testssl.json` | Versi komponen web dan konfigurasi TLS |
-| `trivy.json`, `semgrep.json`, `gitleaks.json` | CVE dependency, SAST, dan secret ter-commit |
-| `zap-baseline.*`, `zap-api.*` | Keluaran OWASP ZAP |
-| `rollback.json`, `rollback_journal.json` | Catatan pemulihan data uji setelah uji yang menulis data |
+| Berkas | Modul | Isi |
+|---|---|---|
+| `authz.json` | `authz` | Hasil matriks kontrol akses per role |
+| `headers.json` | `headers` | Pemeriksaan security header |
+| `cors.json` | `cors` | Uji CORS terhadap origin asing |
+| `cookie_flags.json` | `cookie-flags` | Atribut keamanan cookie |
+| `open_redirect.json` | `open-redirect` | Parameter pengalih ke host luar |
+| `response_leak.json` | `response-leak` | Kebocoran data sensitif pada respons API |
+| `client_leak.json` | `clientleak` | Cache respons sensitif, secret di JS dan HTML, serta berkas terekspos |
+| `openapi_coverage.json` | `openapi-coverage` | Endpoint yang terbuka tanpa login menurut spesifikasi OpenAPI |
+| `injection.json` | `injection` | Uji SQL injection |
+| `jwt.json` | `jwt` | Algoritma, masa berlaku, dan pemalsuan token |
+| `upload.json` | `upload` | Penolakan upload berbahaya |
+| `mass_assignment.json` | `mass-assignment` | Field terlarang pada objek milik sendiri |
+| `ssrf.json` | `ssrf` | Request keluar dari server ke listener canary |
+| `session_mgmt.json` | `session` | Pencabutan sesi, ganti password, dan rotasi refresh token |
+| `auth_policy.json` | `auth-policy` | Kebijakan kekuatan password |
+| `ratelimit.json` | `ratelimit` | Pembatasan laju request |
+| `webstack.json` | `webstack` | Versi komponen web yang dipetakan ke CVE |
+| `testssl.json` | `tls` | Protokol dan kerentanan TLS |
+| `trivy.json` | `deps` | CVE pada dependency |
+| `semgrep.json` | `deps` | Hasil SAST pada kode |
+| `gitleaks.json` | `deps` | Secret yang ter-commit |
+| `zap-baseline.json` | `zap` | Hasil OWASP ZAP baseline (pasif) |
+| `zap-baseline.html` | `zap` | Laporan OWASP ZAP baseline |
+| `zap-api.json` | `zap` | Hasil OWASP ZAP API scan (aktif) |
+| `zap-api.html` | `zap` | Laporan OWASP ZAP API scan |
+| `rollback.json` | `internal` | Hasil pemulihan data uji setelah uji yang menulis data |
+| `rollback_journal.json` | `internal` | Jurnal pemulihan data uji |
 
 ## Perhatian
 
