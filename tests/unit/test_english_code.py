@@ -20,7 +20,7 @@ def _words(name):
 
 
 def _code_files():
-    files = [ROOT / "audit.py", ROOT / "report.py", ROOT / "remediation.py", ROOT / "glossary.py"]
+    files = [ROOT / "audit.py", ROOT / "report.py", ROOT / "remediation.py", ROOT / "glossary.py", ROOT / "runner.py"]
     files += sorted((ROOT / "tests").glob("*/run_*.py")) + sorted((ROOT / "tests").glob("_*.py"))
     files += sorted((ROOT / "tests" / "unit").glob("*.py"))
     return files
