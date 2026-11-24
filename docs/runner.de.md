@@ -14,11 +14,11 @@
 ## Schnellstart
 
 ```bash
-python runner.py init --config security-audit/audit.config.yml
-python runner.py check --config security-audit/audit.config.yml
-python runner.py run --config security-audit/audit.config.yml --target local
-python runner.py run --config security-audit/audit.config.yml --target dev --skip ratelimit
-python runner.py down --config security-audit/audit.config.yml
+python runner.py init --config projects/example-app/audit.config.yml
+python runner.py check --config projects/example-app/audit.config.yml
+python runner.py run --config projects/example-app/audit.config.yml --target local
+python runner.py run --config projects/example-app/audit.config.yml --target dev --skip ratelimit
+python runner.py down --config projects/example-app/audit.config.yml
 ```
 
 Ergebnis: ein eindeutig benannter Report-Ordner unter `project.output` mit HTML, Markdown, Folien, Belegen je Modul und einer Zusammenfassung des Laufs. Exit-Code 2 bedeutet, dass ein Fehler den Lauf gestoppt hat; Sicherheitsbefunde ändern den Exit-Code nicht, da sie im Report stehen.
@@ -36,6 +36,8 @@ Ergebnis: ein eindeutig benannter Report-Ordner unter `project.output` mit HTML,
 ## Konfiguration
 
 Ein vollständiges kommentiertes Beispiel steht in [config/runner.example.yml](../config/runner.example.yml).
+
+Legen Sie die Config unter `projects/<name>/audit.config.yml` im Toolkit ab, einem Ordner, der wie jedes andere Toolkit-Projekt nicht eingecheckt wird, und setzen Sie `project.repo` auf den Ort des Anwendungs-Repos. Dieses Repo erhält die Report-Kopie und ist die Basis der Pfade der `stack`-Schritte.
 
 | Abschnitt | Inhalt |
 |---|---|

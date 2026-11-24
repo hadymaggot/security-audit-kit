@@ -338,3 +338,54 @@ def test_finish_works_without_git(tmp_path, monkeypatch):
     assert RN.finish(ctx) == 0
     summary = next((tmp_path / "docs" / "security-audit").glob("*/*-ringkasan.md"))
     assert "tidak diketahui" in summary.read_text(encoding="utf-8")
+
+
+# --- config location: inside the kit or in the application repo ---
+
+def _write_config(path, repo=None):
+    data = json.loads(json.dumps(EXAMPLE))
+    data["project"].pop("repo", None)
+    if repo:
+        data["project"]["repo"] = repo
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+    return path
+
+
+def test_config_in_the_kit_needs_project_repo(tmp_path, monkeypatch):
+    kit = tmp_path / "kit"
+    (kit / ".git").mkdir(parents=True)
+    monkeypatch.setattr(RN, "KIT", kit)
+    path = _write_config(kit / "projects" / "app" / "audit.config.yml")
+    with pytest.raises(RN.AuditError, match="project.repo"):
+        RN.Config.load(path)
+
+
+def test_project_repo_can_be_absolute_or_relative_to_the_config(tmp_path, monkeypatch):
+    kit = tmp_path / "kit"
+    (kit / ".git").mkdir(parents=True)
+    monkeypatch.setattr(RN, "KIT", kit)
+    app = tmp_path / "app"
+    app.mkdir()
+    absolute = RN.Config.load(_write_config(kit / "projects" / "a" / "audit.config.yml", app.as_posix()))
+    relative = RN.Config.load(_write_config(kit / "projects" / "b" / "audit.config.yml", "../../../app"))
+    assert absolute.repo == app and relative.repo == app.resolve()
+
+
+def test_config_in_the_application_repo_uses_the_nearest_git_root(tmp_path):
+    (tmp_path / ".git").mkdir()
+    cfg = RN.Config.load(_write_config(tmp_path / "security-audit" / "audit.config.yml"))
+    assert cfg.repo == tmp_path
+
+
+def test_resolve_path_prefers_the_file_next_to_the_config(tmp_path):
+    repo, cfg_dir = tmp_path / "repo", tmp_path / "cfg"
+    repo.mkdir()
+    cfg_dir.mkdir()
+    (cfg_dir / ".env.dev").write_text("A=1", encoding="utf-8")
+    (repo / ".env.dev").write_text("A=2", encoding="utf-8")
+    ctx = SimpleNamespace(cfg=SimpleNamespace(path=cfg_dir / "audit.config.yml"), repo=repo)
+    assert RN.Context.resolve_path(ctx, ".env.dev") == cfg_dir / ".env.dev"
+    (cfg_dir / ".env.dev").unlink()
+    assert RN.Context.resolve_path(ctx, ".env.dev") == repo / ".env.dev"
+    assert RN.Context.resolve_path(ctx, str(tmp_path / "abs.env")) == tmp_path / "abs.env"

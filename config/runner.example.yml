@@ -1,7 +1,7 @@
 # Project config for runner.py (the autonomous audit runner). Copy it into your project and adapt it:
-#   python runner.py init --config security-audit/audit.config.yml
-#   python runner.py check --config security-audit/audit.config.yml
-#   python runner.py run --config security-audit/audit.config.yml --target local
+#   python runner.py init --config projects/example-app/audit.config.yml
+#   python runner.py check --config projects/example-app/audit.config.yml
+#   python runner.py run --config projects/example-app/audit.config.yml --target local
 #
 # Everything that depends on the project lives in this file; runner.py holds no project specific value.
 #
@@ -16,7 +16,11 @@
 project:
   key: example-app                        # short name used in report file names (default: slug of name)
   name: "Example App"
-  output: docs/security-audit             # relative to the repo root; every run gets its own uniquely named folder
+  # Location of the application repo (absolute, or relative to this file). Reports are copied to <repo>/<output>
+  # and the stack steps and env files below are relative to it. Required when this file lives in the kit's
+  # projects/ folder (the recommended place: that folder is not committed, like every other kit project).
+  repo: /path/to/example-app
+  output: docs/security-audit             # relative to the repo; every run gets its own uniquely named folder
 
 # Targets of these levels only run the passive modules listed below (no writes at all).
 safety:
@@ -106,7 +110,7 @@ targets:
     healthy: ["http://127.0.0.1:3000/health"]
   dev:
     kind: remote
-    env_file: security-audit/.env.dev
+    env_file: .env.dev                     # next to this config file (or relative to the repo)
     base_url_key: TARGET_BASE_URL
     level_key: TARGET_ENV                  # value: dev, staging or prod
     secret_keys: [BASIC_AUTH_PASS]

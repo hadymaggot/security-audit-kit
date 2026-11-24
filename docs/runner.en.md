@@ -14,11 +14,11 @@
 ## Quick start
 
 ```bash
-python runner.py init --config security-audit/audit.config.yml
-python runner.py check --config security-audit/audit.config.yml
-python runner.py run --config security-audit/audit.config.yml --target local
-python runner.py run --config security-audit/audit.config.yml --target dev --skip ratelimit
-python runner.py down --config security-audit/audit.config.yml
+python runner.py init --config projects/example-app/audit.config.yml
+python runner.py check --config projects/example-app/audit.config.yml
+python runner.py run --config projects/example-app/audit.config.yml --target local
+python runner.py run --config projects/example-app/audit.config.yml --target dev --skip ratelimit
+python runner.py down --config projects/example-app/audit.config.yml
 ```
 
 Result: a uniquely named report folder under `project.output` with HTML, Markdown, slides, per module evidence, and a run summary. Exit code 2 means an error stopped the run; security findings do not change the exit code, because they are in the report.
@@ -36,6 +36,8 @@ Result: a uniquely named report folder under `project.output` with HTML, Markdow
 ## Configuration
 
 A complete commented example is in [config/runner.example.yml](../config/runner.example.yml).
+
+Keep the config in `projects/<name>/audit.config.yml` in the kit, a folder that is not committed like every other kit project, and set `project.repo` to the location of the application repo. That repo receives the report copy and is the base of the `stack` step paths.
 
 | Section | Content |
 |---|---|
