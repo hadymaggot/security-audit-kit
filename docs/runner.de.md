@@ -92,4 +92,4 @@ Ein neues Ziel, etwa Staging, wird unter `targets` mit eigener Env-Datei ergänz
 - Scanner-Ergebnisse müssen weiterhin verifiziert werden; Geschäftslogikfehler werden nur gefunden, wenn der Fall in der Config steht.
 - `session` prüft Bearer-Authentifizierung mit Refresh-Token und braucht ein Konto mit hohen Rechten, um ein einmaliges Testkonto anzulegen.
 - `tls` ist nur für HTTPS-Ziele gedacht, und `deps` scannt Code, läuft also meist auf dem Ziel `stack`.
-- Der Runner legt Arbeitsprojekte im Ordner `projects/` des Toolkits an, der nicht eingecheckt wird.
+- Der Runner legt seine Arbeitsprojekte unter `work/kit/` neben der Config an, sodass `projects/` einen Ordner je Projekt behält.

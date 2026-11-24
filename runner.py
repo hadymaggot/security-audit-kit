@@ -359,10 +359,11 @@ class Context:
         self.repo = Path(args.repo_root).resolve() if getattr(args, "repo_root", None) else cfg.repo
         self.work = Path(args.work_dir).resolve() if getattr(args, "work_dir", None) else cfg.path.parent / "work"
         (self.work / "log").mkdir(parents=True, exist_ok=True)
-        key = cfg.key
-        self.project = KIT / "projects" / f"{key}-{args.target}"
-        self.project_zap = KIT / "projects" / f"{key}-{args.target}-zap"
-        self.project_locks = KIT / "projects" / f"{key}-{args.target}-locks"
+        # Kit working projects live inside the work folder next to the config, so projects/ keeps one folder per project.
+        kit_projects = self.work / "kit"
+        self.project = kit_projects / args.target
+        self.project_zap = kit_projects / f"{args.target}-zap"
+        self.project_locks = kit_projects / f"{args.target}-locks"
         self.stack_env = read_env(self.repo / cfg.get("stack.env_file", ".env.none")) if cfg.get("stack.env_file") else {}
         self.accounts: dict[str, tuple[str, str]] = {}
         self.sessions: dict[str, Session] = {}
