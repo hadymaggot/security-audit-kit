@@ -26,18 +26,27 @@ if [ -z "$TARGET" ]; then
 fi
 mkdir -p "$OUTDIR"
 
-# Opsi tambahan ZAP: sisipkan header auth bila ada, supaya scan di balik login.
+# Auth header for scans behind a login. A raw `-config` option is parsed by the ZAP scripts as `-c`,
+# and a header value with a space cannot pass through `-z`, so the header is installed by a hook that
+# reads the environment variable: the token never appears on the command line or in the hook file.
 EXTRA=""
+ENVARG=""
 if [ -n "${ZAP_AUTH_HEADER:-}" ]; then
-  # -config replacer menambah header ke semua request keluar.
-  EXTRA="-config replacer.full_list(0).description=auth \
--config replacer.full_list(0).enabled=true \
--config replacer.full_list(0).matchtype=REQ_HEADER \
--config replacer.full_list(0).matchstr=$(printf %s "$ZAP_AUTH_HEADER" | cut -d: -f1) \
--config replacer.full_list(0).replacement=$(printf %s "$ZAP_AUTH_HEADER" | cut -d: -f2- | sed 's/^ //')"
+  cat > "$OUTDIR/zap_auth_hook.py" <<'HOOK'
+import os
+
+
+def zap_started(zap, target):
+    name, _, val = os.environ['ZAP_AUTH_HEADER'].partition(':')
+    zap.replacer.add_rule(description='auth', enabled='true', matchtype='REQ_HEADER',
+                          matchregex='false', matchstring=name.strip(),
+                          replacement=val.strip(), initiators='')
+HOOK
+  EXTRA="--hook=/zap/wrk/zap_auth_hook.py"
+  ENVARG="-e ZAP_AUTH_HEADER"
 fi
 
-run() { docker run --rm -v "$(pwd)/$OUTDIR:/zap/wrk:rw" "$IMAGE" "$@"; }
+run() { docker run --rm $ENVARG -v "$(pwd)/$OUTDIR:/zap/wrk:rw" "$IMAGE" "$@"; }
 
 case "$MODE" in
   baseline)
