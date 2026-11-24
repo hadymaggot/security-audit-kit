@@ -198,7 +198,8 @@ DATA_README_TEXT = {
 }
 
 
-LANGUAGE_NAMES = {"id": "Indonesia", "en": "English", "de": "Deutsch"}
+# Language switch entries: (display name, flag code, alt text). Same flags as the kit docs.
+LANGUAGE_NAMES = {"id": ("Indonesia", "id", "ID"), "en": ("English", "gb", "EN"), "de": ("Deutsch", "de", "DE")}
 
 
 def data_readmes() -> dict[str, str]:
@@ -206,8 +207,11 @@ def data_readmes() -> dict[str, str]:
     files = {code: DATA_README_TEXT[code]["name"] for code in LANGUAGE_NAMES}
     result = {}
     for lang, t in DATA_README_TEXT.items():
-        switch = " · ".join(f"**{name}**" if code == lang else f"[{name}]({files[code]})"
-                                 for code, name in LANGUAGE_NAMES.items())
+        entries = []
+        for code, (name, flag, alt) in LANGUAGE_NAMES.items():
+            label = f'<img src="https://flagcdn.com/{flag}.svg" width="18" alt="{alt}"> {name}'
+            entries.append(f"**{label}**" if code == lang else f"[{label}]({files[code]})")
+        switch = " · ".join(entries)
         lines = [switch, "", f"# {t['title']}", "", t["intro"], "", f"## {t['contents']}", "", t["only"], "",
                  f"| {t['head'][0]} | {t['head'][1]} | {t['head'][2]} |", "|---|---|---|"]
         lines += [f"| `{f}` | `{m}` | {d[lang]} |" for f, m, d in DATA_README_ROWS]

@@ -425,3 +425,5 @@ def test_data_readmes_exist_in_three_languages_with_the_same_rows():
     assert len({len(re.findall(r"^## ", text, re.M)) for text in texts.values()}) == 1
     for name, text in texts.items():                       # every file links to the other two languages
         assert all(other in text for other in texts if other != name)
+    for text in texts.values():                            # same flag icons as the kit docs, in every file
+        assert all(f"flagcdn.com/{flag}.svg" in text for flag in ("id", "gb", "de"))
